@@ -32,6 +32,19 @@ function getCandidates() {
   ];
 }
 
+// Unsplash preview image for an image-type portfolio item (by item id)
+function getPortfolioPreview(id) {
+  const photos = {
+    1: 'photo-1618761714954-0b8cd0026356',
+    4: 'photo-1586717791821-3f44a563fa4c',
+    5: 'photo-1561070791-2526d30994b5',
+    7: 'photo-1563986768609-322da13575f3',
+    8: 'photo-1512941937669-90a1b58e7e9c',
+    9: 'photo-1460925895917-afdab827c52f',
+  };
+  return `https://images.unsplash.com/${photos[id] || 'photo-1551288049-bebda4e38f71'}?auto=format&fit=crop&w=800&h=500&q=75`;
+}
+
 function getConversations() {
   return [
     { id:1, withName:'Emily Ross', role:'HR · TechCorp', avatarBg:'linear-gradient(135deg,#00c4ff,#5b6cf5)', unread:1, messages:[

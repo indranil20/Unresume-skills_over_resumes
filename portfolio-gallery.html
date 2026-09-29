@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -8,7 +8,7 @@
   <title>Portfolio Gallery — Unresume</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link
-    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
     rel="stylesheet">
   <link
     href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
@@ -16,195 +16,352 @@
   <link rel="stylesheet" href="css/globals.css">
   <link rel="stylesheet" href="css/navbar.css">
   <style>
+    .page-wrap { overflow-x: clip; }
+
     .pg-hero {
-      padding: 56px 0 44px;
+      position: relative;
+      padding: 56px 24px 8px;
       text-align: center;
-      border-bottom: 1px solid var(--border);
-      background: linear-gradient(160deg, rgba(128, 64, 216, .06), rgba(0, 196, 255, .06))
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px
+    }
+
+    .pg-hero::before {
+      content: '';
+      position: absolute;
+      width: 640px;
+      height: 420px;
+      left: 50%;
+      top: -40px;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(167, 139, 250, .22), transparent 65%);
+      pointer-events: none;
+      z-index: -1
     }
 
     .pg-hero h1 {
       font-family: var(--font-display);
-      font-size: clamp(26px, 4vw, 40px);
+      font-size: clamp(36px, 5vw, 58px);
       font-weight: 800;
       color: var(--text1);
-      letter-spacing: -.03em;
-      margin-bottom: 10px
+      letter-spacing: -.04em;
+      line-height: 1.06
+    }
+
+    .pg-hero p {
+      font-size: clamp(15px, 1.5vw, 17px);
+      color: var(--text3);
+      line-height: 1.7;
+      max-width: 520px
     }
 
     .pg-wrap {
-      max-width: 1140px;
+      max-width: 1200px;
       margin: 0 auto;
-      padding: 40px 24px 80px
+      padding: 32px 24px 96px
     }
 
     .pg-toolbar {
       display: flex;
       align-items: center;
-      gap: 12px;
+      justify-content: space-between;
+      gap: 16px;
       flex-wrap: wrap;
-      margin-bottom: 32px
+      margin-bottom: 28px
+    }
+
+    .pg-pills {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap
     }
 
     .pg-count {
-      margin-left: auto;
-      font-size: 13px;
-      color: var(--text4);
+      font-size: 14px;
+      color: var(--text3);
       font-weight: 600
+    }
+
+    .pg-count b {
+      color: var(--text1);
+      font-weight: 800
     }
 
     .pg-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 20px
+      grid-template-columns: repeat(3, 1fr);
+      gap: 22px
+    }
+
+    @media(max-width:1020px) {
+      .pg-grid { grid-template-columns: repeat(2, 1fr) }
+    }
+
+    @media(max-width:640px) {
+      .pg-grid { grid-template-columns: 1fr }
+      .pg-toolbar { flex-direction: column; align-items: flex-start }
     }
 
     .pg-card {
-      background: var(--bg-card);
+      background: #fff;
       border: 1px solid var(--border);
       border-radius: 20px;
       overflow: hidden;
-      transition: border-color .2s, transform .2s;
-      text-decoration: none;
+      box-shadow: var(--shadow-sm);
+      transition: box-shadow .2s, transform .2s, border-color .2s;
       display: flex;
       flex-direction: column
     }
 
     .pg-card:hover {
-      border-color: rgba(128, 64, 216, .35);
-      transform: translateY(-3px)
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-md);
+      border-color: #e2defb
     }
 
     .pg-preview {
-      height: 180px;
-      background: var(--bg-elevated);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      height: 200px;
+      background: linear-gradient(160deg, #eeedfd, #dcd7fb);
       position: relative;
-      overflow: hidden;
-      border-bottom: 1px solid var(--border)
+      overflow: hidden
     }
 
     .pg-preview-img {
       width: 100%;
       height: 100%;
-      object-fit: cover
+      object-fit: cover;
+      transition: transform .5s
     }
 
-    .pg-preview-site {
-      width: 100%;
-      height: 100%;
-      border: none;
-      pointer-events: none;
-      transform: scale(0.65);
-      transform-origin: top left;
-      width: 154%;
-      height: 154%
+    .pg-card:hover .pg-preview-img { transform: scale(1.05) }
+
+    .pg-preview::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(14, 18, 48, .18), transparent 40%);
+      pointer-events: none
+    }
+
+    /* browser mockup */
+    .pg-browser {
+      position: absolute;
+      inset: 22px 22px 0;
+      background: #fff;
+      border-radius: 12px 12px 0 0;
+      box-shadow: 0 12px 30px rgba(79, 70, 229, .18);
+      overflow: hidden
+    }
+
+    .pg-browser-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--border);
+      background: #fafaff
+    }
+
+    .pg-browser-bar i {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: block
+    }
+
+    .pg-browser-url {
+      margin-left: 8px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10.5px;
+      font-family: var(--font-mono);
+      color: var(--text3);
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 2px 8px
+    }
+
+    .pg-browser-body { padding: 16px 18px }
+
+    .sk { border-radius: 4px; margin-bottom: 8px }
+
+    /* code preview */
+    .pg-code {
+      position: absolute;
+      inset: 22px 22px 0;
+      background: #16172b;
+      border-radius: 12px 12px 0 0;
+      box-shadow: 0 12px 30px rgba(79, 70, 229, .22);
+      overflow: hidden
+    }
+
+    .pg-code-bar {
+      display: flex;
+      gap: 6px;
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, .06)
+    }
+
+    .pg-code-bar i {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: block
     }
 
     .pg-preview-code {
       font-family: var(--font-mono);
-      font-size: 11px;
-      color: var(--cyan);
-      padding: 16px;
+      font-size: 11.5px;
+      color: #c7c9e6;
+      padding: 12px 16px;
       text-align: left;
-      line-height: 1.6;
-      overflow: hidden;
-      height: 100%
+      line-height: 1.7
     }
 
     .pg-type-badge {
       position: absolute;
-      top: 10px;
-      right: 10px;
+      top: 12px;
+      right: 12px;
+      z-index: 2;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
       font-size: 11px;
-      font-weight: 800;
-      padding: 4px 10px;
-      border-radius: 6px;
-      backdrop-filter: blur(8px)
+      font-weight: 700;
+      padding: 5px 11px;
+      border-radius: 100px;
+      box-shadow: var(--shadow-sm)
     }
+
+    .pg-type-badge .material-symbols-rounded { font-size: 14px; font-variation-settings: 'FILL' 1 }
 
     .pg-score {
       position: absolute;
-      top: 10px;
-      left: 10px;
-      font-family: var(--font-mono);
+      top: 12px;
+      left: 12px;
+      z-index: 2;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
       font-size: 12px;
-      font-weight: 700;
-      padding: 4px 10px;
-      border-radius: 6px;
-      background: rgba(0, 0, 0, .55);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, .08);
-      color: var(--text1)
+      font-weight: 800;
+      padding: 5px 11px;
+      border-radius: 100px;
+      background: rgba(255, 255, 255, .95);
+      color: var(--text1);
+      box-shadow: var(--shadow-sm)
     }
 
+    .pg-score .material-symbols-rounded { font-size: 14px; color: #f59e0b; font-variation-settings: 'FILL' 1 }
+
     .pg-body {
-      padding: 16px 18px 20px;
+      padding: 18px 20px 20px;
       flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 8px
+      gap: 12px
     }
 
     .pg-task-title {
-      font-size: 14.5px;
-      font-weight: 800;
+      font-size: 16px;
+      font-weight: 700;
       color: var(--text1);
       font-family: var(--font-display);
-      line-height: 1.3
+      line-height: 1.3;
+      letter-spacing: -.01em
     }
 
     .pg-author {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin-top: 4px
+      gap: 10px
     }
 
     .pg-av {
-      width: 26px;
-      height: 26px;
+      width: 34px;
+      height: 34px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 800;
       color: #fff;
       flex-shrink: 0
     }
 
     .pg-author-name {
-      font-size: 12.5px;
+      font-size: 13px;
       font-weight: 700;
-      color: var(--text2)
+      color: var(--text1)
     }
 
     .pg-author-uname {
-      font-size: 11.5px;
+      font-size: 12px;
       color: var(--text4)
     }
 
     .pg-footer {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding-top: 10px;
+      gap: 6px;
+      padding-top: 14px;
       border-top: 1px solid var(--border);
       margin-top: auto
     }
 
     .pg-footer a {
-      font-size: 12.5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 13px;
       font-weight: 700;
       color: var(--brand);
-      text-decoration: none
+      text-decoration: none;
+      padding: 8px 14px;
+      border-radius: 10px;
+      background: #eeedfd;
+      transition: all .2s
     }
 
+    .pg-footer a .material-symbols-rounded { font-size: 16px; transition: transform .2s }
+
     .pg-footer a:hover {
-      text-decoration: underline
+      background: linear-gradient(90deg, #4f46e5, #7c3aed);
+      color: #fff
+    }
+
+    .pg-footer a:hover .material-symbols-rounded { transform: translateX(3px) }
+
+    .pg-empty {
+      grid-column: 1/-1;
+      text-align: center;
+      padding: 72px 24px;
+      color: var(--text3);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      font-size: 14px;
+      background: #fff;
+      border: 1px dashed var(--border-light);
+      border-radius: 20px
+    }
+
+    .pg-empty-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: #eeedfd;
+      color: var(--brand);
+      display: flex;
+      align-items: center;
+      justify-content: center
     }
   </style>
 </head>
@@ -212,17 +369,20 @@
 <body>
   <div id="navbar"></div>
 
-  <div class="pg-hero">
-    <h1><span class="grad-text">Portfolio</span> Gallery</h1>
-    <p style="font-size:14.5px;color:var(--text3)">Real work from real candidates. Browse verified task outputs.</p>
-  </div>
-
-  <div class="pg-wrap">
-    <div class="pg-toolbar">
-      <div id="filterPills" style="display:flex;gap:8px;flex-wrap:wrap;flex:1"></div>
-      <span class="pg-count" id="countLbl"></span>
+  <div class="page-wrap">
+    <div class="pg-hero">
+      <div class="section-badge"><span class="material-symbols-rounded" style="font-size:15px;font-variation-settings:'FILL' 1">photo_library</span> Portfolio</div>
+      <h1><span class="grad-text">Portfolio</span> Gallery</h1>
+      <p>Real work from real candidates. Browse verified task outputs.</p>
     </div>
-    <div class="pg-grid" id="pgGrid"></div>
+
+    <div class="pg-wrap">
+      <div class="pg-toolbar">
+        <div class="pg-pills" id="filterPills"></div>
+        <span class="pg-count" id="countLbl"></span>
+      </div>
+      <div class="pg-grid" id="pgGrid"></div>
+    </div>
   </div>
 
   <div id="footer"></div>
@@ -230,28 +390,40 @@
   <script src="js/components.js"></script>
   <script src="js/data.js"></script>
   <script>
-    const typeColor = { design: 'var(--purple)', code: 'var(--cyan)', data: 'var(--brand)', analysis: '#10b981' };
-    const typeBg = { design: 'rgba(128,64,216,.15)', code: 'rgba(0,196,255,.15)', data: 'rgba(91,108,245,.15)', analysis: 'rgba(16,185,129,.15)' };
+    const typeStyle = {
+      design:   { cls: 'tint-pink',   icon: 'palette' },
+      code:     { cls: 'tint-blue',   icon: 'code' },
+      data:     { cls: 'tint-purple', icon: 'bar_chart' },
+      analysis: { cls: 'tint-teal',   icon: 'analytics' },
+    };
     const gradients = [
-      'linear-gradient(135deg,#00c4ff,#5b6cf5)',
-      'linear-gradient(135deg,#5b6cf5,#8040d8)',
-      'linear-gradient(135deg,#8040d8,#ec4899)',
-      'linear-gradient(135deg,#10b981,#00c4ff)',
-      'linear-gradient(135deg,#f59e0b,#ef4444)',
-      'linear-gradient(135deg,#6366f1,#8040d8)',
+      'linear-gradient(135deg,#38bdf8,#2563eb)',
+      'linear-gradient(135deg,#8b5cf6,#6d28d9)',
+      'linear-gradient(135deg,#e879f9,#a855f7)',
+      'linear-gradient(135deg,#2dd4bf,#0d9488)',
+      'linear-gradient(135deg,#fbbf24,#f97316)',
+      'linear-gradient(135deg,#818cf8,#4f46e5)',
     ];
-    const previewColors = [
-      '#1e1e2e', '#0d1117', '#111827', '#13131a', '#0f172a', '#1c1917'
-    ];
-
     let activeType = 'all';
+
+    // Portfolio items carry type 'task'/'external', so derive the gallery category
+    function categoryOf(item) {
+      const skills = item.candidate.skills;
+      if (item.previewType === 'website') return 'code';
+      if (item.previewType === 'document') return 'analysis';
+      if (skills.includes('Figma')) return 'design';
+      if (skills.some(s => ['Python', 'Data Science', 'SQL', 'Machine Learning'].includes(s))) return 'data';
+      return 'code';
+    }
 
     function getAllItems() {
       const items = [];
       const candidates = getCandidates();
       candidates.forEach((c, ci) => {
         c.portfolio.filter(p => p.isPublic).forEach(p => {
-          items.push({ ...p, candidate: c, ci });
+          const item = { ...p, candidate: c, ci };
+          item.category = categoryOf(item);
+          items.push(item);
         });
       });
       return items;
@@ -270,60 +442,66 @@
       render();
     }
 
-    function previewHTML(item, idx) {
+    function badges(item, label) {
+      const s = typeStyle[item.category];
+      return `<span class="pg-type-badge ${s.cls}"><span class="material-symbols-rounded">${s.icon}</span>${label}</span>
+      ${item.score ? `<span class="pg-score"><span class="material-symbols-rounded">star</span>${item.score}/100</span>` : ''}`;
+    }
+
+    function previewHTML(item) {
       const type = item.previewType;
       if (type === 'image') {
-        return `<div class="pg-preview" style="background:${previewColors[idx % previewColors.length]}">
-      <div style="display:flex;flex-direction:column;align-items:center;gap:12px;opacity:.5">
-        <span class="material-symbols-rounded" style="font-size:48px;color:var(--text4)">image</span>
-        <span style="font-size:12px;color:var(--text4);font-weight:600">Preview Image</span>
-      </div>
-      <span class="pg-type-badge" style="background:${typeBg[item.type] || typeBg.data};color:${typeColor[item.type] || typeColor.data}">Image</span>
-      ${item.score ? `<span class="pg-score">${item.score}/100</span>` : ''}
+        return `<div class="pg-preview">
+      <img class="pg-preview-img" src="${getPortfolioPreview(item.id)}" alt="${item.title}" loading="lazy">
+      ${badges(item, 'Image')}
     </div>`;
       }
       if (type === 'website') {
-        return `<div class="pg-preview" style="background:#0d1117">
-      <div style="display:flex;align-items:center;gap:8px;position:absolute;top:10px;left:10px;right:50px;background:rgba(0,0,0,.5);border-radius:8px;padding:5px 10px;font-size:11px;font-family:var(--font-mono);color:var(--text4); width: max-content;">
-        <span class="material-symbols-rounded" style="font-size:14px;color:#10b981">lock</span>
-        <span>live-preview.unresu.me</span>
-      </div>
-      <div style="padding:40px 24px 24px;width:100%;height:100%;background:#0d1117">
-        <div style="height:12px;background:rgba(91,108,245,.3);border-radius:4px;margin-bottom:8px;width:70%"></div>
-        <div style="height:8px;background:rgba(255,255,255,.08);border-radius:4px;margin-bottom:6px;width:90%"></div>
-        <div style="height:8px;background:rgba(255,255,255,.06);border-radius:4px;margin-bottom:12px;width:60%"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div style="height:60px;background:rgba(255,255,255,.04);border-radius:8px;border:1px solid rgba(255,255,255,.06)"></div>
-          <div style="height:60px;background:rgba(255,255,255,.04);border-radius:8px;border:1px solid rgba(255,255,255,.06)"></div>
+        return `<div class="pg-preview">
+      <div class="pg-browser">
+        <div class="pg-browser-bar">
+          <i style="background:#fb7185"></i><i style="background:#fbbf24"></i><i style="background:#34d399"></i>
+          <span class="pg-browser-url"><span class="material-symbols-rounded" style="font-size:12px;color:#0d9488">lock</span>live-preview.unresu.me</span>
+        </div>
+        <div class="pg-browser-body">
+          <div class="sk" style="height:12px;width:55%;background:linear-gradient(90deg,#4f46e5,#7c3aed)"></div>
+          <div class="sk" style="height:8px;width:85%;background:#eeedfd"></div>
+          <div class="sk" style="height:8px;width:60%;background:#eeedfd;margin-bottom:12px"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+            <div style="height:48px;border-radius:8px;background:#eaf1ff"></div>
+            <div style="height:48px;border-radius:8px;background:#fdeefc"></div>
+            <div style="height:48px;border-radius:8px;background:#e6f8f5"></div>
+          </div>
         </div>
       </div>
-      <span class="pg-type-badge" style="background:${typeBg.code};color:${typeColor.code}">Website</span>
-      ${item.score ? `<span class="pg-score">${item.score}/100</span>` : ''}
+      ${badges(item, 'Website')}
     </div>`;
       }
-      // code / analysis
-      return `<div class="pg-preview" style="background:#0d1117">
-    <div class="pg-preview-code"><span style="color:#8040d8">def</span> <span style="color:#00c4ff">analyze</span><span style="color:var(--text2)">(data):</span><br>
-&nbsp;&nbsp;<span style="color:#f59e0b">df</span> = pd.DataFrame(data)<br>
-&nbsp;&nbsp;<span style="color:#f59e0b">result</span> = df.groupby(<span style="color:#10b981">'category'</span>)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;.agg({<span style="color:#10b981">'value'</span>: <span style="color:#10b981">'sum'</span>})<br>
-&nbsp;&nbsp;<span style="color:#5b6cf5">return</span> result.reset_index()</div>
-    <span class="pg-type-badge" style="background:${typeBg[item.type] || typeBg.data};color:${typeColor[item.type] || typeColor.data}">${item.type.charAt(0).toUpperCase() + item.type.slice(1)}</span>
-    ${item.score ? `<span class="pg-score">${item.score}/100</span>` : ''}
+      // document / analysis
+      return `<div class="pg-preview">
+    <div class="pg-code">
+      <div class="pg-code-bar"><i style="background:#fb7185"></i><i style="background:#fbbf24"></i><i style="background:#34d399"></i></div>
+      <div class="pg-preview-code"><span style="color:#c084fc">def</span> <span style="color:#60a5fa">analyze</span>(data):<br>
+&nbsp;&nbsp;<span style="color:#fbbf24">df</span> = pd.DataFrame(data)<br>
+&nbsp;&nbsp;<span style="color:#fbbf24">result</span> = df.groupby(<span style="color:#34d399">'category'</span>)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;.agg({<span style="color:#34d399">'value'</span>: <span style="color:#34d399">'sum'</span>})<br>
+&nbsp;&nbsp;<span style="color:#c084fc">return</span> result.reset_index()</div>
+    </div>
+    ${badges(item, item.category.charAt(0).toUpperCase() + item.category.slice(1))}
   </div>`;
     }
 
     function render() {
       let items = getAllItems();
-      if (activeType !== 'all') items = items.filter(p => p.type === activeType);
+      if (activeType !== 'all') items = items.filter(p => p.category === activeType);
 
-      document.getElementById('countLbl').textContent = `${items.length} item${items.length !== 1 ? 's' : ''}`;
+      document.getElementById('countLbl').innerHTML = `<b>${items.length}</b> item${items.length !== 1 ? 's' : ''}`;
 
-      document.getElementById('pgGrid').innerHTML = items.map((item, idx) => {
+      document.getElementById('pgGrid').innerHTML = items.map(item => {
         const c = item.candidate;
         const initials = c.name.split(' ').map(w => w[0]).join('').slice(0, 2);
         return `<div class="pg-card">
-      ${previewHTML(item, idx)}
+      ${previewHTML(item)}
       <div class="pg-body">
         <div class="pg-task-title">${item.title}</div>
         <div class="pg-author">
@@ -335,14 +513,14 @@
         </div>
         <div class="pg-footer">
           <span class="material-symbols-rounded" style="font-size:16px;color:var(--text4)">visibility</span>
-          <span style="font-size:12px;color:var(--text4)">Public output</span>
-          <a href="candidate-profile.html?u=${c.username}" style="margin-left:auto">View Profile →</a>
+          <span style="font-size:12px;color:var(--text3);font-weight:500">Public output</span>
+          <a href="candidate-profile.html?u=${c.username}" style="margin-left:auto">View Profile <span class="material-symbols-rounded">arrow_forward</span></a>
         </div>
       </div>
     </div>`;
-      }).join('') || `<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--text4)"><span class="material-symbols-rounded" style="font-size:48px;display:block;margin-bottom:12px">photo_library</span>No public portfolio items found</div>`;
+      }).join('') || `<div class="pg-empty"><div class="pg-empty-icon"><span class="material-symbols-rounded" style="font-size:30px">photo_library</span></div>No public portfolio items found</div>`;
 
-      gsap.from('.pg-card', { opacity: 0, y: 20, duration: .4, stagger: .06, ease: 'power2.out' });
+      gsap.from('.pg-card', { opacity: 0, y: 20, duration: .4, stagger: .06, ease: 'power2.out', clearProps: 'transform,opacity' });
     }
 
     renderPills();
