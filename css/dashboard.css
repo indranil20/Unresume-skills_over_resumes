@@ -243,10 +243,24 @@ textarea.tc-textarea:focus, textarea.input-area:focus, select.tc-select:focus, .
 .d-empty-icon { width: 64px; height: 64px; border-radius: 50%; background: #eeedfd; color: var(--brand); display: flex; align-items: center; justify-content: center; }
 
 @media (max-width: 640px) {
-  .dash-greeting { padding: 24px 20px; }
+  .dash-greeting { padding: 22px 18px; border-radius: 20px; margin-bottom: 16px; }
   .dash-greeting .g-spark { left: auto; right: 18px; }
+  .dash-greeting > div:not(.g-blob) { min-width: 0; flex-basis: 100%; }
+  .dash-sub { font-size: 13.5px; }
   .cta-btn { width: 100%; justify-content: center; }
-  .stats-row { gap: 10px; }
-  .stat-card { grid-template-columns: 1fr; row-gap: 8px; padding: 16px; }
-  .stat-icon { grid-row: auto; }
+  .stats-row { gap: 10px; margin-bottom: 20px; }
+  .stat-card { grid-template-columns: 1fr; row-gap: 8px; padding: 16px; border-radius: 16px; }
+  .stat-icon { grid-row: auto; width: 42px; height: 42px; }
+  .stat-val { font-size: 24px; }
+  .dash-cols { gap: 16px; }
+  .panel-card { padding: 18px 16px; border-radius: 18px; }
+  .sec-title { font-size: 16px; }
+  .sub-card, .tc-section, .comp-card, .top-perf-card, .preview-card { padding: 18px 16px !important; }
+  .sub-card .act-btn { font-size: 12.5px; padding: 11px 8px; }
+  .d-modal-bg { padding: 10px; align-items: flex-end; }
+  .d-modal { max-height: 88vh; border-radius: 22px; }
+  .d-modal-foot { flex-wrap: wrap; padding: 12px 16px 16px; }
+  .d-modal-foot .cta-btn { width: auto; flex: 1; }
+  .d-toast { left: 10px; right: 10px; transform: translateY(20px); justify-content: center; }
+  .d-toast.show { transform: none; }
 }

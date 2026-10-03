@@ -26,6 +26,14 @@ textarea.input-area::placeholder{color:var(--text4)}
 .ep-actions{display:flex;gap:10px;margin-top:6px}
 .save-btn{padding:12px 22px;background:linear-gradient(135deg,#8b5cf6,#6d28d9);border:none;border-radius:11px;font-size:14.5px;font-weight:700;color:#fff;cursor:pointer;display:flex;align-items:center;gap:8px;transition:opacity .2s}
 .save-btn:hover{opacity:.9}
+@media(max-width:640px){
+  .ep-card{padding:0 16px 22px}
+  .ep-cover{margin:0 -16px;height:80px}
+  .ep-av-row{flex-direction:column;align-items:flex-start;gap:10px;margin-bottom:22px}
+  .ep-av{width:84px;height:84px;font-size:28px}
+  .ep-actions{flex-direction:column}
+  .ep-actions>*{justify-content:center}
+}
 </style>
 <link rel="stylesheet" href="css/dashboard.css">
 </head>

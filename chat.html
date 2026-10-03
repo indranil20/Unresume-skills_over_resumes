@@ -170,17 +170,31 @@ mark{background:#fde68a;color:inherit;border-radius:4px;padding:0 2px}
 /* Empty state */
 .chat-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--text3)}
 .chat-empty-icon{width:80px;height:80px;border-radius:50%;background:#eeedfd;color:var(--brand);display:flex;align-items:center;justify-content:center}
+.chat-back{display:none;flex-shrink:0}
+@supports (height:100dvh){.chat-root{height:100dvh}}
 @media(max-width:900px){.conv-list{width:280px}}
-@media(max-width:640px){
+/* Phones: one pane at a time — list, or the open conversation */
+@media(max-width:700px){
   .chat-root{padding:10px;gap:10px}
-  .conv-list{width:76px}
-  .conv-brand,.conv-header,.conv-search,.conv-meta,.conv-side{display:none}
-  #convList{padding:10px 6px}
-  .conv-item{padding:8px;justify-content:center}
-  .chat-topbar{padding:0 14px}
-  .chat-messages{padding:16px 14px}
-  .msg-col{max-width:80%}
-  .chat-input-wrap{padding:12px}
+  .conv-list{width:100%}
+  .chat-pane{display:none}
+  .chat-root.in-chat .conv-list{display:none}
+  .chat-root.in-chat .chat-pane{display:flex}
+  .chat-back{display:flex}
+  .chat-topbar{height:66px;padding:0 10px;gap:6px}
+  .chat-who{gap:10px;margin-left:0;padding:6px 4px}
+  .chat-who .conv-av{width:40px !important;height:40px !important;font-size:14px !important}
+  .chat-search{padding:10px 12px}
+  .chat-messages{padding:16px 12px}
+  .msg-col{max-width:82%}
+  .msg-av{display:none}
+  .chat-input-wrap{padding:10px}
+  .chat-input-bar{padding:6px 6px 6px 14px}
+  .chat-menu{right:-4px;width:min(240px,calc(100vw - 40px))}
+  .nc-modal{max-height:88vh}
+  .modal-bg{padding:12px}
+  .toast{left:10px;right:10px;transform:translateY(20px);justify-content:center}
+  .toast.show{transform:none}
 }
 </style>
 </head>
@@ -350,7 +364,14 @@ function openConv(id) {
   renderConvList();
   applyBlocked();
   if (infoOpen()) renderInfo();
-  if (!conv.blocked) document.getElementById('msgInput').focus();
+  document.querySelector('.chat-root').classList.add('in-chat');
+  if (!conv.blocked && !isMobile()) document.getElementById('msgInput').focus();
+}
+
+const isMobile = () => window.matchMedia('(max-width:700px)').matches;
+function closeConvMobile() {
+  closeInfo();
+  document.querySelector('.chat-root').classList.remove('in-chat');
 }
 
 function activeConv() { return convData.find(c => c.id === activeConvId); }
@@ -360,6 +381,7 @@ function renderTopbar() {
   const ci = convData.indexOf(conv);
   const profileUser = candidateByName[conv.withName];
   document.getElementById('chatTopbar').innerHTML = `
+    <button class="icon-btn plain chat-back" onclick="closeConvMobile()" title="Back to chats" aria-label="Back to chats"><span class="material-symbols-rounded" style="font-size:24px">arrow_back</span></button>
     <div class="chat-who" onclick="openInfo()" title="View contact info" role="button" tabindex="0" onkeydown="if(event.key==='Enter')openInfo()">
       <div class="conv-av" style="background:${convGrad(conv)};width:46px;height:46px;font-size:15px">${conv.withName.split(' ').map(w=>w[0]).join('').slice(0,2)}${conv.blocked?'':'<span class="online-dot"></span>'}</div>
       <div style="flex:1;min-width:0">
@@ -693,6 +715,8 @@ function filterConvs(q) {
 
 renderConvList();
 openConv(convData[0].id);
+// On phones start on the conversation list, not inside the first chat
+if (isMobile()) document.querySelector('.chat-root').classList.remove('in-chat');
 </script>
 </body>
 </html>

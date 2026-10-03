@@ -46,6 +46,17 @@
 /* Side tasks panel */
 .side-task-item{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:15px 16px;margin-bottom:10px;text-decoration:none;display:block;transition:border-color .15s}
 .side-task-item:hover{border-color:rgba(91,108,245,.25)}
+@media(max-width:960px){.dash-cols>div[style*="sticky"]{position:static !important}}
+@media(max-width:520px){
+  .sub-top{flex-wrap:wrap}
+  .sub-top>div:nth-child(2){flex:1 1 calc(100% - 58px) !important}
+  .sub-status{margin-left:58px}
+  .file-row{flex-wrap:wrap}
+  .file-row>div:nth-child(2){min-width:0;flex:1 1 calc(100% - 50px) !important}
+  .file-row .see-all{margin-left:50px}
+  .file-name{word-break:break-all}
+  .rubric-score-name{min-width:0}
+}
 </style>
 <link rel="stylesheet" href="css/dashboard.css">
 </head>

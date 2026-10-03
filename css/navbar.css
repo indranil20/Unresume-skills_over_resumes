@@ -68,10 +68,21 @@
 .nav-mobile-link { padding: 10px 14px; border-radius: 9px; font-size: 14px; font-weight: 600; color: var(--text2); text-decoration: none; transition: all .15s; }
 .nav-mobile-link:hover { color: var(--brand); background: #f3f2fd; }
 
-@media (max-width: 860px) {
+@media (max-width: 1100px) {
+  .nav-inner { gap: 16px; }
+  .nav-links { gap: 2px; }
+  .nav-link { padding: 8px 10px; }
+}
+@media (max-width: 980px) {
   .nav-links, .nav-actions { display: none; }
   .nav-hamburger { display: flex; }
-  .nav-inner { height: 60px; }
+  .nav-inner { height: 60px; padding: 0 12px 0 16px; }
+  .logo-img { height: 36px; }
+}
+@media (max-width: 480px) {
+  #navbar { padding-top: 10px; }
+  .navbar { width: calc(100% - 20px); border-radius: 16px; }
+  .logo-img { height: 32px; }
 }
 
 /* ── Footer ── */
@@ -95,6 +106,10 @@
 .footer-copy { font-size:12px; color:var(--text3); }
 .footer-legal { display:flex; gap:24px; }
 .footer-legal .footer-link { font-size:12px; }
+@media (max-width:600px) {
+  .footer { padding: 44px 16px 24px; }
+  .footer-bottom { flex-direction: column; align-items: flex-start; }
+}
 
 /* ── Sidebar ── */
 #sidebar { display: flex; flex-shrink: 0; }
@@ -133,6 +148,37 @@
   .sidebar-user { justify-content:center; padding:8px; }
 }
 
+/* Mobile: sidebar → off-canvas drawer (button injected into .dash-topbar by components.js) */
+.dash-menu-btn { display: none; flex-shrink: 0; }
+.sidebar-backdrop { display: none; }
+@media (max-width: 720px) {
+  .dash-menu-btn { display: flex; }
+  #sidebar {
+    position: fixed; top: 10px; bottom: 10px; left: 10px; z-index: 400;
+    transform: translateX(calc(-100% - 24px));
+    transition: transform .25s ease;
+  }
+  body.sidebar-open #sidebar { transform: none; }
+  .sidebar-backdrop {
+    display: block; position: fixed; inset: 0; z-index: 390;
+    background: rgba(30,27,75,.35); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  body.sidebar-open .sidebar-backdrop { opacity: 1; pointer-events: auto; }
+  body.sidebar-open { overflow: hidden; }
+
+  /* drawer shows the full sidebar, not the icon rail */
+  .sidebar { width: min(280px, calc(100vw - 48px)); }
+  .sidebar-logo { justify-content: flex-start; padding: 20px 20px 12px; }
+  .sidebar-logo img { height: 34px !important; width: auto; object-fit: initial; }
+  .sidebar-badge { display: inline-flex; }
+  .sidebar-label, .sidebar-user-info { display: block; }
+  .sidebar-logout { display: flex; }
+  .sidebar-nav { padding: 6px 12px; }
+  .sidebar-item { justify-content: flex-start; padding: 12px 14px; }
+  .sidebar-user { justify-content: flex-start; padding: 10px 12px; }
+}
+
 /* ── Topbar popovers (notifications / avatar menu) ── */
 .topbar-popover { position: relative; }
 .popover-panel {
@@ -165,3 +211,10 @@
 }
 .avatar-menu-item:hover { background: rgba(255,255,255,.04); color: var(--text1); }
 .avatar-menu-item.danger:hover { color: #f43f5e; }
+
+/* Phones: pin popovers to the viewport so they never run off-screen */
+@media (max-width: 640px) {
+  .popover-panel { position: fixed; top: 84px; left: 10px; right: 10px; }
+  .popover-panel.notif-panel, .popover-panel.avatar-panel { width: auto; }
+  .popover-panel.avatar-panel { left: auto; width: 220px; }
+}

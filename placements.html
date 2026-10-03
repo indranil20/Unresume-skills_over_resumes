@@ -38,6 +38,18 @@
 .pl-score{font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--cyan);margin-right:8px}
 .pl-toggle-row{display:flex;align-items:center;gap:8px;margin-left:auto;flex-shrink:0}
 .pl-label{font-size:12px;font-weight:700;min-width:45px;text-align:right}
+@media(max-width:640px){
+  .global-toggle-bar{flex-wrap:wrap;padding:16px;gap:12px}
+  .global-tog-info{flex-basis:calc(100% - 60px);min-width:0}
+  .global-toggle-bar .toggle-track{margin-left:56px}
+  .comp-section-head{flex-wrap:wrap;padding:16px;gap:12px}
+  .comp-info{min-width:0;flex:1 1 calc(100% - 100px)}
+  .comp-head-toggle{order:3;flex-basis:100%;padding-left:56px}
+  .comp-body{padding:14px 12px}
+  .pl-student-row{flex-wrap:wrap;gap:10px 12px;padding:12px}
+  .pl-student-row>div:nth-child(2){flex:1 1 calc(100% - 52px) !important}
+  .pl-student-row .d-pill{margin-left:50px;margin-right:0 !important}
+}
 </style>
 <link rel="stylesheet" href="css/dashboard.css">
 </head>
@@ -188,7 +200,7 @@ function render() {
           <div class="comp-name">${c.name}</div>
           <div class="comp-meta">${c.role} · ${c.students.length} students placed</div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px" onclick="event.stopPropagation()">
+        <div class="comp-head-toggle" style="display:flex;align-items:center;gap:10px" onclick="event.stopPropagation()">
           <span style="font-size:12.5px;color:var(--text3);font-weight:500">All students:</span>
           <div class="toggle-track ${c.isVisible?'on':''}" id="ctog-${c.id}" onclick="toggleCompany('${c.id}',this)"></div>
           <span id="clbl-${c.id}" style="font-size:12.5px;font-weight:700;min-width:50px;color:${c.isVisible?'#0d9488':'var(--text4)'}">${c.isVisible?'Shown':'Hidden'}</span>

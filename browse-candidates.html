@@ -13,7 +13,16 @@
 .bc-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:28px}
 .filter-pills{display:flex;gap:8px;flex-wrap:wrap;flex:1}
 .bc-count{font-size:13.5px;color:var(--text4);font-weight:600;margin-left:auto}
-.cand-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px}
+.cand-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:18px}
+@media(max-width:640px){
+  .bc-toolbar{margin-bottom:18px}
+  .filter-pills{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;flex-basis:100%;padding-bottom:2px}
+  .filter-pills::-webkit-scrollbar{display:none}
+  .filter-pills .cat-pill{flex-shrink:0}
+  .bc-count{margin-left:0}
+  .cand-grid{gap:12px}
+  .cand-card{padding:20px 16px}
+}
 .cand-card{background:var(--bg-card);border:1px solid var(--border);border-radius:20px;padding:24px 20px;display:flex;flex-direction:column;gap:12px;text-decoration:none;transition:border-color .2s,transform .2s;position:relative;overflow:hidden}
 .cand-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#4f46e5,#7c3aed,#c026d3);opacity:0;transition:opacity .2s}
 .cand-card:hover{border-color:rgba(91,108,245,.35);transform:translateY(-3px)}

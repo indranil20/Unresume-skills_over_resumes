@@ -205,7 +205,32 @@ function renderSidebar(role = 'candidate') {
       </div>
     </div>
   </aside>`;
+
+  // Mobile: sidebar becomes an off-canvas drawer opened from a topbar button
+  const topbar = document.querySelector('.dash-topbar');
+  if (topbar && !topbar.querySelector('.dash-menu-btn')) {
+    const btn = document.createElement('button');
+    btn.className = 'topbar-icon-btn dash-menu-btn';
+    btn.type = 'button';
+    btn.title = 'Menu';
+    btn.setAttribute('aria-label', 'Open menu');
+    btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:22px">menu</span>';
+    btn.addEventListener('click', () => toggleSidebar(true));
+    topbar.prepend(btn);
+  }
+  if (!document.querySelector('.sidebar-backdrop')) {
+    const bd = document.createElement('div');
+    bd.className = 'sidebar-backdrop';
+    bd.addEventListener('click', () => toggleSidebar(false));
+    document.body.appendChild(bd);
+  }
+  el.querySelectorAll('.sidebar-item').forEach(a => a.addEventListener('click', () => toggleSidebar(false)));
 }
+
+function toggleSidebar(open) {
+  document.body.classList.toggle('sidebar-open', open);
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') toggleSidebar(false); });
 
 // ── Topbar popovers (notifications / avatar menu) ──────────
 function toggleTopbarPopover(trigger) {

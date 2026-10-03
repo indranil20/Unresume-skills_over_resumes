@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
@@ -34,7 +34,7 @@
 @media(max-width:1100px){.dash-cols{grid-template-columns:1fr}}
 .dash-col-side{display:flex;flex-direction:column;gap:18px;position:sticky;top:0}
 .panel-card{background:#fff;border:1px solid var(--border);border-radius:22px;padding:22px;box-shadow:var(--shadow-sm)}
-.sec-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.sec-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
 .sec-title{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:800;color:var(--text1);font-family:var(--font-display);letter-spacing:-.02em}
 .sec-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center}
 .sec-icon .material-symbols-rounded{font-size:19px;font-variation-settings:'FILL' 1}
@@ -86,7 +86,15 @@
   .stats-row{gap:10px}
   .stat-card{flex-direction:column;align-items:flex-start;gap:10px;padding:16px}
   .task-go{display:none}
+  .dash-greeting>div:not(.g-blob){flex-basis:100%;min-width:0}
+  .stat-val{font-size:24px}
+  .panel-card{padding:18px 16px;border-radius:18px}
+  .task-row{padding:12px;gap:12px}
+  .task-logo{width:40px;height:40px;font-size:19px}
+  .rand-grid{grid-template-columns:1fr 1fr;gap:10px}
+  .rand-card{padding:14px}
 }
+@media(max-width:380px){.rand-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>

@@ -38,6 +38,7 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
+  overflow-x: clip;
 }
 a { color: inherit; text-decoration: none; }
 button { font-family: var(--font-body); cursor: pointer; }
@@ -344,10 +345,22 @@ img { max-width: 100%; display: block; }
 }
 .dash-main { flex:1; overflow-y:auto; padding:8px 4px 24px; }
 .dash-main::-webkit-scrollbar { display:none; }
+@supports (height: 100dvh) { .dash-root { height: 100dvh; } }
 @media (max-width: 640px) {
   .dash-root { padding: 10px; gap: 10px; }
   .dash-content { gap: 10px; }
-  .dash-topbar { padding: 0 10px; }
+  .dash-topbar { height: 60px; padding: 0 10px; gap: 8px; border-radius: 16px; }
+  .topbar-search { padding: 9px 12px; min-width: 0; }
+  .topbar-icon-btn, .topbar-avatar { width: 38px; height: 38px; }
+  .dash-main { padding: 6px 0 20px; }
+}
+@media (max-width: 400px) {
+  .dash-topbar a.topbar-icon-btn[href="chat.html"] { display: none; }
+}
+
+/* iOS zooms into inputs under 16px — keep form text at 16px on phones */
+@media (max-width: 640px) {
+  input:not([type=checkbox]):not([type=radio]), select, textarea { font-size: 16px !important; }
 }
 
 /* ── Rubric bar ── */
@@ -366,3 +379,14 @@ img { max-width: 100%; display: block; }
 .section { max-width:1200px; margin:0 auto; padding:80px 24px; }
 .section-header { text-align:center; margin-bottom:52px; display:flex; flex-direction:column; align-items:center; gap:14px; }
 .section-title { font-family:var(--font-display); font-size:clamp(26px,3.4vw,38px); font-weight:800; color:var(--text1); letter-spacing:-.03em; line-height:1.2; }
+@media (max-width:640px) {
+  .section { padding:56px 16px; }
+  .section-header { margin-bottom:36px; }
+}
+
+/* Large decorative orbs cause sideways scroll on small screens */
+@media (max-width:640px) {
+  .orb-1 { width:360px; height:360px; }
+  .orb-2 { width:300px; height:300px; }
+  .orb-3 { display:none; }
+}

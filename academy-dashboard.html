@@ -37,6 +37,14 @@
   .student-row{grid-template-columns:40px 1fr 80px 100px}
   .student-thead span:nth-child(n+5),.student-row>*:nth-child(n+5){display:none}
 }
+@media(max-width:560px){
+  .student-thead,.student-row{grid-template-columns:34px 1fr 56px;padding-left:14px !important;padding-right:14px !important}
+  .student-thead span:nth-child(n+4),.student-row>*:nth-child(n+4){display:none}
+  .student-row>div,.student-row>div>div{min-width:0}
+  .st-name,.st-uname{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sec-head>span:last-child{width:100%;justify-content:space-between}
+  .comp-top{flex-wrap:wrap}
+}
 /* Company referrals */
 .comp-card{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:18px 16px;margin-bottom:12px}
 .comp-top{display:flex;align-items:flex-start;gap:12px;margin-bottom:12px}
