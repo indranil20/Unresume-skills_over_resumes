@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link rel="icon" type="image/png" href="images/favicon.png">
+<title>Team — Unresume</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link rel="stylesheet" href="css/globals.css">
+<link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+<div class="dash-root">
+  <div id="sidebar" data-roles="hr"></div>
+  <div class="dash-content">
+    <header class="dash-topbar" data-auto data-search="Search team…"></header>
+    <main class="dash-main">
+      <div class="dash-greeting"><div class="g-blob"></div>
+        <div><h1 class="dash-h1">Team &amp; <span class="grad-text">Interviewers</span></h1><p class="dash-sub">HR can post jobs, move candidates and schedule interviews. Interviewers create tasks, score submissions and give interview feedback.</p></div>
+        <button class="cta-btn" onclick="invite()"><span class="material-symbols-rounded" style="font-size:18px">person_add</span> Invite member</button></div>
+      <div class="d-table-wrap" style="margin-bottom:24px"><table class="d-table stack"><thead><tr><th>Member</th><th>Role</th><th>Reviews scored</th><th>Interviews</th><th>Last sign-in</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+      <div class="sec-head"><span class="sec-title"><span class="sec-icon tint-amber"><span class="material-symbols-rounded">mail</span></span>Pending invites</span></div>
+      <div id="invites"></div>
+    </main>
+  </div>
+</div>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
+<script>
+const $ = id => document.getElementById(id), esc = UI.esc;
+const me = UR.user();
+function render() {
+  const q = ($('topbarSearch') || { value: '' }).value.toLowerCase();
+  const { members, invites } = UR.team.list();
+  $('rows').innerHTML = members.filter(m => m.status === 'active' && (!q || m.name.toLowerCase().includes(q) || m.email.includes(q))).map(m => `<tr>
+    <td class="who-cell"><div class="who">${UI.avatar(m.name, 36, m.id)}<div><b>${esc(m.name)}${m.id === me.id ? ' (you)' : ''}</b><small>${esc(m.email)}${m.title ? ' · ' + esc(m.title) : ''}</small></div></div></td>
+    <td data-label="Role"><select aria-label="Role for ${esc(m.name)}" onchange="setRole('${m.id}', this.value)" ${m.id === me.id ? 'disabled' : ''}><option value="hr" ${m.role === 'hr' ? 'selected' : ''}>HR</option><option value="interviewer" ${m.role === 'interviewer' ? 'selected' : ''}>Interviewer</option></select></td>
+    <td data-label="Reviews"><span class="num">${m.reviews}</span></td><td data-label="Interviews"><span class="num">${m.interviews}</span></td>
+    <td data-label="Last sign-in">${m.lastLoginAt ? UI.timeAgo(m.lastLoginAt) : 'Never'}</td>
+    <td><div class="acts">${m.id !== me.id ? `<button class="btn-sm danger" onclick="removeM('${m.id}','${esc(m.name)}')">${UI.icon('person_remove')}Remove</button>` : ''}</div></td></tr>`).join('');
+  $('invites').innerHTML = invites.length ? invites.map(i => `<div class="l-row"><span class="sec-icon tint-amber">${UI.icon('mail', 18)}</span><div class="l-main"><div class="l-title">${esc(i.email)}</div><div class="l-sub">${UR.ROLES[i.role].label} · invited ${UI.timeAgo(i.createdAt)} · code <code style="font-weight:800;color:var(--text1)">${i.code}</code></div></div><div class="l-acts"><button class="btn-sm" onclick="copy('${i.code}')">${UI.icon('content_copy')}Copy code</button><button class="btn-sm danger" onclick="revoke('${i.id}')">Revoke</button></div></div>`).join('')
+    : '<p style="font-size:13px;color:var(--text3)">No pending invites.</p>';
+}
+function invite() {
+  UI.modal({ title: 'Invite a team member', icon: 'person_add', submitLabel: 'Create invite',
+    sub: 'An invite code is created for this email. Email delivery needs the email service (not connected in this prototype) — share the code yourself. They enter it on the company sign-up page.',
+    body: UI.field({ name: 'email', label: 'Work email', type: 'email', required: true }) + UI.field({ name: 'role', label: 'Role', type: 'select', options: [['interviewer', 'Interviewer — tasks, reviews, interview feedback'], ['hr', 'HR — full hiring access']] }),
+    onSubmit: d => { const inv = UR.team.invite(d.email, d.role); UI.toast(`Invite code ${inv.code} created — share it with ${inv.email}`); } });
+}
+function copy(code) { if (navigator.clipboard) navigator.clipboard.writeText(code).then(() => UI.toast('Code copied'), () => UI.toast(code, 'info')); else UI.toast(code, 'info'); }
+const revoke = id => UI.run(() => UR.team.revoke(id), 'Invite revoked').catch(() => {});
+const setRole = (id, r) => UI.run(() => UR.team.setRole(id, r), 'Role updated').catch(() => render());
+async function removeM(id, name) { const r = await UI.confirm({ title: `Remove ${name}?`, danger: true, confirmLabel: 'Remove', text: 'They lose access to your company immediately. Interviews assigned to them become unassigned. Scores they gave remain.' }); if (r.ok) UI.run(() => UR.team.remove(id), 'Member removed').catch(() => {}); }
+render();
+if ($('topbarSearch')) $('topbarSearch').addEventListener('input', UI.debounce(render, 150));
+UI.onChange(render);
+</script>
+</body>
+</html>

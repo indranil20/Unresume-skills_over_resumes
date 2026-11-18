@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link rel="icon" type="image/png" href="images/favicon.png">
+<title>Hiring Analytics — Unresume</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link rel="stylesheet" href="css/globals.css">
+<link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+<div class="dash-root">
+  <div id="sidebar" data-roles="hr"></div>
+  <div class="dash-content">
+    <header class="dash-topbar" data-auto data-search="Search…"></header>
+    <main class="dash-main">
+      <div class="dash-greeting"><div class="g-blob"></div>
+        <div><h1 class="dash-h1">Hiring <span class="grad-text">Analytics</span></h1><p class="dash-sub">Live figures from your applications, reviews and interviews.</p></div>
+        <button class="cta-btn" onclick="exportReport()"><span class="material-symbols-rounded" style="font-size:18px">download</span> Export report (CSV)</button></div>
+      <div class="stats-row" id="stats"></div>
+      <div class="stats-row" id="stats2"></div>
+      <div class="grid-2" style="margin-bottom:18px">
+        <div class="panel-card"><div class="sec-head"><span class="sec-title">Hiring funnel</span><span style="font-size:12px;color:var(--text3)">Applications that reached each stage</span></div><div id="funnel"></div></div>
+        <div class="panel-card"><div class="sec-head"><span class="sec-title">Verified score distribution</span><span style="font-size:12px;color:var(--text3)">Scored submissions</span></div><div id="dist"></div></div>
+      </div>
+      <div class="panel-card"><div class="sec-head"><span class="sec-title">By job</span></div>
+        <div class="d-table-wrap" style="box-shadow:none"><table class="d-table stack"><thead><tr><th>Job</th><th>Status</th><th>Applications</th><th>Avg task score</th><th>Shortlisted+</th><th>Hired</th><th>Conversion</th></tr></thead><tbody id="byJob"></tbody></table></div></div>
+    </main>
+  </div>
+</div>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
+<script>
+const $ = id => document.getElementById(id), esc = UI.esc;
+let an;
+function render() {
+  an = UR.analytics.company();
+  $('stats').innerHTML = [
+    ['inbox', 'tint-blue', an.applications, 'Applications'],
+    ['grade', 'tint-purple', an.avgScore ?? '—', 'Avg verified task score'],
+    ['schedule', 'tint-amber', an.avgReviewHours != null ? `${Math.round(an.avgReviewHours)}h` : '—', 'Avg time to review'],
+    ['handshake', 'tint-teal', an.avgTimeToHireDays != null ? `${Math.round(an.avgTimeToHireDays)}d` : '—', 'Avg time to hire'],
+  ].map(([i, t, v, l]) => `<div class="stat-card"><div class="stat-icon ${t}">${UI.icon(i)}</div><div><div class="stat-val">${v}</div><div class="stat-lbl">${l}</div></div></div>`).join('');
+  $('stats2').innerHTML = [
+    ['trending_up', 'tint-purple', an.assessToInterview != null ? an.assessToInterview + '%' : '—', 'Assessment → interview'],
+    ['how_to_reg', 'tint-teal', an.interviewToHire != null ? an.interviewToHire + '%' : '—', 'Interview → hire'],
+    ['verified', 'tint-blue', an.verifiedRouteApps, 'Applied with verified scores (no extra task)'],
+    ['schedule', an.overdueReviews ? 'tint-red' : 'tint-teal', an.overdueReviews, `Reviews overdue (> ${UR.settings().reviewSlaDays} days)`],
+  ].map(([i, t, v, l]) => `<div class="stat-card"><div class="stat-icon ${t}">${UI.icon(i)}</div><div><div class="stat-val">${v}</div><div class="stat-lbl">${l}</div></div></div>`).join('');
+  UI.hbars($('funnel'), an.funnel.map(([label, value]) => ({ label, value, note: an.funnel[0][1] ? `${Math.round(value / an.funnel[0][1] * 100)}% of submitted` : '' })));
+  UI.columns($('dist'), an.scoreDist.map(d => ({ label: d.label, value: d.n })), { suffix: ' submissions' });
+  $('dist').insertAdjacentHTML('beforeend', `<div class="kv" style="margin-top:14px"><div><span>Direct applications</span><b>${an.sources.direct}</b></div><div><span>Academy referrals</span><b>${an.sources.academy}</b></div><div><span>Open integrity flags</span><b>${an.integrityFlags}</b></div></div>`);
+  $('byJob').innerHTML = an.byJob.length ? an.byJob.map(j => `<tr><td class="who-cell"><b>${esc(j.title)}</b></td><td data-label="Status">${UI.pill(j.status, j.status === 'open' ? 'tint-teal' : 'gray')}</td><td data-label="Applications"><span class="num">${j.applications}</span></td><td data-label="Avg score">${j.avgScore ?? '—'}</td><td data-label="Shortlisted+">${j.shortlisted}</td><td data-label="Hired">${j.hired}</td><td data-label="Conversion">${j.applications ? Math.round(j.hired / j.applications * 100) + '%' : '—'}</td></tr>`).join('') : `<tr><td colspan="7">${UI.empty('insights', 'No jobs yet')}</td></tr>`;
+}
+function exportReport() {
+  const rows = [['Metric', 'Value'], ['Open jobs', an.openJobs], ['Applications', an.applications], ['Avg verified task score', an.avgScore ?? ''], ['Avg review time (hours)', an.avgReviewHours ?? ''], ['Avg time to hire (days)', an.avgTimeToHireDays ?? ''], ['Hired', an.hired], [], ['Funnel stage', 'Applications'], ...an.funnel, [], ['Job', 'Applications', 'Avg score', 'Shortlisted+', 'Hired'], ...an.byJob.map(j => [j.title, j.applications, j.avgScore ?? '', j.shortlisted, j.hired])];
+  UI.csv(`hiring-report-${new Date().toISOString().slice(0, 10)}.csv`, rows[0], rows.slice(1));
+}
+render();
+UI.onChange(render);
+</script>
+</body>
+</html>

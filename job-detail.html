@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
 <link rel="stylesheet" href="css/globals.css">
 <link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/dashboard.css">
 <style>
 .page-wrap{overflow-x:clip}
 .jd-page{padding:28px 24px 96px;position:relative}
@@ -95,6 +96,12 @@
 .step-row{position:relative;display:flex;gap:12px;align-items:center}
 .step-num{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0;box-shadow:0 0 0 4px #fff}
 
+.journey{list-style:none;display:flex;gap:6px;flex-wrap:wrap;padding:0;margin:0}
+.journey li{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:var(--text4);padding:6px 11px 6px 6px;border-radius:100px;background:var(--bg-elevated)}
+.journey li span{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff}
+.journey li.done{color:#0d9488;background:#e6f8f5}.journey li.now{color:#fff;background:linear-gradient(90deg,#4f46e5,#7c3aed)}.journey li.now span{color:var(--brand)}
+.trust-list{list-style:none;padding:0;margin:14px 0 0;display:flex;flex-direction:column;gap:8px}
+.trust-list li{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--text3);font-weight:600}.trust-list li.ok .material-symbols-rounded{color:#0d9488}
 .jd-empty{text-align:center;padding:64px 24px;display:flex;flex-direction:column;align-items:center;gap:14px}
 .jd-empty-icon{width:64px;height:64px;border-radius:50%;background:#eeedfd;color:var(--brand);display:flex;align-items:center;justify-content:center}
 
@@ -135,146 +142,173 @@
   </div>
 </div>
 <div id="footer"></div>
-<script src="js/components.js"></script>
 <script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
 <script>
-const params = new URLSearchParams(location.search);
-const id = parseInt(params.get('id'));
-const jobs = getJobs(), tasks = getTasks();
-const job = jobs.find(j => j.id === id);
-const catTint = { Engineering:'tint-blue', Design:'tint-pink', Data:'tint-purple' };
+const catTint = { Engineering:'tint-blue', Design:'tint-pink', Data:'tint-purple', Product:'tint-amber' };
+const esc = UI.esc;
 
-if (!job) {
-  document.getElementById('breadTitle').textContent = 'Not found';
-  document.getElementById('jdMain').innerHTML = `<div class="section-card jd-empty">
-    <div class="jd-empty-icon"><span class="material-symbols-rounded" style="font-size:30px">search_off</span></div>
-    <p style="color:var(--text3);font-size:14px">This job listing doesn't exist or may have been removed.</p>
-    <a href="jobs.html" class="back-link"><span class="material-symbols-rounded" style="font-size:18px">arrow_back</span> Back to all jobs</a>
-  </div>`;
-  document.querySelector('.jd-layout').style.gridTemplateColumns = '1fr';
-  throw new Error('Job not found');
-}
+function render() {
+  const id = parseInt(UI.param('id'), 10);
+  const job = Number.isFinite(id) ? UR.jobs.get(id) : null;
+  const u = UR.user();
+  if (!job) {
+    document.getElementById('breadTitle').textContent = 'Not found';
+    document.getElementById('jdHeader').innerHTML = '';
+    document.getElementById('jdAside').innerHTML = '';
+    document.getElementById('jdMain').innerHTML = `<div class="section-card jd-empty">
+      <div class="jd-empty-icon"><span class="material-symbols-rounded" style="font-size:30px">search_off</span></div>
+      <p style="color:var(--text3);font-size:14px">This job listing doesn't exist, has closed, or was removed.</p>
+      <a href="jobs.html" class="back-link"><span class="material-symbols-rounded" style="font-size:18px">arrow_back</span> Back to all jobs</a></div>`;
+    document.querySelector('.jd-layout').style.gridTemplateColumns = '1fr';
+    return;
+  }
+  const task = job.task;
+  const el = UR.verifiedApply.eligibility(job.id) || { offered: false };
+  const kindInfo = task ? UR.ASSESSMENT_KINDS[task.kind || 'advanced'] : null, aiInfo = task ? UR.AI_POLICY[task.aiPolicy || 'disclose'] : null;
+  const tint = catTint[job.category] || 'tint-teal';
+  const app = u && u.role === 'candidate' ? UR.applications.forJob(job.id) : null;
+  const isCandidate = !u || u.role === 'candidate';
+  const closed = job.status !== 'open';
+  const deadlinePassed = job.deadline && new Date(job.deadline) < new Date();
+  const taskHref = `task-workplace.html?id=${task ? task.id : ''}`;
+  const loginHref = `login.html?next=${encodeURIComponent('task-workplace.html?id=' + (task ? task.id : ''))}`;
 
-const task = job.hasTask ? tasks.find(t => t.jobId === job.id) : null;
-const tint = catTint[job.category] || 'tint-teal';
-const applyHref = task ? `task-workplace.html?id=${task.id}` : '#';
+  // Primary call to action depends on who is viewing and where they are in the process
+  let cta;
+  if (!task || closed || deadlinePassed) cta = { label: closed ? 'Applications closed' : deadlinePassed ? 'Deadline passed' : 'Task not published', href: null };
+  else if (!u) cta = { label: 'Sign in to start task', href: loginHref };
+  else if (!isCandidate) cta = { label: 'Only candidates can apply', href: null };
+  else if ((!app || app.status === 'withdrawn') && el.met) cta = { label: 'Apply with verified scores', href: '#apply-verified' };
+  else if (!app || app.status === 'withdrawn') cta = { label: 'Start Task & Apply', href: taskHref };
+  else if (app.taskRequested && !app.submission && app.status !== 'in_progress') cta = { label: 'Start requested task', href: taskHref };
+  else if (app.status === 'in_progress') cta = { label: 'Continue task', href: taskHref };
+  else cta = { label: 'View application', href: 'my-applications.html' };
 
-document.title = `${job.title} — Unresume`;
-document.getElementById('breadTitle').textContent = job.title;
+  document.title = `${job.title} — Unresume`;
+  document.getElementById('breadTitle').textContent = job.title;
+  const ctaBtn = cls => cta.href ? `<a href="${cta.href}" class="${cls}">${esc(cta.label)} <span class="material-symbols-rounded" style="font-size:18px">arrow_forward</span></a>` : `<button class="${cls}" disabled style="opacity:.55;cursor:not-allowed">${esc(cta.label)}</button>`;
 
-document.getElementById('jdHeader').innerHTML = `
+  document.getElementById('jdHeader').innerHTML = `
   <div class="jd-header">
-    <div class="jd-cover">
-      <div class="b1"></div><div class="b2"></div>
-      <svg viewBox="0 0 44 44" aria-hidden="true"><path d="M8 30 L26 6"/><path d="M20 36 L38 14"/><path d="M30 40 L40 32"/></svg>
-    </div>
+    <div class="jd-cover"><div class="b1"></div><div class="b2"></div><svg viewBox="0 0 44 44" aria-hidden="true"><path d="M8 30 L26 6"/><path d="M20 36 L38 14"/><path d="M30 40 L40 32"/></svg></div>
     <div class="jd-head-body">
       <div class="job-logo-lg ${tint}">${job.logo}</div>
       <div class="jd-head-info">
-        <div class="jd-company"><span class="material-symbols-rounded" style="font-size:17px;color:var(--brand)">apartment</span>${job.company}</div>
-        <div class="jd-title">${job.title}</div>
+        <div class="jd-company"><span class="material-symbols-rounded" style="font-size:17px;color:var(--brand)">apartment</span>${esc(job.company)}${job.companyVerified ? ' <span class="material-symbols-rounded" title="Verified company" style="font-size:16px;color:#0d9488;font-variation-settings:\'FILL\' 1">verified</span>' : ''}</div>
+        <div class="jd-title">${esc(job.title)}</div>
         <div class="jd-meta">
-          <span class="meta-badge ${tint}"><span class="material-symbols-rounded">category</span>${job.category}</span>
-          ${job.hasTask?`<span class="meta-badge tint-teal"><span class="material-symbols-rounded">task_alt</span>Includes Task</span>`:''}
-          ${job.featured?`<span class="meta-badge" style="background:linear-gradient(90deg,#4f46e5,#7c3aed);color:#fff"><span class="material-symbols-rounded">bolt</span>Featured</span>`:''}
+          <span class="meta-badge ${tint}"><span class="material-symbols-rounded">category</span>${esc(job.category)}</span>
+          ${job.location ? `<span class="meta-badge tint-blue"><span class="material-symbols-rounded">location_on</span>${esc(job.location)}</span>` : ''}
+          ${job.deadline ? `<span class="meta-badge ${deadlinePassed ? 'tint-red' : 'tint-amber'}"><span class="material-symbols-rounded">event</span>Apply by ${UI.fmtDate(job.deadline)}</span>` : ''}
+          ${job.featured ? `<span class="meta-badge" style="background:linear-gradient(90deg,#4f46e5,#7c3aed);color:#fff"><span class="material-symbols-rounded">bolt</span>Featured</span>` : ''}
+          ${app ? UI.appPill(app.status) : ''}
         </div>
       </div>
-      ${task ? `<div class="jd-head-cta"><a href="${applyHref}" class="btn-primary">Start Task & Apply <span class="material-symbols-rounded" style="font-size:18px">arrow_forward</span></a></div>` : ''}
+      <div class="jd-head-cta">${ctaBtn('btn-primary')}</div>
     </div>
   </div>`;
 
-document.getElementById('jdMain').innerHTML = `
-  <div class="section-card">
-    <div class="card-title"><span class="card-icon tint-blue"><span class="material-symbols-rounded">info</span></span>About this role</div>
-    <p class="body-text">${job.description}</p>
-  </div>
-
-  <div class="section-card">
-    <div class="card-title"><span class="card-icon tint-teal"><span class="material-symbols-rounded">checklist</span></span>Requirements</div>
-    <ul class="req-list">
-      ${job.requirements.map(r=>`<li class="req-item"><span class="req-check"><span class="material-symbols-rounded">check</span></span>${r}</li>`).join('')}
-    </ul>
-  </div>
-
-  <div class="section-card">
-    <div class="card-title"><span class="card-icon tint-pink"><span class="material-symbols-rounded">psychology</span></span>Skills Assessed</div>
-    <div class="skills-wrap">${job.skills.map(s=>`<span class="skill-tag-lg">${s}</span>`).join('')}</div>
-  </div>
-
+  document.getElementById('jdMain').innerHTML = `
+  <div class="section-card"><div class="card-title"><span class="card-icon tint-blue"><span class="material-symbols-rounded">info</span></span>About this role</div><p class="body-text">${esc(job.description)}</p></div>
+  <div class="section-card"><div class="card-title"><span class="card-icon tint-teal"><span class="material-symbols-rounded">checklist</span></span>Role requirements</div>
+    <ul class="req-list">${job.requirements.map(r => `<li class="req-item"><span class="req-check"><span class="material-symbols-rounded">check</span></span>${esc(r)}</li>`).join('')}</ul></div>
+  <div class="section-card"><div class="card-title"><span class="card-icon tint-pink"><span class="material-symbols-rounded">psychology</span></span>Skills assessed</div>
+    <div class="skills-wrap">${job.skills.map(s => `<span class="skill-tag-lg">${esc(s)}</span>`).join('')}</div></div>
+  ${journeyHTML(app)}
+  ${el.offered ? verifiedCardHTML(job, el, app) : ''}
   ${task ? `
   <div class="task-section">
     <div class="task-head">
-      <div style="display:flex;align-items:center;gap:14px">
-        <div class="task-icon-wrap"><span class="material-symbols-rounded">assignment</span></div>
-        <div>
-          <div class="task-eyebrow">Skill Task</div>
-          <div class="task-title">${task.title}</div>
-        </div>
-      </div>
+      <div style="display:flex;align-items:center;gap:14px"><div class="task-icon-wrap"><span class="material-symbols-rounded">assignment</span></div>
+        <div><div class="task-eyebrow">Skill task · how you apply</div><div class="task-title">${esc(task.title)}</div></div></div>
       <div class="task-stats">
-        <span class="task-stat"><span class="material-symbols-rounded">schedule</span>${task.timeLimit}</span>
-        <span class="task-stat"><span class="material-symbols-rounded">group</span>${task.submissionsCount} submissions</span>
+        <span class="task-stat"><span class="material-symbols-rounded">category</span>${esc(kindInfo.label)}</span>
+        <span class="task-stat"><span class="material-symbols-rounded">hourglass_top</span>~${task.estimatedHours}h of work</span>
+        <span class="task-stat"><span class="material-symbols-rounded">timer</span>${UR.fmtDuration(task.timeLimitMin)} window once started</span>
+        <span class="task-stat"><span class="material-symbols-rounded">signal_cellular_alt</span>${esc(task.difficulty || 'Intermediate')}</span>
+        <span class="task-stat"><span class="material-symbols-rounded">group</span>${job.applicants} applicant${job.applicants === 1 ? '' : 's'}</span>
       </div>
     </div>
-
-    <div class="task-brief">
-      <div class="sub-title">Task Brief</div>
-      <p class="body-text">${task.brief}</p>
-    </div>
-
+    <div class="d-note">${UI.icon('smart_toy')}<div><b>${esc(aiInfo.label)}.</b> ${esc(aiInfo.desc)} <a href="terms.html#integrity" style="color:var(--brand);font-weight:700">AI-use policy</a></div></div>
+    ${task.confidential ? `<div class="d-note warn">${UI.icon('lock')}<div><b>Confidential task.</b> Your output can be shown to recruiters but not posted publicly.</div></div>` : ''}
+    <div class="task-brief"><div class="sub-title">Task brief</div><p class="body-text">${esc(task.brief)}</p></div>
+    <div class="task-brief"><div class="sub-title">Task requirements — what your submission must include</div>
+      <ul class="req-list" style="margin-top:10px">${task.requirements.map(r => `<li class="req-item"><span class="req-check"><span class="material-symbols-rounded">check</span></span>${esc(r)}</li>`).join('')}</ul></div>
     <div class="rubric-box">
-      <div class="sub-title">Scoring Rubric <span style="font-size:11.5px;font-weight:500;color:var(--text4)">(you see this before you submit)</span></div>
-      ${task.rubric.map(r=>`
-        <div class="rubric-row">
-          <div style="font-size:13.5px;color:var(--text1);font-weight:600">${r.criterion}</div>
-          <div class="rubric-bar-outer"><div class="rubric-bar-inner" style="width:${r.points}%"></div></div>
-          <div style="font-size:13px;font-weight:800;color:var(--brand);text-align:right">${r.points}pts</div>
-        </div>`).join('')}
+      <div class="sub-title">Scoring rubric <span style="font-size:11.5px;font-weight:500;color:var(--text4)">(100 points — the reviewer scores each criterion)</span></div>
+      ${task.rubric.map(r => `<div class="rubric-row">
+        <div><div style="font-size:13.5px;color:var(--text1);font-weight:600">${esc(r.criterion)}</div>${r.description ? `<div style="font-size:12px;color:var(--text3)">${esc(r.description)}</div>` : ''}</div>
+        <div class="rubric-bar-outer"><div class="rubric-bar-inner" style="width:${r.points}%"></div></div>
+        <div style="font-size:13px;font-weight:800;color:var(--brand);text-align:right">${r.points} pts</div></div>`).join('')}
     </div>
-
     <div class="file-type-grid">
-      <div class="file-type-card">
-        <div class="file-icon tint-purple"><span class="material-symbols-rounded">lock</span></div>
-        <div><div style="font-size:14px;font-weight:700;color:var(--text1)">Working File</div><div style="font-size:12.5px;color:var(--text3)">Private — only you and the reviewer</div></div>
-      </div>
-      <div class="file-type-card">
-        <div class="file-icon tint-teal"><span class="material-symbols-rounded">public</span></div>
-        <div><div style="font-size:14px;font-weight:700;color:var(--text1)">Final Output</div><div style="font-size:12.5px;color:var(--text3)">Public — shown in your portfolio</div></div>
-      </div>
+      <div class="file-type-card"><div class="file-icon tint-purple"><span class="material-symbols-rounded">lock</span></div><div><div style="font-size:14px;font-weight:700;color:var(--text1)">Working File</div><div style="font-size:12.5px;color:var(--text3)">Private — only you and the reviewer</div></div></div>
+      <div class="file-type-card"><div class="file-icon tint-teal"><span class="material-symbols-rounded">public</span></div><div><div style="font-size:14px;font-weight:700;color:var(--text1)">Final Output</div><div style="font-size:12.5px;color:var(--text3)">${esc((task.submissionTypes || []).join(' · ') || 'Any format')}</div></div></div>
     </div>
+    ${ctaBtn('apply-btn')}
+  </div>` : `<div class="section-card no-task"><div class="jd-empty-icon"><span class="material-symbols-rounded" style="font-size:30px">assignment_late</span></div><p style="color:var(--text3);font-size:14px">The company hasn't published the task for this role yet, so applications are not open.</p></div>`}`;
 
-    <a href="${applyHref}" class="apply-btn">
-      Start Task & Apply
-      <span class="material-symbols-rounded" style="font-size:20px">arrow_forward</span>
-    </a>
-  </div>` : `<div class="section-card no-task">
-    <div class="jd-empty-icon"><span class="material-symbols-rounded" style="font-size:30px">mail</span></div>
-    <p style="color:var(--text3);font-size:14px">This listing doesn't include a task. Contact the company to apply.</p>
-  </div>`}
-`;
-
-const stepGrads = ['linear-gradient(135deg,#8b5cf6,#6d28d9)','linear-gradient(135deg,#38bdf8,#2563eb)','linear-gradient(135deg,#e879f9,#a855f7)'];
-document.getElementById('jdAside').innerHTML = `
+  const stepGrads = ['linear-gradient(135deg,#8b5cf6,#6d28d9)', 'linear-gradient(135deg,#38bdf8,#2563eb)', 'linear-gradient(135deg,#e879f9,#a855f7)', 'linear-gradient(135deg,#2dd4bf,#0d9488)'];
+  document.getElementById('jdAside').innerHTML = `
   <div class="aside-card aside-apply">
-    <div class="aside-title">Apply via Task</div>
-    <p style="font-size:13.5px;line-height:1.7">${job.hasTask?'Complete the task and submit. No resume, no cover letter — just your work.':'Contact the company directly to apply for this role.'}</p>
-    <a href="${applyHref}" class="aside-apply-btn">${job.hasTask?'Start Task':'Contact Company'} <span class="material-symbols-rounded">arrow_forward</span></a>
+    <div class="aside-title">${app && app.status !== 'withdrawn' ? 'Your application' : el.met ? 'Two ways to apply' : 'Apply via task'}</div>
+    <p style="font-size:13.5px;line-height:1.7">${app && app.status !== 'withdrawn' ? `Status: <b>${UR.APP_STATUS[app.status].label}</b>${app.taskScore != null ? ` · verified score ${app.taskScore}/100` : ''}` : el.met ? 'Your verified scores qualify — apply now without a new task, or take the role task below.' : `Complete the task (~${task ? task.estimatedHours : '?'}h of work) and submit. No resume, no cover letter — just your work.`}</p>
+    ${cta.href ? `<a href="${cta.href}" class="aside-apply-btn">${esc(cta.label)} <span class="material-symbols-rounded">arrow_forward</span></a>` : `<div class="aside-apply-btn" style="opacity:.7;cursor:default">${esc(cta.label)}</div>`}
   </div>
-
   <div class="aside-card">
-    <div class="aside-title">About ${job.company}</div>
-    <div class="company-row">
-      <div class="company-logo ${tint}">${job.logo}</div>
-      <div><div style="font-weight:700;color:var(--text1);font-size:14.5px">${job.company}</div><div style="font-size:12.5px;color:var(--text3)">${job.category}</div></div>
-    </div>
+    <div class="aside-title">About ${esc(job.company)}</div>
+    <div class="company-row"><div class="company-logo ${tint}">${job.logo}</div><div><div style="font-weight:700;color:var(--text1);font-size:14.5px">${esc(job.company)}</div><div style="font-size:12.5px;color:var(--text3)">${esc(job.type || '')}</div></div></div>
+    <ul class="trust-list">
+      <li class="${job.trust.verified ? 'ok' : ''}">${UI.icon(job.trust.verified ? 'verified' : 'help', 17)}${job.trust.verified ? 'Company verified by Unresume' : 'Company not yet verified'}</li>
+      <li class="${job.trust.hasActiveRecruiter ? 'ok' : ''}">${UI.icon('person_check', 17)}${job.trust.hasActiveRecruiter ? 'Active recruiter on this account' : 'No active recruiter'}</li>
+      <li class="ok">${UI.icon('handshake', 17)}${job.trust.hires} hire${job.trust.hires === 1 ? '' : 's'} made on Unresume</li>
+      <li class="ok">${UI.icon('schedule', 17)}${job.trust.avgReviewDays != null ? `Reviews in ~${job.trust.avgReviewDays} days` : 'No reviews yet'} · target ≤ ${job.trust.reviewSlaDays} days</li>
+      <li class="ok">${UI.icon('gavel', 17)}Scores can be disputed with Unresume, not the company</li>
+    </ul>
   </div>
-
   <div class="aside-card">
     <div class="aside-title">How it works</div>
-    <div class="steps">
-      ${['Complete the task','Get scored by reviewer','HR contacts top scorers'].map((s,i)=>`<div class="step-row"><div class="step-num" style="background:${stepGrads[i]}">${i+1}</div><span style="font-size:13.5px;color:var(--text1);font-weight:600;line-height:1.5">${s}</span></div>`).join('')}
-    </div>
+    <div class="steps">${['Start the task — the timer begins', 'Submit working file + final output', 'A company reviewer scores it against the rubric', 'Top scorers are shortlisted and invited to interview'].map((s, i) => `<div class="step-row"><div class="step-num" style="background:${stepGrads[i]}">${i + 1}</div><span style="font-size:13.5px;color:var(--text1);font-weight:600;line-height:1.5">${s}</span></div>`).join('')}</div>
+  </div>
+  ${u ? `<button class="btn-ghost" style="justify-content:center;font-size:13px" onclick="reportJob(${job.id}, '${esc(job.title).replace(/'/g, '&#39;')}')"><span class="material-symbols-rounded" style="font-size:17px">flag</span>Report this listing</button>` : ''}`;
+}
+
+const JOURNEY = [['Discover', 'search'], ['Apply', 'send'], ['Assessment', 'assignment'], ['Verified score', 'verified'], ['Shortlist', 'thumb_up'], ['Interview', 'event'], ['Hired', 'handshake']];
+function journeyHTML(app) {
+  const idx = !app || app.status === 'withdrawn' ? 0 : { in_progress: 2, submitted: 2, scored: 3, shortlisted: 4, interview: 5, offer: 5, hired: 6, rejected: 3, expired: 2 }[app.status] ?? 1;
+  return `<div class="section-card" style="padding:18px 22px"><div class="card-title" style="margin-bottom:12px;font-size:15px"><span class="card-icon tint-purple" style="width:32px;height:32px"><span class="material-symbols-rounded" style="font-size:18px">route</span></span>Your hiring journey</div>
+    <ol class="journey">${JOURNEY.map(([l, ic], i) => `<li class="${i < idx ? 'done' : i === idx ? 'now' : ''}"><span>${UI.icon(i < idx ? 'check' : ic, 16)}</span>${l}</li>`).join('')}</ol>
+    ${app && app.status === 'rejected' ? '<p style="font-size:12.5px;color:var(--text3);margin-top:8px">This application closed. Your verified score still counts towards your profile.</p>' : ''}</div>`;
+}
+function verifiedCardHTML(job, el, app) {
+  const u = UR.user(), applied = app && app.status !== 'withdrawn';
+  return `<div class="section-card" id="apply-verified" style="border-color:#c4ede6">
+    <div class="card-title"><span class="card-icon tint-teal"><span class="material-symbols-rounded">verified</span></span>Skip the task with existing verified scores</div>
+    <p class="body-text" style="font-size:14px">${esc(job.company)} accepts verified skill scores from previous Unresume assessments. If you meet every requirement you can apply now — no new task. The company may still invite you to the role assessment later.</p>
+    <div class="d-table-wrap" style="box-shadow:none;margin:12px 0"><table class="d-table"><thead><tr><th>Skill</th><th>Required</th><th>Your verified score</th><th></th></tr></thead><tbody>
+      ${el.rows.length ? el.rows.map(r => `<tr><td><b>${esc(r.skill)}</b></td><td>${r.minScore}/1000 · ${el.minTasks}+ tasks</td><td>${r.score != null ? `${r.score}/1000 <small style="color:var(--text3)">(${r.tasks} task${r.tasks === 1 ? '' : 's'})</small>` : '<span style="color:var(--text4)">No verified tasks</span>'}</td><td>${r.met ? UI.pill('Met', 'tint-teal', 'check') : UI.pill('Not yet', 'gray')}</td></tr>`).join('')
+        : (job.acceptVerified || []).map(r => `<tr><td><b>${esc(r.skill)}</b></td><td>${r.minScore}/1000</td><td colspan="2" style="color:var(--text3)">${u ? 'Only candidates can apply' : 'Sign in to check'}</td></tr>`).join('')}</tbody></table></div>
+    ${applied ? `<div class="d-note good">${UI.icon('check')}<div>You've applied${app.route === 'verified_score' ? ' with your verified scores' : ''}. Track it in <a href="my-applications.html" style="color:inherit;font-weight:800">My Applications</a>.</div></div>`
+      : el.met ? `<button class="apply-btn" onclick="applyVerified(${job.id})">Apply with my verified scores ${UI.icon('arrow_forward', 20)}</button>`
+      : u && u.role === 'candidate' ? `<p style="font-size:13px;color:var(--text3)">Not there yet? Take a <a href="assessments.html?tab=library" style="color:var(--brand);font-weight:700">standard assessment</a> — one verified score can be reused for many jobs — or complete this job's task below.</p>` : ''}
   </div>`;
+}
+async function applyVerified(jobId) {
+  const r = await UI.confirm({ title: 'Apply with your verified scores?', icon: 'verified', confirmLabel: 'Apply', text: 'The company sees your verified scores, rubric breakdowns and profile. No new task is needed now.', input: { label: 'Short note to the hiring team (optional)', placeholder: 'Why this role interests you' } });
+  if (r.ok) UI.run(() => UR.verifiedApply.apply(jobId, r.value || ''), 'Application sent with your verified scores').catch(() => {});
+}
+async function reportJob(id, title) {
+  const r = await UI.confirm({ title: 'Report this listing', icon: 'flag', confirmLabel: 'Send report', text: 'Unresume moderators review every report. The company is not told who reported it.',
+    input: { label: 'What is wrong?', type: 'select', options: ['Misleading requirements', 'Scam or fraud', 'Discriminatory content', 'Task asks for unpaid production work', 'Other'], required: true } });
+  if (!r.ok) return;
+  UI.run(() => UR.reports.create({ type: 'job', targetId: id, targetLabel: title, reason: r.value }), 'Report sent to Unresume moderators').catch(() => {});
+}
+
+render();
+UI.onChange(render);
 </script>
 </body>
 </html>

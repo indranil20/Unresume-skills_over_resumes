@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
 <link rel="stylesheet" href="css/globals.css">
 <link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/dashboard.css">
 <style>
 body{background:linear-gradient(135deg,#f3f1fe 0%,#f7f7fd 45%,#efedfd 100%)}
 .chat-root{display:flex;gap:16px;height:100vh;overflow:hidden;padding:16px}
@@ -198,7 +199,7 @@ mark{background:#fde68a;color:inherit;border-radius:4px;padding:0 2px}
 }
 </style>
 </head>
-<body>
+<body data-roles="any">
 <div class="chat-root">
   <!-- Conversation list -->
   <div class="conv-list panel">
@@ -286,437 +287,208 @@ mark{background:#fde68a;color:inherit;border-radius:4px;padding:0 2px}
 </div>
 <div class="toast" id="toast"><span class="material-symbols-rounded">check_circle</span><span id="toastText"></span></div>
 
-<script src="js/components.js"></script>
 <script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
 <script>
-const gradients = [
-  'linear-gradient(135deg,#38bdf8,#2563eb)',
-  'linear-gradient(135deg,#e879f9,#a855f7)',
-  'linear-gradient(135deg,#2dd4bf,#0d9488)',
-];
-const esc = s => String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-const convData = getConversations();
-let activeConvId = null;
-let localMessages = {};
-convData.forEach((c, i) => { localMessages[c.id] = [...c.messages]; c.colorIdx = i; });
-const convGrad = c => gradients[c.colorIdx % gradients.length];
+const esc = UI.esc, $ = id => document.getElementById(id);
+const ME = UR.user();
+let activeConvId = null, convFilter = '';
+document.querySelector('.conv-brand a').href = UR.ROLES[ME.role].home;
+document.querySelector('.conv-brand').insertAdjacentHTML('beforeend', `<a href="${UR.ROLES[ME.role].home}" class="icon-btn plain" title="Back to dashboard" aria-label="Back to dashboard"><span class="material-symbols-rounded" style="font-size:20px">dashboard</span></a>`);
 
-const ME = 'Jay D';
-const ME_INITIALS = 'JD';
-const ME_GRAD = 'linear-gradient(135deg,#38bdf8,#2563eb)';
-
-const candidateByName = Object.fromEntries(getCandidates().map(c => [c.name, c.username]));
-let convFilter = '';
-
-// Case-insensitive highlight on the raw text, escaping each piece
 function highlight(text, q) {
   if (!q) return esc(text);
-  const lower = text.toLowerCase(), needle = q.toLowerCase();
-  let out = '', i = 0, j;
-  while ((j = lower.indexOf(needle, i)) !== -1) {
-    out += esc(text.slice(i, j)) + '<mark>' + esc(text.slice(j, j + q.length)) + '</mark>';
-    i = j + q.length;
-  }
+  const lower = text.toLowerCase(), needle = q.toLowerCase(); let out = '', i = 0, j;
+  while ((j = lower.indexOf(needle, i)) !== -1) { out += esc(text.slice(i, j)) + '<mark>' + esc(text.slice(j, j + q.length)) + '</mark>'; i = j + q.length; }
   return out + esc(text.slice(i));
 }
+const fmtTime = iso => { const d = new Date(iso); return Date.now() - d < 864e5 ? d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : UI.timeAgo(iso); };
+const activeConv = () => activeConvId ? UR.messages.get(activeConvId) : null;
 
-function renderConvList(filter = convFilter) {
-  convFilter = filter;
-  document.getElementById('convList').innerHTML = convData
-    .filter(c => c.withName.toLowerCase().includes(filter.toLowerCase()))
-    .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0))
-    .map((c, i) => {
-      const msgs = localMessages[c.id];
-      const last = msgs[msgs.length-1];
-      const initials = c.withName.split(' ').map(w=>w[0]).join('').slice(0,2);
-      return `<a href="#" class="conv-item ${activeConvId===c.id?'active':''} ${c.unread?'unread':''}" onclick="openConv(${c.id});return false" title="${c.withName}">
-        <div class="conv-av" style="background:${convGrad(c)}">
-          ${initials}
-          ${c.unread ? '<span class="unread-dot"></span>':''}
-        </div>
-        <div class="conv-meta">
-          <div class="conv-name">${c.withName}<span class="conv-flags">${c.pinned?'<span class="material-symbols-rounded" title="Pinned">keep</span>':''}${c.muted?'<span class="material-symbols-rounded" title="Muted">notifications_off</span>':''}${c.blocked?'<span class="material-symbols-rounded" title="Blocked">block</span>':''}</span></div>
-          <div class="conv-role">${c.role}</div>
-          <div class="conv-preview">${last?esc(last.text):'<em>No messages yet</em>'}</div>
-        </div>
-        <div class="conv-side">
-          <div class="conv-time">${last?last.time:''}</div>
-          ${c.unread ? `<span class="conv-count">${c.unread}</span>` : ''}
-        </div>
-      </a>`;
-    }).join('');
+function renderConvList() {
+  const list = UR.messages.list().filter(c => c.otherName.toLowerCase().includes(convFilter.toLowerCase()));
+  $('convList').innerHTML = list.length ? list.map(c => {
+    const last = c.messages[c.messages.length - 1];
+    return `<a href="#" class="conv-item ${activeConvId === c.id ? 'active' : ''} ${c.unread ? 'unread' : ''}" onclick="openConv('${c.id}');return false" title="${esc(c.otherName)}">
+      <div class="conv-av" style="background:${UI.grad(c.otherId)}">${UI.initials(c.otherName)}${c.unread ? '<span class="unread-dot"></span>' : ''}</div>
+      <div class="conv-meta"><div class="conv-name">${esc(c.otherName)}<span class="conv-flags">${c.pinned ? '<span class="material-symbols-rounded" title="Pinned">keep</span>' : ''}${c.muted ? '<span class="material-symbols-rounded" title="Muted">notifications_off</span>' : ''}${c.blocked ? '<span class="material-symbols-rounded" title="Blocked">block</span>' : ''}</span></div>
+        <div class="conv-role">${esc(c.roleLabel)}</div><div class="conv-preview">${last ? (last.from === ME.id ? 'You: ' : '') + esc(last.text) : '<em>No messages yet</em>'}</div></div>
+      <div class="conv-side"><div class="conv-time">${last ? fmtTime(last.at) : ''}</div>${c.unread ? `<span class="conv-count">${c.unread}</span>` : ''}</div></a>`;
+  }).join('') : `<div style="padding:30px 16px;text-align:center;color:var(--text3);font-size:13px">${convFilter ? 'No conversations match.' : 'No conversations yet. Start one with the ✎ button.'}</div>`;
 }
 
 function openConv(id) {
+  const conv = UR.messages.get(id); if (!conv) return;
   activeConvId = id;
-  const conv = convData.find(c => c.id === id);
-  if (!conv) return;
-  conv.unread = false;
-
-  document.getElementById('emptyState').style.display = 'none';
-  const view = document.getElementById('activeChatView');
-  view.style.display = 'flex';
-  view.style.flexDirection = 'column';
-
+  UR.messages.markRead(id);
+  $('emptyState').style.display = 'none';
+  $('activeChatView').style.display = 'flex';
   closeChatSearch(false);
-  renderTopbar();
-  renderMessages(id);
-  renderConvList();
-  applyBlocked();
-  if (infoOpen()) renderInfo();
+  history.replaceState(null, '', `?c=${id}`);
+  refreshActive();
   document.querySelector('.chat-root').classList.add('in-chat');
-  if (!conv.blocked && !isMobile()) document.getElementById('msgInput').focus();
+  if (!conv.blocked && !isMobile()) $('msgInput').focus();
 }
-
 const isMobile = () => window.matchMedia('(max-width:700px)').matches;
-function closeConvMobile() {
-  closeInfo();
-  document.querySelector('.chat-root').classList.remove('in-chat');
-}
-
-function activeConv() { return convData.find(c => c.id === activeConvId); }
+function closeConvMobile() { closeInfo(); document.querySelector('.chat-root').classList.remove('in-chat'); }
 
 function renderTopbar() {
-  const conv = activeConv();
-  const ci = convData.indexOf(conv);
-  const profileUser = candidateByName[conv.withName];
-  document.getElementById('chatTopbar').innerHTML = `
+  const conv = activeConv(); if (!conv) return;
+  const first = conv.otherName.split(' ')[0];
+  $('chatTopbar').innerHTML = `
     <button class="icon-btn plain chat-back" onclick="closeConvMobile()" title="Back to chats" aria-label="Back to chats"><span class="material-symbols-rounded" style="font-size:24px">arrow_back</span></button>
     <div class="chat-who" onclick="openInfo()" title="View contact info" role="button" tabindex="0" onkeydown="if(event.key==='Enter')openInfo()">
-      <div class="conv-av" style="background:${convGrad(conv)};width:46px;height:46px;font-size:15px">${conv.withName.split(' ').map(w=>w[0]).join('').slice(0,2)}${conv.blocked?'':'<span class="online-dot"></span>'}</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:16px;font-weight:800;color:var(--text1);font-family:var(--font-display);letter-spacing:-.01em">${conv.withName}</div>
-        <div style="font-size:12.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${conv.role}</div>
-      </div>
+      <div class="conv-av" style="background:${UI.grad(conv.otherId)};width:46px;height:46px;font-size:15px">${UI.initials(conv.otherName)}</div>
+      <div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:800;color:var(--text1);font-family:var(--font-display);letter-spacing:-.01em">${esc(conv.otherName)}</div>
+        <div style="font-size:12.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(conv.roleLabel)}</div></div>
     </div>
     <div class="menu-wrap">
       <button class="icon-btn plain" id="menuBtn" onclick="toggleChatMenu(event)" title="More options" aria-haspopup="menu"><span class="material-symbols-rounded" style="font-size:22px">more_vert</span></button>
       <div class="chat-menu" id="chatMenu" role="menu">
         <button class="menu-item" onclick="openInfo()"><span class="material-symbols-rounded">info</span>Contact info</button>
-        ${profileUser ? `<a class="menu-item" href="candidate-profile.html?u=${profileUser}"><span class="material-symbols-rounded">person</span>View Profile</a>` : ''}
+        ${conv.otherUsername ? `<a class="menu-item" href="candidate-profile.html?u=${conv.otherUsername}"><span class="material-symbols-rounded">person</span>View Profile</a>` : ''}
         <button class="menu-item" onclick="menuAction('search')"><span class="material-symbols-rounded">search</span>Search in chat</button>
-        <button class="menu-item" onclick="menuAction('pin')"><span class="material-symbols-rounded">${conv.pinned?'keep_off':'keep'}</span>${conv.pinned?'Unpin chat':'Pin chat'}</button>
-        <button class="menu-item" onclick="menuAction('mute')"><span class="material-symbols-rounded">${conv.muted?'notifications':'notifications_off'}</span>${conv.muted?'Unmute notifications':'Mute notifications'}</button>
+        <button class="menu-item" onclick="menuAction('pin')"><span class="material-symbols-rounded">${conv.pinned ? 'keep_off' : 'keep'}</span>${conv.pinned ? 'Unpin chat' : 'Pin chat'}</button>
+        <button class="menu-item" onclick="menuAction('mute')"><span class="material-symbols-rounded">${conv.muted ? 'notifications' : 'notifications_off'}</span>${conv.muted ? 'Unmute notifications' : 'Mute notifications'}</button>
         <button class="menu-item" onclick="menuAction('unread')"><span class="material-symbols-rounded">mark_chat_unread</span>Mark as unread</button>
         <div class="menu-sep"></div>
-        <button class="menu-item danger" onclick="menuAction('clear')"><span class="material-symbols-rounded">delete_sweep</span>Clear chat</button>
-        <button class="menu-item danger" onclick="menuAction('block')"><span class="material-symbols-rounded">block</span>${conv.blocked?'Unblock':'Block'} ${conv.withName.split(' ')[0]}</button>
+        <button class="menu-item danger" onclick="menuAction('clear')"><span class="material-symbols-rounded">delete_sweep</span>Clear chat (for me)</button>
+        <button class="menu-item danger" onclick="menuAction('block')"><span class="material-symbols-rounded">block</span>${conv.blocked ? 'Unblock' : 'Block'} ${esc(first)}</button>
         <button class="menu-item danger" onclick="menuAction('report')"><span class="material-symbols-rounded">flag</span>Report</button>
       </div>
-    </div>
-  `;
+    </div>`;
 }
-
-function toggleChatMenu(e) {
-  e.stopPropagation();
-  const open = document.getElementById('chatMenu').classList.toggle('open');
-  document.getElementById('menuBtn').classList.toggle('open', open);
-}
-function closeChatMenu() {
-  const m = document.getElementById('chatMenu');
-  if (m) { m.classList.remove('open'); document.getElementById('menuBtn').classList.remove('open'); }
-}
+function toggleChatMenu(e) { e.stopPropagation(); const open = $('chatMenu').classList.toggle('open'); $('menuBtn').classList.toggle('open', open); }
+function closeChatMenu() { const m = $('chatMenu'); if (m) { m.classList.remove('open'); $('menuBtn').classList.remove('open'); } }
 document.addEventListener('click', e => { if (!e.target.closest('.menu-wrap')) closeChatMenu(); });
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
-  // close the top-most layer first
-  if (document.getElementById('confirmModal').classList.contains('open')) closeConfirm();
-  else if (document.getElementById('newChatModal').classList.contains('open')) closeNewChat();
-  else if (document.getElementById('chatMenu')?.classList.contains('open')) closeChatMenu();
+  if ($('confirmModal').classList.contains('open')) closeConfirm();
+  else if ($('newChatModal').classList.contains('open')) closeNewChat();
+  else if ($('chatMenu') && $('chatMenu').classList.contains('open')) closeChatMenu();
   else closeInfo();
 });
 
 function menuAction(action) {
-  const conv = activeConv();
-  const first = conv.withName.split(' ')[0];
+  const conv = activeConv(); const first = conv.otherName.split(' ')[0];
   closeChatMenu();
-  if (action === 'search') {
-    if (window.innerWidth <= 1200) closeInfo(); // panel overlays the chat on smaller screens
-    document.getElementById('chatSearch').classList.add('open');
-    document.getElementById('chatSearchInput').focus();
-  } else if (action === 'pin') {
-    conv.pinned = !conv.pinned;
-    showToast(conv.pinned ? 'Chat pinned to top' : 'Chat unpinned');
-  } else if (action === 'mute') {
-    conv.muted = !conv.muted;
-    showToast(conv.muted ? `Notifications muted for ${first}` : `Notifications unmuted for ${first}`);
-  } else if (action === 'unread') {
-    conv.unread = 1;
-    showToast('Marked as unread');
-  } else if (action === 'clear') {
-    askConfirm({ icon:'delete_sweep', title:'Clear this chat?', text:`All messages with ${conv.withName} will be removed from this chat.`, btn:'Clear chat', onYes: () => {
-      localMessages[conv.id] = [];
-      renderMessages(conv.id);
-      refreshActive();
-      showToast('Chat cleared');
-    }});
-  } else if (action === 'block') {
-    if (conv.blocked) {
-      conv.blocked = false;
-      showToast(`${first} unblocked`);
-    } else {
-      askConfirm({ icon:'block', title:`Block ${first}?`, text:`${conv.withName} won't be able to message you, and you won't be able to reply.`, btn:'Block', onYes: () => {
-        conv.blocked = true;
-        refreshActive();
-        showToast(`${first} blocked`);
-      }});
-      return;
-    }
-  } else if (action === 'report') {
-    askConfirm({ icon:'flag', title:`Report ${first}?`, text:'Our team will review this conversation. They won\'t be notified.', btn:'Report', onYes: () => showToast('Report submitted. Thanks for letting us know.') });
-    return;
-  }
-  refreshActive();
+  const run = (fn, msg) => UI.run(fn, msg).catch(() => {});
+  if (action === 'search') { if (innerWidth <= 1200) closeInfo(); $('chatSearch').classList.add('open'); $('chatSearchInput').focus(); }
+  else if (action === 'pin') run(() => UR.messages.setMeta(conv.id, { pinned: !conv.pinned }), conv.pinned ? 'Chat unpinned' : 'Chat pinned to top');
+  else if (action === 'mute') run(() => UR.messages.setMeta(conv.id, { muted: !conv.muted }), conv.muted ? `Notifications unmuted for ${first}` : `Notifications muted for ${first}`);
+  else if (action === 'unread') { run(() => UR.messages.setMeta(conv.id, { markedUnread: true }), 'Marked as unread'); activeConvId = null; $('activeChatView').style.display = 'none'; $('emptyState').style.display = ''; }
+  else if (action === 'clear') askConfirm({ icon: 'delete_sweep', title: 'Clear this chat?', text: `Messages with ${conv.otherName} will be hidden for you. ${first} still sees them.`, btn: 'Clear chat', onYes: () => run(() => UR.messages.clear(conv.id), 'Chat cleared') });
+  else if (action === 'block') {
+    if (conv.blocked) run(() => UR.messages.setMeta(conv.id, { blocked: false }), `${first} unblocked`);
+    else askConfirm({ icon: 'block', title: `Block ${first}?`, text: `${conv.otherName} won't be able to message you, and you won't be able to reply.`, btn: 'Block', onYes: () => run(() => UR.messages.setMeta(conv.id, { blocked: true }), `${first} blocked`) });
+  } else if (action === 'report') askConfirm({ icon: 'flag', title: `Report ${first}?`, text: 'An Unresume moderator will review this conversation. They won\'t be told who reported them.', btn: 'Report', onYes: () => run(() => UR.reports.create({ type: 'message', targetId: conv.id, targetLabel: `Conversation with ${conv.otherName}`, reason: 'Reported from chat' }), 'Report sent to Unresume moderators') });
 }
-
 function refreshActive() {
-  renderTopbar();
   renderConvList();
-  applyBlocked();
+  if (!activeConv()) return;
+  renderTopbar(); renderMessages(); applyBlocked();
   if (infoOpen()) renderInfo();
 }
 
-// ── Contact info panel ──
-const candidateFull = Object.fromEntries(getCandidates().map(c => [c.name, c]));
-const infoOpen = () => document.getElementById('infoPanel').classList.contains('open');
-function openInfo() {
-  closeChatMenu();
-  renderInfo();
-  document.getElementById('infoPanel').classList.add('open');
-}
-function closeInfo() { document.getElementById('infoPanel').classList.remove('open'); }
-
+const infoOpen = () => $('infoPanel').classList.contains('open');
+function openInfo() { closeChatMenu(); renderInfo(); $('infoPanel').classList.add('open'); }
+function closeInfo() { $('infoPanel').classList.remove('open'); }
 function renderInfo() {
-  const conv = activeConv();
-  if (!conv) return;
-  const ci = convData.indexOf(conv);
-  const initials = conv.withName.split(' ').map(w=>w[0]).join('').slice(0,2);
-  const [roleTitle, org] = conv.role.split(' · ');
-  const cand = candidateFull[conv.withName];
-  const first = conv.withName.split(' ')[0];
-  const msgCount = localMessages[conv.id].length;
-
-  const details = cand ? `
-    <div class="info-sec">
-      <div class="info-sec-title">Skill Profile</div>
-      <div class="info-stats">
-        <div class="info-stat"><div class="info-stat-v grad-text">${cand.score}</div><div class="info-stat-l">Score</div></div>
-        <div class="info-stat"><div class="info-stat-v c-blue">#${cand.rank}</div><div class="info-stat-l">Rank</div></div>
-        <div class="info-stat"><div class="info-stat-v c-teal">${cand.tasksCompleted}</div><div class="info-stat-l">Tasks</div></div>
-      </div>
-      <div class="info-row" style="margin-top:8px"><span class="ic tint-amber"><span class="material-symbols-rounded">workspace_premium</span></span><div>${cand.badge}<small>Badge</small></div></div>
-      <div class="info-sec-title" style="margin-top:10px">Skills</div>
-      <div class="info-skills">${cand.skills.map(s => `<span>${s}</span>`).join('')}</div>
-      <a class="info-link" href="candidate-profile.html?u=${cand.username}">View full profile <span class="material-symbols-rounded" style="font-size:18px">arrow_forward</span></a>
-    </div>` : `
-    <div class="info-sec">
-      <div class="info-sec-title">About</div>
-      <div class="info-row"><span class="ic tint-purple"><span class="material-symbols-rounded">badge</span></span><div>${roleTitle}<small>Role</small></div></div>
-      ${org ? `<div class="info-row"><span class="ic tint-blue"><span class="material-symbols-rounded">apartment</span></span><div>${org}<small>Company</small></div></div>` : ''}
-    </div>`;
-
-  document.getElementById('infoBody').innerHTML = `
-    <div class="info-hero">
-      <div class="info-av" style="background:${convGrad(conv)}">${initials}${conv.blocked?'':'<span class="online-dot"></span>'}</div>
-      <div class="info-name">${conv.withName}</div>
-      <div class="info-role">${conv.role}</div>
-      <div class="info-status" style="color:${conv.blocked?'#e11d48':'#0d9488'}"><i style="background:${conv.blocked?'#e11d48':'#10b981'}"></i>${conv.blocked?'Blocked':'Online'}</div>
-    </div>
-
-    <div class="info-quick">
-      <button onclick="menuAction('search')"><span class="material-symbols-rounded">search</span>Search</button>
-      <button class="${conv.muted?'on':''}" onclick="menuAction('mute')"><span class="material-symbols-rounded">${conv.muted?'notifications_off':'notifications'}</span>${conv.muted?'Muted':'Mute'}</button>
-      <button class="${conv.pinned?'on':''}" onclick="menuAction('pin')"><span class="material-symbols-rounded">keep</span>${conv.pinned?'Pinned':'Pin'}</button>
-    </div>
-
+  const conv = activeConv(); if (!conv) return;
+  const first = conv.otherName.split(' ')[0];
+  const cand = conv.otherUsername ? UR.candidates.get(conv.otherUsername) : null;
+  const st = cand && !cand.restricted ? cand.stats : null;
+  const details = st && !st.hidden ? `
+    <div class="info-sec"><div class="info-sec-title">Verified skill profile</div>
+      <div class="info-stats"><div class="info-stat"><div class="info-stat-v grad-text">${st.skillScore}</div><div class="info-stat-l">Skill Score</div></div><div class="info-stat"><div class="info-stat-v c-blue">${cand.rank ? '#' + cand.rank : '—'}</div><div class="info-stat-l">Rank</div></div><div class="info-stat"><div class="info-stat-v c-teal">${st.tasksVerified}</div><div class="info-stat-l">Tasks</div></div></div>
+      <div class="info-sec-title" style="margin-top:10px">Skills</div><div class="info-skills">${cand.skills.map(s => `<span>${esc(s)}</span>`).join('')}</div>
+      <a class="info-link" href="candidate-profile.html?u=${cand.username}">View full profile <span class="material-symbols-rounded" style="font-size:18px">arrow_forward</span></a></div>`
+    : `<div class="info-sec"><div class="info-sec-title">About</div><div class="info-row"><span class="ic tint-purple"><span class="material-symbols-rounded">badge</span></span><div>${esc(conv.roleLabel)}<small>Role</small></div></div></div>`;
+  $('infoBody').innerHTML = `
+    <div class="info-hero"><div class="info-av" style="background:${UI.grad(conv.otherId)}">${UI.initials(conv.otherName)}</div><div class="info-name">${esc(conv.otherName)}</div><div class="info-role">${esc(conv.roleLabel)}</div>
+      ${conv.blocked ? `<div class="info-status" style="color:#e11d48"><i style="background:#e11d48"></i>Blocked</div>` : ''}</div>
+    <div class="info-quick"><button onclick="menuAction('search')"><span class="material-symbols-rounded">search</span>Search</button>
+      <button class="${conv.muted ? 'on' : ''}" onclick="menuAction('mute')"><span class="material-symbols-rounded">${conv.muted ? 'notifications_off' : 'notifications'}</span>${conv.muted ? 'Muted' : 'Mute'}</button>
+      <button class="${conv.pinned ? 'on' : ''}" onclick="menuAction('pin')"><span class="material-symbols-rounded">keep</span>${conv.pinned ? 'Pinned' : 'Pin'}</button></div>
     ${details}
-
-    <div class="info-sec">
-      <div class="info-row" style="padding:0"><span class="ic tint-teal"><span class="material-symbols-rounded">forum</span></span><div>${msgCount} message${msgCount!==1?'s':''}<small>In this conversation</small></div></div>
-    </div>
-
+    <div class="info-sec"><div class="info-row" style="padding:0"><span class="ic tint-teal"><span class="material-symbols-rounded">forum</span></span><div>${UI.plural(conv.messages.length, 'message')}<small>In this conversation</small></div></div></div>
     <div class="info-sec info-danger" style="padding:8px">
       <button class="menu-item danger" onclick="menuAction('clear')"><span class="material-symbols-rounded">delete_sweep</span>Clear chat</button>
-      <button class="menu-item danger" onclick="menuAction('block')"><span class="material-symbols-rounded">block</span>${conv.blocked?'Unblock':'Block'} ${first}</button>
-      <button class="menu-item danger" onclick="menuAction('report')"><span class="material-symbols-rounded">flag</span>Report ${first}</button>
-    </div>`;
+      <button class="menu-item danger" onclick="menuAction('block')"><span class="material-symbols-rounded">block</span>${conv.blocked ? 'Unblock' : 'Block'} ${esc(first)}</button>
+      <button class="menu-item danger" onclick="menuAction('report')"><span class="material-symbols-rounded">flag</span>Report ${esc(first)}</button></div>`;
 }
-
 function applyBlocked() {
-  const conv = activeConv();
-  const note = document.getElementById('blockedNote');
-  document.getElementById('chatInputBar').style.display = conv.blocked ? 'none' : '';
-  note.style.display = conv.blocked ? 'flex' : 'none';
-  note.innerHTML = conv.blocked ? `<span class="material-symbols-rounded" style="font-size:20px">block</span>You blocked ${esc(conv.withName)}.<button onclick="menuAction('block')">Unblock</button>` : '';
+  const conv = activeConv(); const note = $('blockedNote');
+  const blocked = conv.blocked || conv.blockedByThem;
+  $('chatInputBar').style.display = blocked ? 'none' : '';
+  note.style.display = blocked ? 'flex' : 'none';
+  note.innerHTML = conv.blocked ? `<span class="material-symbols-rounded" style="font-size:20px">block</span>You blocked ${esc(conv.otherName)}.<button onclick="menuAction('block')">Unblock</button>`
+    : conv.blockedByThem ? `<span class="material-symbols-rounded" style="font-size:20px">block</span>You can't reply to this conversation.` : '';
 }
-
 function closeChatSearch(rerender = true) {
-  document.getElementById('chatSearch').classList.remove('open');
-  document.getElementById('chatSearchInput').value = '';
-  document.getElementById('chatSearchCount').textContent = '';
-  if (rerender && activeConvId) renderMessages(activeConvId);
+  $('chatSearch').classList.remove('open'); $('chatSearchInput').value = ''; $('chatSearchCount').textContent = '';
+  if (rerender && activeConvId) renderMessages();
 }
-
 let confirmHandler = null;
 function askConfirm({ icon, title, text, btn, onYes }) {
-  document.getElementById('confirmIcon').textContent = icon;
-  document.getElementById('confirmTitle').textContent = title;
-  document.getElementById('confirmText').textContent = text;
-  document.getElementById('confirmBtn').textContent = btn;
-  confirmHandler = onYes;
-  document.getElementById('confirmModal').classList.add('open');
+  $('confirmIcon').textContent = icon; $('confirmTitle').textContent = title; $('confirmText').textContent = text; $('confirmBtn').textContent = btn;
+  confirmHandler = onYes; $('confirmModal').classList.add('open');
 }
-function closeConfirm() {
-  document.getElementById('confirmModal').classList.remove('open');
-  confirmHandler = null;
-}
-document.getElementById('confirmBtn').addEventListener('click', () => {
-  const fn = confirmHandler;
-  closeConfirm();
-  if (fn) fn();
-});
+function closeConfirm() { $('confirmModal').classList.remove('open'); confirmHandler = null; }
+$('confirmBtn').addEventListener('click', () => { const fn = confirmHandler; closeConfirm(); if (fn) fn(); });
 
-// ── New chat ──
-const ME_NAME = 'Jay Desai';
-// Stable colour per candidate, so the avatar matches before and after the chat is created
-const candColorIdx = name => getCandidates().findIndex(c => c.name === name);
-function openNewChat() {
-  closeChatMenu();
-  document.getElementById('ncSearch').value = '';
-  renderNewChat();
-  document.getElementById('newChatModal').classList.add('open');
-  setTimeout(() => document.getElementById('ncSearch').focus(), 50);
-}
-function closeNewChat() { document.getElementById('newChatModal').classList.remove('open'); }
-
+// ── New chat (respects recipients' privacy settings) ──
+function openNewChat() { closeChatMenu(); $('ncSearch').value = ''; renderNewChat(); $('newChatModal').classList.add('open'); setTimeout(() => $('ncSearch').focus(), 50); }
+function closeNewChat() { $('newChatModal').classList.remove('open'); }
 function renderNewChat() {
-  const q = document.getElementById('ncSearch').value.trim().toLowerCase();
-  const match = (name, extra) => !q || name.toLowerCase().includes(q) || extra.some(s => s.toLowerCase().includes(q));
-  const existing = convData.filter(c => match(c.withName, [c.role]));
-  const people = getCandidates().filter(c => c.name !== ME_NAME && !convData.some(v => v.withName === c.name) && match(c.name, c.skills));
-  const avatar = (name, bg) => `<div class="conv-av" style="background:${bg}">${name.split(' ').map(w=>w[0]).join('').slice(0,2)}</div>`;
-
+  const q = $('ncSearch').value.trim();
+  const existing = UR.messages.list().filter(c => !q || c.otherName.toLowerCase().includes(q.toLowerCase()));
+  const people = UR.messages.contacts(q).filter(p => !existing.some(c => c.otherId === p.id));
   let html = '';
-  if (existing.length) {
-    html += `<div class="nc-label">Recent chats</div>` + existing.map(c => `
-      <button class="nc-item" onclick="startChat('${c.withName}')">
-        ${avatar(c.withName, convGrad(c))}
-        <div style="min-width:0"><div class="nc-name">${c.withName}</div><div class="nc-sub">${c.role}</div></div>
-        <span class="nc-tag">Existing chat</span>
-      </button>`).join('');
-  }
-  if (people.length) {
-    html += `<div class="nc-label">Candidates</div>` + people.map(c => `
-      <button class="nc-item" onclick="startChat('${c.name}')">
-        ${avatar(c.name, gradients[candColorIdx(c.name) % gradients.length])}
-        <div style="min-width:0"><div class="nc-name">${c.name}</div><div class="nc-sub">${c.skills.slice(0,2).join(', ')} · Rank #${c.rank}</div></div>
-      </button>`).join('');
-  }
-  document.getElementById('ncList').innerHTML = html || `<div class="nc-empty">No one matches "${esc(q)}".</div>`;
+  if (existing.length) html += `<div class="nc-label">Recent chats</div>` + existing.map(c => `<button class="nc-item" onclick="startChat('${c.otherId}')"><div class="conv-av" style="background:${UI.grad(c.otherId)}">${UI.initials(c.otherName)}</div><div style="min-width:0"><div class="nc-name">${esc(c.otherName)}</div><div class="nc-sub">${esc(c.roleLabel)}</div></div><span class="nc-tag">Existing chat</span></button>`).join('');
+  if (people.length) html += `<div class="nc-label">People you can message</div>` + people.map(p => `<button class="nc-item" onclick="startChat('${p.id}')"><div class="conv-av" style="background:${UI.grad(p.id)}">${UI.initials(p.name)}</div><div style="min-width:0"><div class="nc-name">${esc(p.name)}</div><div class="nc-sub">${esc(p.sub)}</div></div></button>`).join('');
+  $('ncList').innerHTML = html || `<div class="nc-empty">${q ? `No one matches "${esc(q)}".` : 'No one available to message.'} Some people only accept messages from companies.</div>`;
+}
+function startChat(otherId) {
+  UI.run(() => UR.messages.start(otherId)).then(id => { closeNewChat(); document.querySelector('.conv-search input').value = ''; convFilter = ''; openConv(id); }).catch(() => {});
 }
 
-function startChat(name) {
-  let conv = convData.find(c => c.withName === name);
-  if (!conv) {
-    const cand = getCandidates().find(c => c.name === name);
-    conv = {
-      id: Math.max(...convData.map(c => c.id)) + 1,
-      withName: cand.name,
-      role: `Candidate · Rank #${cand.rank}`,
-      unread: 0,
-      messages: [],
-      colorIdx: candColorIdx(cand.name),
-    };
-    convData.unshift(conv);          // newest chat goes to the top (after pinned ones)
-    localMessages[conv.id] = [];
-    showToast(`New chat with ${cand.name.split(' ')[0]}`);
-  }
-  closeNewChat();
-  document.querySelector('.conv-search input').value = '';
-  renderConvList('');
-  openConv(conv.id);
-}
-
-let toastTimer;
-function showToast(msg) {
-  document.getElementById('toastText').textContent = msg;
-  const t = document.getElementById('toast');
-  t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
-}
-
-function renderMessages(convId) {
-  const conv = convData.find(c => c.id === convId);
-  const ci = convData.indexOf(conv);
-  const msgs = localMessages[convId];
-  const container = document.getElementById('chatMessages');
-
-  const q = document.getElementById('chatSearchInput').value.trim();
-  const shown = q ? msgs.filter(m => m.text.toLowerCase().includes(q.toLowerCase())) : msgs;
-  document.getElementById('chatSearchCount').textContent = q ? `${shown.length} match${shown.length!==1?'es':''}` : '';
-
-  if (!msgs.length) {
-    container.innerHTML = `<div class="chat-empty"><div class="chat-empty-icon"><span class="material-symbols-rounded" style="font-size:36px">forum</span></div><p style="font-size:14px">No messages here yet.</p></div>`;
-    return;
-  }
-  if (!shown.length) {
-    container.innerHTML = `<div class="chat-empty"><div class="chat-empty-icon"><span class="material-symbols-rounded" style="font-size:36px">search_off</span></div><p style="font-size:14px">No messages match "${esc(q)}".</p></div>`;
-    return;
-  }
-
-  // Day divider
-  let html = `<div class="msg-day"><span>Today</span></div>`;
+function renderMessages() {
+  const conv = activeConv(); if (!conv) return;
+  const container = $('chatMessages');
+  const q = $('chatSearchInput').value.trim();
+  const shown = q ? conv.messages.filter(m => m.text.toLowerCase().includes(q.toLowerCase())) : conv.messages;
+  $('chatSearchCount').textContent = q ? `${shown.length} match${shown.length !== 1 ? 'es' : ''}` : '';
+  if (!conv.messages.length) { container.innerHTML = `<div class="chat-empty"><div class="chat-empty-icon"><span class="material-symbols-rounded" style="font-size:36px">forum</span></div><p style="font-size:14px">No messages here yet. Say hello 👋</p></div>`; return; }
+  if (!shown.length) { container.innerHTML = `<div class="chat-empty"><div class="chat-empty-icon"><span class="material-symbols-rounded" style="font-size:36px">search_off</span></div><p style="font-size:14px">No messages match "${esc(q)}".</p></div>`; return; }
+  let html = '', lastDay = '';
   shown.forEach(m => {
-    const isMine = m.from === 'me';
-    const initials = isMine ? ME_INITIALS : conv.withName.split(' ').map(w=>w[0]).join('').slice(0,2);
-    const grad = isMine ? ME_GRAD : convGrad(conv);
-    html += `<div class="msg-row ${isMine?'mine':''}">
-      <div class="msg-av" style="background:${grad}">${initials}</div>
-      <div class="msg-col">
-        <div class="msg-bubble ${isMine?'mine':'them'}">${highlight(m.text, q)}</div>
-        <span class="msg-time">${m.time}</span>
-      </div>
-    </div>`;
+    const day = new Date(m.at).toDateString();
+    if (day !== lastDay) { lastDay = day; html += `<div class="msg-day"><span>${day === new Date().toDateString() ? 'Today' : UI.fmtDate(m.at)}</span></div>`; }
+    const mine = m.from === ME.id;
+    html += `<div class="msg-row ${mine ? 'mine' : ''}"><div class="msg-av" style="background:${UI.grad(mine ? ME.id : conv.otherId)}">${UI.initials(mine ? ME.name : conv.otherName)}</div>
+      <div class="msg-col"><div class="msg-bubble ${mine ? 'mine' : 'them'}">${highlight(m.text, q)}</div><span class="msg-time">${new Date(m.at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</span></div></div>`;
   });
   container.innerHTML = html;
   container.scrollTop = container.scrollHeight;
 }
-
 function sendMessage() {
-  const inp = document.getElementById('msgInput');
-  const text = inp.value.trim();
+  const inp = $('msgInput'), text = inp.value.trim();
   if (!text || !activeConvId) return;
-  const now = new Date();
-  const time = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
-  localMessages[activeConvId].push({id: Date.now().toString(), from:'me', text, time});
-  inp.value = '';
-  inp.style.height = 'auto';
-  renderMessages(activeConvId);
-  renderConvList();
-  if (infoOpen()) renderInfo();
+  try { UR.messages.send(activeConvId, text); inp.value = ''; inp.style.height = 'auto'; }
+  catch (e) { UI.toast(e.message, 'error'); }
 }
+function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
+function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; }
+function filterConvs(q) { convFilter = q; renderConvList(); }
 
-function handleKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
-}
-
-function autoResize(el) {
-  el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
-}
-
-function filterConvs(q) {
-  renderConvList(q);
-}
-
+UI.onChange(() => { if (activeConvId) UR.messages.markRead(activeConvId); refreshActive(); });
 renderConvList();
-openConv(convData[0].id);
-// On phones start on the conversation list, not inside the first chat
-if (isMobile()) document.querySelector('.chat-root').classList.remove('in-chat');
+const startId = UI.param('c') || (!isMobile() && UR.messages.list()[0] ? UR.messages.list()[0].id : null);
+if (startId && UR.messages.get(startId)) openConv(startId);
+if (isMobile() && !UI.param('c')) document.querySelector('.chat-root').classList.remove('in-chat');
 </script>
 </body>
 </html>

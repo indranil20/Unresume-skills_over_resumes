@@ -5,229 +5,131 @@
 <link rel="icon" type="image/png" href="images/favicon.png">
 <title>Manage Students — Unresume</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
 <link rel="stylesheet" href="css/globals.css">
 <link rel="stylesheet" href="css/navbar.css">
-<style>
-.add-card{background:var(--bg-card);border:1px solid var(--border);border-radius:18px;padding:22px 24px;margin-bottom:24px}
-.add-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
-@media(max-width:760px){.add-grid{grid-template-columns:1fr}}
-.student-table{background:var(--bg-card);border:1px solid var(--border);border-radius:18px;overflow:hidden}
-.student-thead{display:grid;grid-template-columns:36px 1fr 150px 150px 150px;gap:0;background:var(--bg-elevated);padding:12px 18px;border-bottom:1px solid var(--border)}
-.student-thead span{font-size:11.5px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.05em}
-.student-row{display:grid;grid-template-columns:36px 1fr 150px 150px 150px;gap:0;padding:14px 18px;border-bottom:1px solid var(--border);align-items:center;transition:background .12s}
-.student-row:last-child{border-bottom:none}
-.student-row:hover{background:rgba(255,255,255,.015)}
-@media(max-width:1000px){
-  .student-thead,.student-row{grid-template-columns:36px 1fr 130px 140px 140px}
-}
-/* Tablet/phone: rows become cards so status stays editable */
-@media(max-width:820px){
-  .student-thead{display:none}
-  .student-row{grid-template-columns:36px 1fr;grid-template-areas:"num who" "num id" "num status" "num access";row-gap:10px;column-gap:10px;padding:16px !important}
-  .student-row>:nth-child(1){grid-area:num;align-self:start}
-  .student-row>:nth-child(2){grid-area:who}
-  .student-row>:nth-child(3){grid-area:id}
-  .student-row>:nth-child(4){grid-area:status;width:100%}
-  .student-row>:nth-child(5){grid-area:access}
-  .add-card{padding:18px 16px !important}
-}
-@media(max-width:480px){
-  .add-card form>div:last-child{flex-direction:column}
-  .add-card form>div:last-child>*{justify-content:center}
-}
-.st-av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:800;color:#fff;flex-shrink:0}
-.st-name{font-size:13.5px;font-weight:700;color:var(--text1)}
-.st-id{font-size:11px;color:var(--text4);font-family:var(--font-mono);margin-top:1px}
-.id-pill{font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:100px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
-.id-pill.student{background:#eaf1ff;color:#2563eb}
-.id-pill.candidate{background:#e6f8f5;color:#0d9488}
-.priority-tag{font-size:11px;font-weight:700;padding:5px 11px;border-radius:100px;background:#fef6e4;color:#b7791f;white-space:nowrap}
-.status-select{font-size:13px;font-weight:600;padding:8px 12px;color:var(--text1);cursor:pointer;width:calc(100% - 16px);font-family:var(--font-body)}
-.empty-note{text-align:center;padding:60px 24px;color:var(--text3);font-size:14px}
-.add-card{padding:24px !important}
-</style>
 <link rel="stylesheet" href="css/dashboard.css">
+<style>
+.id-pill{font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:100px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.id-pill.student{background:#eaf1ff;color:#2563eb}.id-pill.candidate{background:#e6f8f5;color:#0d9488}
+.priority-tag{font-size:11px;font-weight:700;padding:5px 11px;border-radius:100px;background:#fef6e4;color:#b7791f;white-space:nowrap}
+.status-select{font-size:13px;font-weight:600;padding:7px 10px;color:var(--text1);cursor:pointer;font-family:var(--font-body)}
+.csv-drop{border:2px dashed var(--border-light);border-radius:14px;padding:16px;text-align:center;font-size:13px;color:var(--text3)}
+.prev-table{max-height:220px;overflow:auto;border:1px solid var(--border);border-radius:12px}
+</style>
 </head>
 <body>
 <div class="dash-root">
-  <div id="sidebar" data-role="academy"></div>
+  <div id="sidebar" data-roles="academy"></div>
   <div class="dash-content">
-    <header class="dash-topbar">
-      <div class="topbar-search">
-        <span class="material-symbols-rounded" style="font-size:18px;color:var(--text4)">search</span>
-        <input type="text" id="searchInput" placeholder="Search students…" oninput="renderStudents()">
-      </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div class="topbar-popover">
-          <button class="topbar-icon-btn" onclick="toggleTopbarPopover(this)"><span class="material-symbols-rounded" style="font-size:20px">notifications</span></button>
-          <div class="popover-panel notif-panel">
-            <div class="popover-head">Notifications <span class="mark-read" onclick="this.closest('.topbar-popover').querySelector('.notif-dot')?.remove()">Mark all read</span></div>
-            <div class="notif-list">
-              <div class="notif-item">
-                <div class="notif-icon tint-blue"><span class="material-symbols-rounded" style="font-size:17px">work</span></div>
-                <div><div class="notif-text">TechCorp has 2 open referral slots</div><div class="notif-time">2h ago</div></div>
-              </div>
-              <div class="notif-item">
-                <div class="notif-icon tint-purple"><span class="material-symbols-rounded" style="font-size:17px">handshake</span></div>
-                <div><div class="notif-text">Neha Patel was placed at DataSoft</div><div class="notif-time">1d ago</div></div>
-              </div>
-              <div class="notif-item">
-                <div class="notif-icon tint-amber"><span class="material-symbols-rounded" style="font-size:17px">school</span></div>
-                <div><div class="notif-text">5 new students need ID issuance</div><div class="notif-time">2d ago</div></div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="topbar-popover">
-          <div class="topbar-avatar" onclick="toggleTopbarPopover(this)">AC</div>
-          <div class="popover-panel avatar-panel">
-            <a href="#" class="avatar-menu-item" onclick="alert('Settings coming soon');return false"><span class="material-symbols-rounded" style="font-size:18px">settings</span> Account Settings</a>
-            <a href="login.html" class="avatar-menu-item danger"><span class="material-symbols-rounded" style="font-size:18px">logout</span> Sign Out</a>
-          </div>
-        </div>
-      </div>
-    </header>
+    <header class="dash-topbar"><div class="topbar-search"><span class="material-symbols-rounded" style="font-size:18px;color:var(--text4)">search</span><input type="text" id="searchInput" placeholder="Search name, email or ID…" aria-label="Search students" data-local></div></header>
     <main class="dash-main">
       <div class="dash-greeting"><div class="g-blob"></div><svg class="g-spark" viewBox="0 0 44 44" aria-hidden="true"><path d="M8 30 L26 6"/><path d="M20 36 L38 14"/><path d="M30 40 L40 32"/></svg>
-        <div>
-          <h1 class="dash-h1">Manage Students</h1>
-          <p class="dash-sub">Add students and issue them a Student ID. Once placed or no longer enrolled, their access auto-converts to a Candidate ID.</p>
-        </div>
-        <button id="addToggleBtn" onclick="toggleAddForm()" class="cta-btn">
-          <span class="material-symbols-rounded" style="font-size:17px">person_add</span> Add Student
-        </button>
+        <div><h1 class="dash-h1">Manage Students</h1><p class="dash-sub">Issue Student IDs, assign batches and track progress. When a student is Placed or leaves, their access auto-converts to an independent Candidate ID.</p></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="addOne()" class="cta-btn"><span class="material-symbols-rounded" style="font-size:17px">person_add</span> Add student</button><button onclick="bulk()" class="cta-btn" style="background:#fff;color:var(--brand);box-shadow:var(--shadow-sm)"><span class="material-symbols-rounded" style="font-size:17px">upload_file</span> Bulk import</button></div></div>
+      <div class="d-toolbar">
+        <select id="batchF" aria-label="Batch"></select>
+        <select id="statusF" aria-label="Status"><option value="">All statuses</option><option>Active</option><option>Referred</option><option>Placed</option><option>Left Academy</option></select>
+        <select id="sortF" aria-label="Sort"><option value="name">Name</option><option value="score">Skill score</option><option value="tasks">Verified tasks</option><option value="recent">Recently added</option></select>
+        <span class="spacer"></span><span id="studentCount" class="d-pill gray"></span>
+        <button class="btn-sm" onclick="exportCSV()"><span class="material-symbols-rounded">download</span>Export CSV</button>
       </div>
-
-      <div class="add-card" id="addCard" style="display:none">
-        <div class="sec-title" style="margin-bottom:16px"><span class="sec-icon tint-purple"><span class="material-symbols-rounded">person_add</span></span>New Student</div>
-        <form onsubmit="handleAddStudent(event)">
-          <div class="add-grid">
-            <div class="form-field"><label class="form-label">Full Name</label><div class="input-wrap"><input type="text" id="newName" placeholder="Alex Johnson" required></div></div>
-            <div class="form-field"><label class="form-label">Email</label><div class="input-wrap"><input type="email" id="newEmail" placeholder="alex@email.com" required></div></div>
-            <div class="form-field"><label class="form-label">Course / Batch</label><div class="input-wrap"><input type="text" id="newCourse" placeholder="Full Stack — 2026"></div></div>
-          </div>
-          <div style="display:flex;gap:10px">
-            <button type="submit" class="btn-primary" style="font-size:13.5px;padding:10px 20px">Issue Student ID</button>
-            <button type="button" onclick="toggleAddForm()" class="btn-ghost" style="font-size:13.5px;padding:10px 18px">Cancel</button>
-          </div>
-        </form>
-      </div>
-
-      <div class="sec-head" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <span class="sec-title"><span class="sec-icon tint-pink"><span class="material-symbols-rounded">groups</span></span>Student Roster</span>
-        <span id="studentCount" class="d-pill gray"></span>
-      </div>
-      <div class="student-table">
-        <div class="student-thead">
-          <span>#</span><span>Student</span><span>ID</span><span>Status</span><span>Access</span>
-        </div>
-        <div id="studentList"></div>
-      </div>
+      <div class="d-table-wrap"><table class="d-table stack"><thead><tr><th>Student</th><th>ID</th><th>Batch</th><th>Progress</th><th>Status</th><th>Access</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
     </main>
   </div>
 </div>
-
-<script src="js/components.js"></script>
 <script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
 <script>
-const gradients = [
-  'linear-gradient(135deg,#38bdf8,#2563eb)',
-  'linear-gradient(135deg,#8b5cf6,#6d28d9)',
-  'linear-gradient(135deg,#e879f9,#a855f7)',
-  'linear-gradient(135deg,#2dd4bf,#0d9488)',
-  'linear-gradient(135deg,#fbbf24,#f97316)',
-  'linear-gradient(135deg,#818cf8,#4f46e5)',
-];
-
-let nextIdNum = 1042;
-function genId(prefix) { return `${prefix}-${nextIdNum++}`; }
-
-let students = getCandidates().map((c, i) => ({
-  name: c.name,
-  username: c.username,
-  course: 'Full Stack — 2025',
-  idType: 'student',
-  recordId: genId('STU'),
-  status: 'Active',
-}));
-
-let searchVal = '';
-
-function toggleAddForm() {
-  const card = document.getElementById('addCard');
-  card.style.display = card.style.display === 'none' ? 'block' : 'none';
+const $ = id => document.getElementById(id), esc = UI.esc;
+if (UI.param('q')) $('searchInput').value = UI.param('q');
+let batches = [], initBatch = UI.param('batch') || '';
+function list() {
+  const sort = $('sortF').value;
+  let l = UR.academy.students({ q: $('searchInput').value, batchId: $('batchF').value || undefined, status: $('statusF').value || undefined });
+  return sort === 'score' ? UI.sortBy(l, s => s.skillScore || 0) : sort === 'tasks' ? UI.sortBy(l, 'tasksVerified') : sort === 'recent' ? UI.sortBy(l, s => new Date(s.createdAt).getTime()) : UI.sortBy(l, s => s.name.toLowerCase(), 'asc');
 }
-
-function handleAddStudent(e) {
-  e.preventDefault();
-  const name = document.getElementById('newName').value.trim();
-  const course = document.getElementById('newCourse').value.trim() || '—';
-  students.unshift({
-    name,
-    username: name.toLowerCase().replace(/\s+/g, '-'),
-    course,
-    idType: 'student',
-    recordId: genId('STU'),
-    status: 'Active',
-  });
-  e.target.reset();
-  toggleAddForm();
-  renderStudents();
+function render() {
+  batches = UR.academy.batches();
+  const cur = $('batchF').value || initBatch; initBatch = '';
+  $('batchF').innerHTML = `<option value="">All batches</option>` + batches.map(b => `<option value="${b.id}" ${b.id === cur ? 'selected' : ''}>${esc(b.name)} — ${esc(b.course)}</option>`).join('');
+  const l = list(), total = UR.academy.students().length;
+  $('studentCount').textContent = `${l.length} of ${total} students`;
+  $('rows').innerHTML = l.length ? l.map(s => `<tr>
+    <td class="who-cell"><div class="who">${UI.avatar(s.name, 34, s.email)}<div><b>${s.candidate ? `<a href="candidate-profile.html?u=${s.candidate}">${esc(s.name)}</a>` : esc(s.name)}</b><small>${esc(s.email)}${s.candidate ? '' : s.consent === 'pending' ? ' · <span style="color:#b7791f;font-weight:700" title="The candidate must accept in their Settings">link request pending</span>' : s.consent === 'declined' ? ' · <span style="color:#be123c">declined link</span>' : ' · <span title="They get a link request when they sign up with this email">no linked account</span>'}</small></div></div></td>
+    <td data-label="ID">${s.idType === 'student' ? `<span class="id-pill student">${UI.icon('school', 13)} ${s.recordId}</span>` : `<span class="id-pill candidate">${UI.icon('badge', 13)} ${s.recordId}</span>`}</td>
+    <td data-label="Batch"><select class="status-select" aria-label="Batch for ${esc(s.name)}" onchange="update('${s.id}',{batchId:this.value})"><option value="">—</option>${batches.map(b => `<option value="${b.id}" ${b.id === s.batchId ? 'selected' : ''}>${esc(b.name)}</option>`).join('')}</select></td>
+    <td data-label="Progress">${s.tasksVerified ? `<b class="num">${s.skillScore}</b> <small style="color:var(--text3)">· ${s.tasksVerified} tasks</small>` : '<span style="color:var(--text4);font-size:12px">No verified tasks</span>'}${s.pendingReviews ? '<br>' + UI.pill(s.pendingReviews + ' in review', 'tint-amber') : ''}${s.activeApplications ? '<br><small style="color:var(--text3)">' + UI.plural(s.activeApplications, 'active application') + '</small>' : ''}</td>
+    <td data-label="Status"><select class="status-select" aria-label="Status for ${esc(s.name)}" onchange="setStatus('${s.id}', this.value, this)">${['Active', 'Referred', 'Placed', 'Left Academy'].map(o => `<option ${s.status === o ? 'selected' : ''}>${o}</option>`).join('')}</select></td>
+    <td data-label="Access">${s.idType === 'student' ? '<span class="priority-tag">⚡ Priority Referral</span>' : '<span style="font-size:12px;color:var(--text3)">Independent access</span>'}</td>
+    <td><div class="acts">${s.status !== 'Placed' && s.status !== 'Left Academy' ? `<a class="btn-sm" href="academy-jobs.html?student=${s.id}">${UI.icon('send')}Refer</a>` : ''}<button class="btn-sm danger" aria-label="Remove ${esc(s.name)}" onclick="removeS('${s.id}','${esc(s.name).replace(/'/g, '&#39;')}')">${UI.icon('delete')}</button></div></td></tr>`).join('')
+    : `<tr><td colspan="7">${UI.empty('school', total ? 'No students match these filters' : 'No students yet', total ? '' : 'Add students one at a time or import a CSV for a whole batch.')}</td></tr>`;
 }
-
-function convertIfNeeded(s) {
-  if (s.idType === 'student' && (s.status === 'Placed' || s.status === 'Left Academy')) {
-    s.idType = 'candidate';
-    s.recordId = genId('CAND');
+const update = (id, patch) => UI.run(() => UR.academy.updateStudent(id, patch), 'Student updated').catch(() => render());
+async function setStatus(id, value, el) {
+  const s = UR.academy.students().find(x => x.id === id);
+  if (s.idType === 'student' && (value === 'Placed' || value === 'Left Academy')) {
+    const r = await UI.confirm({ title: `Mark ${s.name} as ${value}?`, text: 'Their Student ID converts to an independent Candidate ID. They keep their account and scores but lose priority-referral status. This can\'t be undone.', confirmLabel: 'Convert & save' });
+    if (!r.ok) { el.value = s.status; return; }
+    if (value === 'Placed') return placementFor(s);
   }
+  update(id, { status: value });
 }
-
-function handleStatusChange(idx, value) {
-  const s = students[idx];
-  s.status = value;
-  convertIfNeeded(s);
-  renderStudents();
+function placementFor(s) {
+  UI.modal({ title: `Record placement for ${s.name}`, icon: 'handshake', submitLabel: 'Save placement', sub: 'Hires made through Unresume are recorded automatically. Use this for placements outside the platform — they are marked "self-reported".',
+    body: `<div class="form-grid2">${UI.field({ name: 'companyName', label: 'Company', required: true })}${UI.field({ name: 'role', label: 'Role', required: true })}</div><div class="form-grid2">${UI.field({ name: 'placedAt', label: 'Start date', type: 'date' })}${UI.field({ name: 'salary', label: 'Package (optional)', placeholder: '₹ LPA' })}</div>`,
+    onSubmit: d => { UR.academy.addPlacement({ studentId: s.id, ...d }); UI.toast(`${s.name} marked as placed`); } });
+  setTimeout(render, 50);
 }
-
-function renderStudents() {
-  searchVal = document.getElementById('searchInput').value.toLowerCase();
-  const list = students.filter(s => !searchVal || s.name.toLowerCase().includes(searchVal));
-  document.getElementById('studentCount').textContent = `${list.length} of ${students.length} students`;
-
-  if (!list.length) {
-    document.getElementById('studentList').innerHTML = `<div class="empty-note">No students match your search.</div>`;
-    return;
-  }
-
-  document.getElementById('studentList').innerHTML = list.map((s) => {
-    const idx = students.indexOf(s);
-    const initials = s.name.split(' ').map(w=>w[0]).join('').slice(0,2);
-    const idBadge = s.idType === 'student'
-      ? `<span class="id-pill student"><span class="material-symbols-rounded" style="font-size:13px">school</span> Student ID</span>`
-      : `<span class="id-pill candidate"><span class="material-symbols-rounded" style="font-size:13px">badge</span> Candidate ID</span>`;
-
-    return `<div class="student-row">
-      <span class="row-num">${idx+1}</span>
-      <div style="display:flex;align-items:center;gap:10px;min-width:0">
-        <div class="st-av" style="background:${gradients[idx%gradients.length]}">${initials}</div>
-        <div style="min-width:0">
-          <div class="st-name">${s.name}</div>
-          <div class="st-id">${s.recordId} · ${s.course}</div>
-        </div>
-      </div>
-      <div>${idBadge}</div>
-      <select class="status-select" onchange="handleStatusChange(${idx}, this.value)">
-        ${['Active','Referred','Placed','Left Academy'].map(opt =>
-          `<option value="${opt}" ${s.status===opt?'selected':''}>${opt}</option>`).join('')}
-      </select>
-      <div>${s.idType==='student' ? '<span class="priority-tag">⚡ Priority Referral</span>' : '<span style="font-size:12px;color:var(--text3)">Independent access</span>'}</div>
-    </div>`;
-  }).join('');
+function addOne() {
+  UI.modal({ title: 'Add a student', icon: 'person_add', submitLabel: 'Issue Student ID',
+    body: `<div class="form-grid2">${UI.field({ name: 'name', label: 'Full name', required: true })}${UI.field({ name: 'email', label: 'Email', type: 'email', required: true, hint: 'If they already have an Unresume account with this email, they get a request to accept — candidates own their accounts, so links need their consent.' })}</div>${UI.field({ name: 'batchId', label: 'Batch', type: 'select', options: [['', 'No batch'], ...batches.map(b => [b.id, `${b.name} — ${b.course}`])] })}`,
+    onSubmit: d => { const s = UR.academy.addStudent(d); UI.toast(`${s.name} added — ${s.recordId} issued`); } });
 }
-
-renderStudents();
+function bulk() {
+  let rows = [];
+  const m = UI.modal({ title: 'Bulk import students', icon: 'upload_file', wide: true, submitLabel: 'Import', sub: 'CSV with columns <code>name,email,batch</code> (batch optional — must match a batch name). Paste below or choose a file.',
+    body: `<div class="csv-drop"><input type="file" id="csvFile" accept=".csv,text/csv" aria-label="CSV file"></div>
+      ${UI.field({ name: 'csv', label: 'CSV text', type: 'textarea', rows: 6, placeholder: 'name,email,batch\nAsha Roy,asha@example.com,FS-2026A' })}
+      ${UI.field({ name: 'batchId', label: 'Default batch (for rows without one)', type: 'select', options: [['', 'No batch'], ...batches.map(b => [b.id, b.name])] })}
+      <div id="csvPreview"></div>`,
+    onSubmit: d => {
+      rows = parse(d.csv);
+      if (!rows.length) throw new Error('No rows found. Check the CSV has a name,email header.');
+      const r = UR.academy.bulkAdd(rows, d.batchId || null);
+      if (r.errors.length) {
+        $('csvPreview').innerHTML = `<div class="d-note ${r.added.length ? 'warn' : 'bad'}">${UI.icon('info')}<div><b>${r.added.length} added, ${r.errors.length} skipped.</b><br>${r.errors.map(e => `Row ${e.row}: ${esc(e.message)}`).join('<br>')}</div></div>`;
+        if (r.added.length) UI.toast(`${r.added.length} students imported`);
+        const ta = m.form.querySelector('[name=csv]'); ta.value = 'name,email,batch\n' + r.errors.map(e => { const x = rows[e.row - 2]; return [x.name, x.email, x.batch || ''].join(','); }).join('\n');
+        return false; // keep the dialog open so failed rows can be fixed
+      }
+      UI.toast(`${r.added.length} students imported with Student IDs`);
+    } });
+  const ta = m.form.querySelector('[name=csv]');
+  const preview = () => { const r = parse(ta.value); $('csvPreview').innerHTML = r.length ? `<div class="d-sec-title">${r.length} row${r.length > 1 ? 's' : ''} detected</div><div class="prev-table"><table class="d-table"><thead><tr><th>Name</th><th>Email</th><th>Batch</th></tr></thead><tbody>${r.slice(0, 50).map(x => `<tr><td>${esc(x.name)}</td><td>${esc(x.email)}</td><td>${esc(x.batch || '')}</td></tr>`).join('')}</tbody></table></div>` : ''; };
+  ta.addEventListener('input', UI.debounce(preview, 200));
+  m.form.querySelector('#csvFile').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; if (f.size > 2e6) return UI.toast('CSV is larger than 2 MB', 'error'); f.text().then(t => { ta.value = t; preview(); }); });
+}
+function parse(text) {
+  const rows = UI.parseCSV(String(text || '').trim()); if (!rows.length) return [];
+  const head = rows[0].map(h => h.trim().toLowerCase());
+  const hasHead = head.includes('email');
+  const idx = k => hasHead ? head.indexOf(k) : { name: 0, email: 1, batch: 2 }[k];
+  return (hasHead ? rows.slice(1) : rows).map(r => ({ name: (r[idx('name')] || '').trim(), email: (r[idx('email')] || '').trim(), batch: idx('batch') >= 0 ? (r[idx('batch')] || '').trim() : '' }));
+}
+async function removeS(id, name) { const r = await UI.confirm({ title: `Remove ${name} from your roster?`, danger: true, confirmLabel: 'Remove', text: 'Their Unresume account (if any) is not deleted — they just stop being your student.' }); if (r.ok) UI.run(() => UR.academy.removeStudent(id), 'Student removed').catch(() => {}); }
+function exportCSV() {
+  UI.csv(`students-${new Date().toISOString().slice(0, 10)}.csv`, ['Name', 'Email', 'ID', 'Batch', 'Course', 'Status', 'Skill score', 'Verified tasks', 'Pending reviews', 'Active applications', 'Referrals', 'Has account'],
+    list().map(s => [s.name, s.email, s.recordId, s.batchName, s.course, s.status, s.tasksVerified ? s.skillScore : '', s.tasksVerified, s.pendingReviews, s.activeApplications, s.referrals, s.candidate ? 'yes' : 'no']));
+}
+['batchF', 'statusF', 'sortF'].forEach(id => $(id).addEventListener('change', render));
+$('searchInput').addEventListener('input', UI.debounce(render, 150));
+render();
+if (UI.param('bulk')) bulk();
+UI.onChange(render);
 </script>
 </body>
 </html>

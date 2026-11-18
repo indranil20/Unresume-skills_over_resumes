@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link rel="icon" type="image/png" href="images/favicon.png">
+<title>Privacy Policy — Unresume</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link rel="stylesheet" href="css/globals.css">
+<link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/dashboard.css">
+<style>
+.legal{max-width:820px;margin:0 auto;padding:56px 24px 96px}
+.legal h1{font-family:var(--font-display);font-size:clamp(32px,4vw,46px);font-weight:800;color:var(--text1);letter-spacing:-.03em;margin:14px 0 6px}
+.legal h2{font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--text1);margin:34px 0 10px;scroll-margin-top:90px}
+.legal p,.legal li{font-size:15px;color:var(--text2);line-height:1.8}
+.legal ul{padding-left:20px;margin:8px 0}
+.legal table{width:100%;border-collapse:collapse;margin:10px 0;font-size:14px}
+.legal td,.legal th{border:1px solid var(--border);padding:10px 12px;text-align:left;vertical-align:top;color:var(--text2)}
+.legal th{background:#fafaff;color:var(--text1)}
+.toc{background:#fff;border:1px solid var(--border);border-radius:16px;padding:16px 20px;margin-top:20px}
+.toc a{color:var(--brand);font-weight:600}
+</style>
+</head>
+<body>
+<div id="navbar"></div>
+<div class="page-wrap"><article class="legal">
+  <span class="section-badge"><span class="material-symbols-rounded" style="font-size:15px">shield</span> Legal</span>
+  <h1>Privacy Policy</h1>
+  <p style="color:var(--text3)">Last updated: 18 November 2026</p>
+  <div class="d-note warn" style="margin-top:14px"><span class="material-symbols-rounded">gavel</span><div>This policy describes how the Unresume platform is designed to handle data. Have it reviewed by qualified counsel for your jurisdiction (e.g. India's DPDP Act 2023, GDPR) before launch.</div></div>
+  <nav class="toc" aria-label="Contents"><ol style="padding-left:18px;columns:2;gap:24px"><li><a href="#collect">What we collect</a></li><li><a href="#use">How we use it</a></li><li><a href="#share">Who can see what</a></li><li><a href="#integrity">Assessment integrity</a></li><li><a href="#retention">Retention</a></li><li><a href="#rights">Your rights & controls</a></li><li><a href="#security">Security</a></li><li><a href="#contact">Contact</a></li></ol></nav>
+
+  <h2 id="collect">1. What we collect</h2>
+  <ul><li><b>Account data:</b> name, email, password (stored as a salted hash), role and organisation.</li>
+    <li><b>Profile data you add:</b> bio, location, skills, portfolio links.</li>
+    <li><b>Assessment data:</b> files and links you submit for tasks, notes, start and submit times, and integrity signals described in section 4.</li>
+    <li><b>Scores and feedback</b> given by company reviewers, and dispute records.</li>
+    <li><b>Hiring activity:</b> applications, interview schedules, messages with companies and academies.</li>
+    <li><b>Academy records:</b> if your academy adds you, your name, email, batch and Student ID.</li>
+    <li><b>Technical data:</b> sign-in times and actions recorded in our audit log for security and dispute handling.</li></ul>
+
+  <h2 id="use">2. How we use it</h2>
+  <p>To run the platform: deliver tasks, calculate your verified Skill Score, show your portfolio, let companies review your work and contact you, let academies track students who enrol with them, detect cheating, resolve disputes, and keep the service secure. We do not sell personal data and we do not use your submissions to train third-party AI models.</p>
+
+  <h2 id="share">3. Who can see what</h2>
+  <table><thead><tr><th>Data</th><th>Who sees it</th></tr></thead><tbody>
+    <tr><td>Working file</td><td>You, and reviewers at the company that owns the task. Never public.</td></tr>
+    <tr><td>Final output</td><td>Same as above, plus the public if you set the portfolio item to Public.</td></tr>
+    <tr><td>Verified scores, Skill Score, rank</td><td>Public by default. Turn off "Show my scores publicly" to hide them; companies you apply to still see the score for that application.</td></tr>
+    <tr><td>Profile</td><td>Your choice: everyone, signed-in companies and academies only, or only you.</td></tr>
+    <tr><td>Applications & interviews</td><td>You and the company you applied to. If you were referred, the referring academy sees status and score.</td></tr>
+    <tr><td>Messages</td><td>The participants. Moderators may read a conversation only when it is reported.</td></tr></tbody></table>
+
+  <h2 id="integrity">4. Assessment integrity</h2>
+  <p>While you take a task we record: when you started and submitted, how often you left the assessment tab, and a cryptographic fingerprint (SHA-256) of each file you upload. We compare fingerprints, links and notes with other submissions to detect copying. Automated flags are always reviewed by a person before any action is taken, and you can dispute outcomes.</p>
+
+  <h2 id="retention">5. Retention</h2>
+  <ul><li>Account and profile data: until you delete your account.</li><li>Submissions and scores tied to an application: 90 days after account deletion, to resolve open disputes, then deleted.</li><li>Audit logs: 2 years, for security investigations.</li><li>Contact-form messages: 1 year.</li></ul>
+
+  <h2 id="rights">6. Your rights & controls</h2>
+  <p>In <a href="settings.html" style="color:var(--brand);font-weight:700">Settings</a> you can download all your data as JSON, change profile and score visibility, control who can message you, choose notifications, and request account deletion. You may also ask us to correct inaccurate data or object to processing by contacting us.</p>
+
+  <h2 id="security">7. Security</h2>
+  <p>Data is encrypted in transit (TLS) and at rest, access is role-based, and every state-changing action is audit-logged. No system is perfectly secure; we will notify affected users and regulators of any breach as required by law.</p>
+
+  <h2 id="contact">8. Contact</h2>
+  <p>Questions or requests: <a href="contact.html" style="color:var(--brand);font-weight:700">contact form</a> or privacy@unresume.io. Grievance officer: Unresume, Kolkata, India.</p>
+</article></div>
+<div id="footer"></div>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
+</body>
+</html>

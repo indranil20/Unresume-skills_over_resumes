@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
@@ -100,14 +100,14 @@ textarea.form-textarea::placeholder{color:var(--text4)}
         </div>
         <div style="display:flex;flex-direction:column;gap:16px" id="formFields">
           <div class="name-row">
-            <div class="form-field"><label class="form-label">First Name</label><div class="input-wrap"><input type="text" placeholder="Your name" required></div></div>
-            <div class="form-field"><label class="form-label">Last Name</label><div class="input-wrap"><input type="text" placeholder="Last name" required></div></div>
+            <div class="form-field"><label class="form-label" for="ct-fn">First Name *</label><div class="input-wrap"><input type="text" id="ct-fn" placeholder="Your name" required></div></div>
+            <div class="form-field"><label class="form-label" for="ct-ln">Last Name</label><div class="input-wrap"><input type="text" id="ct-ln" placeholder="Last name"></div></div>
           </div>
-          <div class="form-field"><label class="form-label">Email</label><div class="input-wrap"><span class="material-symbols-rounded">mail</span><input type="email" placeholder="you@example.com" required></div></div>
+          <div class="form-field"><label class="form-label" for="ct-em">Email *</label><div class="input-wrap"><span class="material-symbols-rounded">mail</span><input type="email" id="ct-em" placeholder="you@example.com" required></div></div>
           <div class="form-field">
             <label class="form-label">Topic</label>
             <div class="input-wrap select-wrap" style="padding:0">
-              <select>
+              <select id="ct-topic" aria-label="Topic">
                 <option value="">Select a topic</option>
                 <option>General Inquiry</option>
                 <option>Partnership / Academy</option>
@@ -118,7 +118,7 @@ textarea.form-textarea::placeholder{color:var(--text4)}
               <span class="material-symbols-rounded chev">expand_more</span>
             </div>
           </div>
-          <div class="form-field"><label class="form-label">Message</label><textarea class="form-textarea" placeholder="Tell us what's on your mind…" required></textarea></div>
+          <div class="form-field"><label class="form-label" for="ct-msg">Message *</label><textarea class="form-textarea" id="ct-msg" maxlength="4000" placeholder="Tell us what's on your mind…" required></textarea></div><div id="ctError" role="alert"></div>
           <button type="button" class="ct-submit" id="sendBtn" onclick="handleSend()">
             <span class="material-symbols-rounded" style="font-size:18px">send</span> Send Message
           </button>
@@ -127,7 +127,7 @@ textarea.form-textarea::placeholder{color:var(--text4)}
         <div class="success-view" id="successView">
           <div class="success-icon"><span class="material-symbols-rounded" style="font-size:34px;color:#0d9488;font-variation-settings:'FILL' 1">check_circle</span></div>
           <h3 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--text1)">Message sent!</h3>
-          <p style="font-size:14px;color:var(--text3);line-height:1.6">Thanks for reaching out. We'll get back to you within 24 hours.</p>
+          <p style="font-size:14px;color:var(--text3);line-height:1.6">Thanks — your message is in our support inbox and the team replies by email, usually within 24 hours.</p>
           <button onclick="resetForm()" style="font-size:13.5px;color:var(--brand);background:none;border:none;cursor:pointer;font-weight:700;margin-top:4px">Send another →</button>
         </div>
       </div>
@@ -137,23 +137,29 @@ textarea.form-textarea::placeholder{color:var(--text4)}
 </div>
 
 <div id="footer"></div>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
 <script src="js/components.js"></script>
 <script>
+const SEND_LABEL = '<span class="material-symbols-rounded" style="font-size:18px">send</span> Send Message';
+const me = UR.user();
+if (me) { const [f, ...l] = me.name.split(' '); document.getElementById('ct-fn').value = f; document.getElementById('ct-ln').value = l.join(' '); document.getElementById('ct-em').value = me.email; }
 function handleSend() {
-  const btn = document.getElementById('sendBtn');
-  btn.innerHTML = '<span class="spinner"></span>';
-  btn.disabled = true;
-  setTimeout(() => {
+  const btn = document.getElementById('sendBtn'), err = document.getElementById('ctError');
+  err.innerHTML = '';
+  btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true;
+  try {
+    UR.contact.create({ name: `${document.getElementById('ct-fn').value} ${document.getElementById('ct-ln').value}`.trim(), email: document.getElementById('ct-em').value, topic: document.getElementById('ct-topic').value || 'General Inquiry', message: document.getElementById('ct-msg').value });
     document.getElementById('formFields').style.display = 'none';
     document.getElementById('successView').style.display = 'flex';
-  }, 1000);
+  } catch (ex) { err.innerHTML = UI.errorBox(ex.message); }
+  btn.innerHTML = SEND_LABEL; btn.disabled = false;
 }
 function resetForm() {
+  document.getElementById('ct-msg').value = '';
   document.getElementById('formFields').style.display = '';
   document.getElementById('successView').style.display = 'none';
-  const btn = document.getElementById('sendBtn');
-  btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:18px">send</span> Send Message';
-  btn.disabled = false;
 }
 </script>
 </body>

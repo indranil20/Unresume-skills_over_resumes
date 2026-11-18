@@ -3,234 +3,76 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <link rel="icon" type="image/png" href="images/favicon.png">
-<title>Placements — Unresume</title>
+<title>Referrals &amp; Placements — Unresume</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
 <link rel="stylesheet" href="css/globals.css">
 <link rel="stylesheet" href="css/navbar.css">
-<style>
-.pl-head{padding:28px 0;border-bottom:1px solid var(--border);margin-bottom:28px}
-.pl-head h1{font-family:var(--font-display);font-size:clamp(20px,3vw,26px);font-weight:800;color:var(--text1);letter-spacing:-.025em;margin-bottom:6px}
-.pl-head p{font-size:13.5px;color:var(--text3)}
-.sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-.sec-title{font-family:var(--font-display);font-size:15px;font-weight:800;color:var(--text1)}
-/* Global toggle */
-.global-toggle-bar{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:18px 20px;display:flex;align-items:center;gap:16px;margin-bottom:28px}
-.global-tog-info{flex:1}
-.global-tog-title{font-size:14px;font-weight:800;color:var(--text1);margin-bottom:3px}
-.global-tog-sub{font-size:12.5px;color:var(--text3)}
-/* Company sections */
-.comp-section{background:var(--bg-card);border:1px solid var(--border);border-radius:18px;overflow:hidden;margin-bottom:20px}
-.comp-section-head{display:flex;align-items:center;gap:14px;padding:18px 20px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s}
-.comp-section-head:hover{background:rgba(255,255,255,.015)}
-.comp-logo{width:42px;height:42px;border-radius:11px;background:var(--bg-elevated);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
-.comp-info{flex:1}
-.comp-name{font-size:15px;font-weight:800;color:var(--text1);font-family:var(--font-display)}
-.comp-meta{font-size:12.5px;color:var(--text4)}
-.comp-body{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
-/* Student placement rows */
-.pl-student-row{display:flex;align-items:center;gap:14px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:13px;padding:13px 14px;transition:border-color .15s}
-.pl-student-row:hover{border-color:rgba(91,108,245,.2)}
-.pl-av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0}
-.pl-name{font-size:13.5px;font-weight:700;color:var(--text1);margin-bottom:2px}
-.pl-role{font-size:12px;color:var(--text4)}
-.pl-score{font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--cyan);margin-right:8px}
-.pl-toggle-row{display:flex;align-items:center;gap:8px;margin-left:auto;flex-shrink:0}
-.pl-label{font-size:12px;font-weight:700;min-width:45px;text-align:right}
-@media(max-width:640px){
-  .global-toggle-bar{flex-wrap:wrap;padding:16px;gap:12px}
-  .global-tog-info{flex-basis:calc(100% - 60px);min-width:0}
-  .global-toggle-bar .toggle-track{margin-left:56px}
-  .comp-section-head{flex-wrap:wrap;padding:16px;gap:12px}
-  .comp-info{min-width:0;flex:1 1 calc(100% - 100px)}
-  .comp-head-toggle{order:3;flex-basis:100%;padding-left:56px}
-  .comp-body{padding:14px 12px}
-  .pl-student-row{flex-wrap:wrap;gap:10px 12px;padding:12px}
-  .pl-student-row>div:nth-child(2){flex:1 1 calc(100% - 52px) !important}
-  .pl-student-row .d-pill{margin-left:50px;margin-right:0 !important}
-}
-</style>
 <link rel="stylesheet" href="css/dashboard.css">
+<style>.global-toggle-bar{padding:18px 20px;display:flex;align-items:center;gap:16px;margin-bottom:20px}</style>
 </head>
 <body>
 <div class="dash-root">
-  <div id="sidebar" data-role="academy"></div>
+  <div id="sidebar" data-roles="academy"></div>
   <div class="dash-content">
-    <header class="dash-topbar">
-      <div class="topbar-search">
-        <span class="material-symbols-rounded" style="font-size:18px;color:var(--text4)">search</span>
-        <input type="text" placeholder="Search placements…">
-      </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div class="topbar-popover">
-          <button class="topbar-icon-btn" onclick="toggleTopbarPopover(this)"><span class="material-symbols-rounded" style="font-size:20px">notifications</span></button>
-          <div class="popover-panel notif-panel">
-            <div class="popover-head">Notifications <span class="mark-read" onclick="this.closest('.topbar-popover').querySelector('.notif-dot')?.remove()">Mark all read</span></div>
-            <div class="notif-list">
-              <div class="notif-item">
-                <div class="notif-icon tint-blue"><span class="material-symbols-rounded" style="font-size:17px">work</span></div>
-                <div><div class="notif-text">TechCorp has 2 open referral slots</div><div class="notif-time">2h ago</div></div>
-              </div>
-              <div class="notif-item">
-                <div class="notif-icon tint-purple"><span class="material-symbols-rounded" style="font-size:17px">handshake</span></div>
-                <div><div class="notif-text">Neha Patel was placed at DataSoft</div><div class="notif-time">1d ago</div></div>
-              </div>
-              <div class="notif-item">
-                <div class="notif-icon tint-amber"><span class="material-symbols-rounded" style="font-size:17px">school</span></div>
-                <div><div class="notif-text">5 new students need ID issuance</div><div class="notif-time">2d ago</div></div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="topbar-popover">
-          <div class="topbar-avatar" onclick="toggleTopbarPopover(this)">AC</div>
-          <div class="popover-panel avatar-panel">
-            <a href="#" class="avatar-menu-item" onclick="alert('Settings coming soon');return false"><span class="material-symbols-rounded" style="font-size:18px">settings</span> Account Settings</a>
-            <a href="login.html" class="avatar-menu-item danger"><span class="material-symbols-rounded" style="font-size:18px">logout</span> Sign Out</a>
-          </div>
-        </div>
-      </div>
-    </header>
+    <header class="dash-topbar" data-auto data-search="Search student or company…"></header>
     <main class="dash-main">
-      <div class="dash-greeting">
-        <div class="g-blob"></div><svg class="g-spark" viewBox="0 0 44 44" aria-hidden="true"><path d="M8 30 L26 6"/><path d="M20 36 L38 14"/><path d="M30 40 L40 32"/></svg>
-        <div>
-          <h1 class="dash-h1">Placement <span class="grad-text">Portfolio</span></h1>
-          <p class="dash-sub">Control which companies can see your students' placements. Toggle globally or per-student, per-company.</p>
-        </div>
-      </div>
-
-      <!-- Global toggle -->
-      <div class="global-toggle-bar">
-        <div class="stat-icon tint-pink" style="grid-row:auto">
-          <span class="material-symbols-rounded">public</span>
-        </div>
-        <div class="global-tog-info">
-          <div class="global-tog-title">Global Portfolio Visibility</div>
-          <div class="global-tog-sub">When ON, all companies can see placement portfolio by default</div>
-        </div>
-        <div class="toggle-track on" id="globalToggle" onclick="handleGlobalToggle(this)"></div>
-        <span id="globalLabel" style="font-size:13px;font-weight:800;color:#0d9488;min-width:60px">Public</span>
-      </div>
-
-      <!-- Per-company placement sections -->
-      <div class="sec-head"><span class="sec-title">Company Placements</span><span class="d-pill gray">3 companies</span></div>
-      <div id="compSections"></div>
+      <div class="dash-greeting"><div class="g-blob"></div><svg class="g-spark" viewBox="0 0 44 44" aria-hidden="true"><path d="M8 30 L26 6"/><path d="M20 36 L38 14"/><path d="M30 40 L40 32"/></svg>
+        <div><h1 class="dash-h1">Referrals &amp; <span class="grad-text">Placements</span></h1><p class="dash-sub">Follow every referral through to hire, and control which placements appear on your public placement record.</p></div>
+        <a class="cta-btn" href="academy-jobs.html"><span class="material-symbols-rounded" style="font-size:18px">send</span> Refer students</a></div>
+      <div class="d-tabs" id="tabs"></div>
+      <div id="out"></div>
     </main>
   </div>
 </div>
-
-<script src="js/components.js"></script>
 <script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
 <script>
-const gradients = [
-  'linear-gradient(135deg,#38bdf8,#2563eb)',
-  'linear-gradient(135deg,#8b5cf6,#6d28d9)',
-  'linear-gradient(135deg,#e879f9,#a855f7)',
-  'linear-gradient(135deg,#2dd4bf,#0d9488)',
-  'linear-gradient(135deg,#fbbf24,#f97316)',
-  'linear-gradient(135deg,#818cf8,#4f46e5)',
-];
-
-const students = getCandidates();
-const companies = [
-  {
-    id:'c1', logo:'🏢', name:'TechCorp', role:'Frontend Engineer',
-    isVisible:true,
-    students: students.slice(0,3).map((s,i) => ({...s, isVisible:i<2, placedDate:'Jan 2024', salary:'₹18 LPA'}))
-  },
-  {
-    id:'c2', logo:'💼', name:'DataSoft', role:'Data Analyst',
-    isVisible:true,
-    students: students.slice(2,5).map((s,i) => ({...s, isVisible:true, placedDate:'Mar 2024', salary:'₹14 LPA'}))
-  },
-  {
-    id:'c3', logo:'🚀', name:'StartupXYZ', role:'Full Stack Dev',
-    isVisible:false,
-    students: students.slice(0,2).map((s,i) => ({...s, isVisible:false, placedDate:'Jun 2024', salary:'₹22 LPA'}))
-  },
-];
-
-let globalOn = true;
-const expanded = new Set(['c1','c2','c3']);
-
-function handleGlobalToggle(el) {
-  el.classList.toggle('on');
-  globalOn = el.classList.contains('on');
-  const lbl = document.getElementById('globalLabel');
-  lbl.textContent = globalOn ? 'Public' : 'Private';
-  lbl.style.color = globalOn ? '#0d9488' : 'var(--text4)';
-  // Cascade to all company toggles
-  companies.forEach(c => { c.isVisible = globalOn; });
-  render();
-}
-
-function toggleCompany(cid, el) {
-  const c = companies.find(x=>x.id===cid);
-  c.isVisible = !c.isVisible;
-  el.classList.toggle('on', c.isVisible);
-  const lbl = document.getElementById('clbl-'+cid);
-  lbl.textContent = c.isVisible ? 'Shown' : 'Hidden';
-  lbl.style.color = c.isVisible ? '#0d9488' : 'var(--text4)';
-}
-
-function toggleStudent(cid, sid, el) {
-  const c = companies.find(x=>x.id===cid);
-  const s = c.students.find(x=>x.username===sid);
-  s.isVisible = !s.isVisible;
-  el.classList.toggle('on', s.isVisible);
-  const lbl = document.getElementById(`slbl-${cid}-${sid}`);
-  lbl.textContent = s.isVisible ? 'Shown' : 'Hidden';
-  lbl.style.color = s.isVisible ? '#0d9488' : 'var(--text4)';
-}
-
-function toggleExpand(cid) {
-  expanded.has(cid) ? expanded.delete(cid) : expanded.add(cid);
-  render();
-}
-
+const $ = id => document.getElementById(id), esc = UI.esc;
+let tab = UI.param('tab') || 'referrals';
+const REF = { referred: ['Referred — not started', 'gray'], started: ['Task started', 'tint-blue'], applied: ['Applied', 'tint-purple'], placed: ['Hired', 'tint-teal'], rejected: ['Not selected', 'tint-red'] };
 function render() {
-  document.getElementById('compSections').innerHTML = companies.map((c, ci) => {
-    const isExp = expanded.has(c.id);
-    return `<div class="comp-section">
-      <div class="comp-section-head" onclick="toggleExpand('${c.id}')">
-        <div class="comp-logo">${c.logo}</div>
-        <div class="comp-info">
-          <div class="comp-name">${c.name}</div>
-          <div class="comp-meta">${c.role} · ${c.students.length} students placed</div>
-        </div>
-        <div class="comp-head-toggle" style="display:flex;align-items:center;gap:10px" onclick="event.stopPropagation()">
-          <span style="font-size:12.5px;color:var(--text3);font-weight:500">All students:</span>
-          <div class="toggle-track ${c.isVisible?'on':''}" id="ctog-${c.id}" onclick="toggleCompany('${c.id}',this)"></div>
-          <span id="clbl-${c.id}" style="font-size:12.5px;font-weight:700;min-width:50px;color:${c.isVisible?'#0d9488':'var(--text4)'}">${c.isVisible?'Shown':'Hidden'}</span>
-        </div>
-        <span class="material-symbols-rounded" style="font-size:20px;color:var(--text4);margin-left:8px">${isExp?'expand_less':'expand_more'}</span>
-      </div>
-      ${isExp ? `<div class="comp-body">
-        <div style="font-size:12.5px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Individual Visibility</div>
-        ${c.students.map((s, si) => {
-          const initials = s.name.split(' ').map(w=>w[0]).join('').slice(0,2);
-          return `<div class="pl-student-row">
-            <div class="pl-av" style="background:${gradients[si%gradients.length]}">${initials}</div>
-            <div style="flex:1;min-width:0">
-              <div class="pl-name">${s.name}</div>
-              <div class="pl-role">${c.role} · Placed ${s.placedDate} · ${s.salary}</div>
-            </div>
-            <span class="d-pill tint-purple" style="margin-right:8px">${s.score}</span>
-            <div class="pl-toggle-row" onclick="event.stopPropagation()">
-              <div class="toggle-track ${s.isVisible?'on':''}" onclick="toggleStudent('${c.id}','${s.username}',this)"></div>
-              <span id="slbl-${c.id}-${s.username}" class="pl-label" style="color:${s.isVisible?'#0d9488':'var(--text4)'}">${s.isVisible?'Shown':'Hidden'}</span>
-            </div>
-            <a href="candidate-profile.html?u=${s.username}" class="icon-chip tint-purple" style="margin-left:8px" title="View profile"><span class="material-symbols-rounded" style="font-size:18px">open_in_new</span></a>
-          </div>`;
-        }).join('')}
-      </div>` : ''}
-    </div>`;
-  }).join('');
+  const q = ($('topbarSearch') || { value: '' }).value.toLowerCase();
+  const refs = UR.academy.referrals().filter(r => !q || (r.studentName || '').toLowerCase().includes(q) || (r.job && r.job.company.toLowerCase().includes(q)));
+  const pls = UR.academy.placements().filter(p => !q || (p.studentName || '').toLowerCase().includes(q) || (p.companyName || p.externalCompany || '').toLowerCase().includes(q));
+  $('tabs').innerHTML = [['referrals', 'Referrals', refs.length], ['placements', 'Placements', pls.length]].map(([k, l, n]) => `<button class="d-tab ${tab === k ? 'active' : ''}" data-tab="${k}">${l}<span class="cnt">${n}</span></button>`).join('');
+  UI.tabs($('tabs'), k => { tab = k; render(); });
+  if (tab === 'referrals') {
+    $('out').innerHTML = refs.length ? `<div class="d-table-wrap"><table class="d-table stack"><thead><tr><th>Student</th><th>Job</th><th>Referred</th><th>Progress</th><th>Task score</th></tr></thead><tbody>${refs.map(r => `<tr>
+      <td class="who-cell"><div class="who">${UI.avatar(r.studentName, 34, r.studentId)}<div><b>${esc(r.studentName)}</b><small>${r.studentLinked ? 'Has an Unresume account' : 'Not signed up — invite them to create an account with their roster email'}</small></div></div></td>
+      <td data-label="Job">${r.job ? `${r.job.logo} ${esc(r.job.title)}<br><small style="color:var(--text3)">${esc(r.job.company)}</small>` : '—'}</td>
+      <td data-label="Referred">${UI.fmtDate(r.createdAt)}</td>
+      <td data-label="Progress">${r.application ? UI.appPill(r.application.status) : UI.pill(...REF[r.status] || [r.status, 'gray'])}</td>
+      <td data-label="Score">${r.application && r.application.taskScore != null ? UI.verifiedScore(r.application.taskScore, true) : '—'}</td></tr>`).join('')}</tbody></table></div>`
+      : UI.empty('send', 'No referrals yet', 'Refer students to open jobs from the Jobs page.', '<a class="cta-btn" href="academy-jobs.html">Browse jobs</a>');
+    return;
+  }
+  const allOn = pls.length && pls.every(p => p.visible);
+  $('out').innerHTML = `<div class="global-toggle-bar"><div class="stat-icon tint-pink" style="grid-row:auto">${UI.icon('public')}</div><div style="flex:1"><div style="font-size:14px;font-weight:800;color:var(--text1)">Show all placements publicly</div><div style="font-size:12.5px;color:var(--text3)">Visible placements count towards your public placement record. Hidden ones stay private but are still counted in your own reports.</div></div>
+      <div class="toggle-track ${allOn ? 'on' : ''}" role="switch" tabindex="0" aria-checked="${allOn}" aria-label="Show all placements" onclick="UI.run(()=>UR.academy.setAllPlacementVisibility(${!allOn}), '${allOn ? 'All placements hidden' : 'All placements visible'}').catch(()=>{})"></div></div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn-sm" onclick="addManual()">${UI.icon('add')}Record an off-platform placement</button></div>
+    ${pls.length ? `<div class="d-table-wrap"><table class="d-table stack"><thead><tr><th>Student</th><th>Company & role</th><th>Placed</th><th>Source</th><th>Package</th><th>Public</th></tr></thead><tbody>${pls.map(p => `<tr>
+      <td class="who-cell"><div class="who">${UI.avatar(p.studentName, 34, p.studentId)}<div><b>${p.candidate ? `<a href="candidate-profile.html?u=${p.candidate}">${esc(p.studentName)}</a>` : esc(p.studentName)}</b><small>${p.skillScore ? 'Skill score ' + p.skillScore : ''}</small></div></div></td>
+      <td data-label="Company">${esc(p.companyLogo || '🏢')} ${esc(p.companyName || p.externalCompany)}<br><small style="color:var(--text3)">${esc(p.role)}</small></td>
+      <td data-label="Placed">${UI.fmtDate(p.placedAt)}</td>
+      <td data-label="Source">${p.source === 'application' ? UI.pill('Verified hire on Unresume', 'tint-teal', 'verified') : UI.pill('Self-reported', 'gray')}</td>
+      <td data-label="Package">${esc(p.salary || '—')}</td>
+      <td data-label="Public"><div class="toggle-track ${p.visible ? 'on' : ''}" role="switch" tabindex="0" aria-checked="${p.visible}" aria-label="Public" onclick="UI.run(()=>UR.academy.setPlacementVisibility('${p.id}', ${!p.visible}), '${p.visible ? 'Placement hidden' : 'Placement visible'}').catch(()=>{})"></div></td></tr>`).join('')}</tbody></table></div>`
+      : UI.empty('handshake', 'No placements yet', 'Hires through Unresume are recorded automatically when a company marks your student as hired.')}`;
 }
-
+function addManual() {
+  const students = UR.academy.students().filter(s => s.status !== 'Placed');
+  if (!students.length) return UI.toast('No unplaced students on your roster.', 'info');
+  UI.modal({ title: 'Record off-platform placement', icon: 'handshake', submitLabel: 'Save', sub: 'Shown as "Self-reported" — only hires completed on Unresume are marked verified.',
+    body: UI.field({ name: 'studentId', label: 'Student', type: 'select', required: true, options: students.map(s => [s.id, s.name]) }) + `<div class="form-grid2">${UI.field({ name: 'companyName', label: 'Company', required: true })}${UI.field({ name: 'role', label: 'Role', required: true })}</div><div class="form-grid2">${UI.field({ name: 'placedAt', label: 'Start date', type: 'date' })}${UI.field({ name: 'salary', label: 'Package (optional)' })}</div>`,
+    onSubmit: d => { UR.academy.addPlacement(d); UI.toast('Placement recorded'); } });
+}
 render();
+if ($('topbarSearch')) $('topbarSearch').addEventListener('input', UI.debounce(render, 150));
+UI.onChange(render);
 </script>
 </body>
 </html>

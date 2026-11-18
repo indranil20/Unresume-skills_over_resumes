@@ -51,13 +51,14 @@
 </head>
 <body>
 <div class="dash-root">
-  <div id="sidebar" data-role="candidate"></div>
+  <div id="sidebar" data-roles="candidate"></div>
   <div class="dash-content">
     <header class="dash-topbar">
       <span class="feed-title">Your Feed</span>
       <div class="feed-filters">
         <button class="cat-pill active" onclick="filterFeed('all',this)">All</button>
         <button class="cat-pill" onclick="filterFeed('submission',this)">Submissions</button>
+        <button class="cat-pill" onclick="filterFeed('score',this)">Scores</button>
         <button class="cat-pill" onclick="filterFeed('follow',this)">Follows</button>
       </div>
     </header>
@@ -86,118 +87,66 @@
   </div>
 </div>
 
-<script src="js/components.js"></script>
 <script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
 <script>
-const gradients = [
-  'linear-gradient(135deg,#38bdf8,#2563eb)',
-  'linear-gradient(135deg,#8b5cf6,#6d28d9)',
-  'linear-gradient(135deg,#e879f9,#a855f7)',
-  'linear-gradient(135deg,#2dd4bf,#0d9488)',
-  'linear-gradient(135deg,#fbbf24,#f97316)',
-  'linear-gradient(135deg,#818cf8,#4f46e5)',
-];
+const esc = UI.esc;
 const typeIcon = {
-  submission:{icon:'task_alt',tint:'tint-blue',label:'submitted a task'},
-  score:{icon:'grade',tint:'tint-purple',label:'received a score'},
-  follow:{icon:'person_add',tint:'tint-pink',label:'started following'},
-  badge:{icon:'emoji_events',tint:'tint-amber',label:'earned a badge'},
-  job:{icon:'work',tint:'tint-teal',label:'applied for a job'},
+  submission: { icon:'task_alt', tint:'tint-blue' }, score: { icon:'verified', tint:'tint-teal' },
+  follow: { icon:'person_add', tint:'tint-pink' }, hired: { icon:'handshake', tint:'tint-amber' },
 };
-
 let activeFilter = 'all';
-const likedPosts = new Set();
-
 function filterFeed(f, btn) {
   activeFilter = f;
   document.querySelectorAll('.feed-filters .cat-pill').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   render();
 }
-
-function toggleLike(id, btn) {
-  if (likedPosts.has(id)) {
-    likedPosts.delete(id);
-    btn.classList.remove('liked');
-    const cnt = btn.querySelector('.like-cnt');
-    if (cnt) cnt.textContent = parseInt(cnt.textContent) - 1;
-  } else {
-    likedPosts.add(id);
-    btn.classList.add('liked');
-    const cnt = btn.querySelector('.like-cnt');
-    if (cnt) cnt.textContent = parseInt(cnt.textContent) + 1;
-  }
+function like(id) { UI.run(() => UR.feed.like(id)).catch(() => {}); }
+function share(username) {
+  const url = location.href.replace(/[^/]*$/, '') + 'candidate-profile.html?u=' + username;
+  if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => UI.toast('Profile link copied'), () => UI.toast(url, 'info')); else UI.toast(url, 'info');
 }
+function follow(u) { UI.run(() => UR.candidates.follow(u), r => r ? 'Following' : 'Unfollowed').catch(() => {}); }
 
 function render() {
-  let items = getFeed();
-  if (activeFilter !== 'all') items = items.filter(f => f.type === activeFilter);
-
-  document.getElementById('feedList').innerHTML = items.map((item, i) => {
+  const me = UR.user();
+  const items = UR.feed.list(activeFilter === 'all' ? null : activeFilter);
+  document.getElementById('feedList').innerHTML = items.map(item => {
     const t = typeIcon[item.type] || typeIcon.submission;
-    const initials = item.actorName.split(' ').map(w=>w[0]).join('').slice(0,2);
-    const likes = Math.floor(Math.random()*20)+1;
     return `<div class="feed-card">
       <div class="feed-actor">
-        <div class="feed-av" style="background:${gradients[i%gradients.length]}">${initials}</div>
-        <div>
-          <div class="feed-actor-name">${item.actorName}</div>
-          <div class="feed-actor-meta">@${item.actorUsername} · ${item.time}</div>
-        </div>
-        <div class="feed-type ${t.tint}">
-          <span class="material-symbols-rounded">${t.icon}</span>
-        </div>
+        <div class="feed-av" style="background:${UI.grad(item.actor)}">${UI.initials(item.actorName)}</div>
+        <div><a href="candidate-profile.html?u=${item.actor}" class="feed-actor-name" style="display:block">${esc(item.actorName)}</a><div class="feed-actor-meta">@${esc(item.actor)} · ${UI.timeAgo(item.createdAt)}</div></div>
+        <div class="feed-type ${t.tint}"><span class="material-symbols-rounded">${t.icon}</span></div>
       </div>
-      <div class="feed-action">${item.actorName} <strong>${item.action}</strong> ${item.target ? `<a href="#" style="color:var(--brand);font-weight:700;text-decoration:none">"${item.target}"</a>` : ''} ${item.score ? `and scored <strong class="c-purple">${item.score}/100</strong>` : ''}</div>
-      ${item.target ? `<div class="feed-card-inner">
-        <div style="display:flex;align-items:center;gap:12px">
-          <span class="icon-chip ${t.tint}"><span class="material-symbols-rounded" style="font-size:18px">${t.icon}</span></span>
-          <div style="font-size:14px;font-weight:700;color:var(--text1)">${item.target}</div>
-          ${item.score ? `<span class="d-pill tint-purple" style="margin-left:auto"><span class="material-symbols-rounded">star</span>${item.score}/100</span>` : ''}
-        </div>
-      </div>` : ''}
+      <div class="feed-action"><strong>${esc(item.actorName)}</strong> ${esc(item.text)} ${item.score != null ? UI.verifiedScore(item.score, true) : ''}</div>
       <div class="feed-footer">
-        <button class="feed-action-btn ${likedPosts.has(item.id)?'liked':''}" onclick="toggleLike('${item.id}',this)">
-          <span class="material-symbols-rounded" style="font-size:17px">${likedPosts.has(item.id)?'favorite':'favorite_border'}</span>
-          <span class="like-cnt">${likes}</span>
-        </button>
-        <button class="feed-action-btn">
-          <span class="material-symbols-rounded" style="font-size:17px">chat_bubble_outline</span>
-          <span>${Math.floor(Math.random()*8)}</span>
-        </button>
-        <button class="feed-action-btn">
-          <span class="material-symbols-rounded" style="font-size:17px">share</span>
-        </button>
-        <a href="candidate-profile.html?u=${item.actorUsername}" class="feed-action-btn" style="margin-left:auto">View Profile</a>
-      </div>
-    </div>`;
-  }).join('') || `<div class="d-empty">
-    <div class="d-empty-icon"><span class="material-symbols-rounded" style="font-size:30px">dynamic_feed</span></div>
-    No activity yet. Follow more candidates!
-  </div>`;
+        <button class="feed-action-btn ${item.liked ? 'liked' : ''}" aria-pressed="${item.liked}" onclick="like('${item.id}')"><span class="material-symbols-rounded" style="font-size:17px;font-variation-settings:'FILL' ${item.liked ? 1 : 0}">favorite</span><span>${item.likes}</span></button>
+        <button class="feed-action-btn" onclick="share('${item.actor}')"><span class="material-symbols-rounded" style="font-size:17px">share</span>Share</button>
+        <a href="${esc(item.link || 'candidate-profile.html?u=' + item.actor)}" class="feed-action-btn" style="margin-left:auto">View</a>
+      </div></div>`;
+  }).join('') || `<div class="d-empty"><div class="d-empty-icon"><span class="material-symbols-rounded" style="font-size:30px">dynamic_feed</span></div>No activity yet. Follow more candidates!</div>`;
+
+  const lb = UR.candidates.leaderboard().filter(r => r.visible && r.username !== me.username).slice(0, 4);
+  document.getElementById('whoToFollow').innerHTML = lb.map(c => {
+    const f = UR.candidates.isFollowing(c.username);
+    return `<div class="follow-item"><div class="follow-av" style="background:${UI.grad(c.username)}">${UI.initials(c.name)}</div>
+      <div style="flex:1;min-width:0"><a href="candidate-profile.html?u=${c.username}" class="follow-name" style="display:block">${esc(c.name)}</a><div class="follow-score">Skill Score ${c.score} · Rank #${c.rank}</div></div>
+      <button class="follow-btn ${f ? 'following' : ''}" onclick="follow('${c.username}')">${f ? 'Following' : 'Follow'}</button></div>`;
+  }).join('') || '<p style="font-size:13px;color:var(--text3)">No suggestions right now.</p>';
+
+  // Trending = most common skills across open jobs
+  const counts = {}; UR.jobs.list().forEach(j => j.skills.forEach(s => counts[s] = (counts[s] || 0) + 1));
+  document.getElementById('trendSkills').innerHTML = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8)
+    .map(([s, n]) => `<a href="jobs.html?q=${encodeURIComponent(s)}" class="cat-pill" style="font-size:12px" title="${n} open job${n > 1 ? 's' : ''}">${esc(s)}</a>`).join('');
+  const week = UR.jobs.list().filter(j => Date.now() - new Date(j.createdAt) < 7 * 864e5).length;
+  document.querySelector('.grad-cta p').textContent = week ? `${UI.plural(week, 'new job task')} posted this week. Prove your skills.` : `${UI.plural(UR.jobs.list().length, 'open job task')} waiting for you.`;
 }
-
-// Who to follow
-const candidates = getCandidates().slice(0,4);
-document.getElementById('whoToFollow').innerHTML = candidates.map((c, i) => {
-  const initials = c.name.split(' ').map(w=>w[0]).join('').slice(0,2);
-  return `<div class="follow-item">
-    <div class="follow-av" style="background:${gradients[i%gradients.length]}">${initials}</div>
-    <div style="flex:1;min-width:0">
-      <div class="follow-name">${c.name}</div>
-      <div class="follow-score">Score ${c.score} · Rank #${c.rank}</div>
-    </div>
-    <button class="follow-btn" onclick="this.textContent=this.textContent==='Follow'?'Following':'Follow';this.classList.toggle('following')">Follow</button>
-  </div>`;
-}).join('');
-
-// Trending skills
-const skills = ['React','Python','UI/UX','Node.js','Data Science','Figma'];
-document.getElementById('trendSkills').innerHTML = skills.map(s =>
-  `<a href="jobs.html" class="cat-pill" style="font-size:12px">${s}</a>`
-).join('');
-
 render();
+UI.onChange(render);
 </script>
 </body>
 </html>

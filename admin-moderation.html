@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link rel="icon" type="image/png" href="images/favicon.png">
+<title>Moderation — Unresume Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link rel="stylesheet" href="css/globals.css">
+<link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/dashboard.css">
+<style>.flag{display:flex;gap:8px;align-items:flex-start;padding:7px 10px;border-radius:10px;font-size:12.5px;margin-top:4px}.flag.high{background:#fdecef;color:#9f1239}.flag.medium{background:#fef6e4;color:#7a4f10}.flag.low{background:#f5f4fd;color:var(--text2)}</style>
+</head>
+<body>
+<div class="dash-root">
+  <div id="sidebar" data-roles="admin"></div>
+  <div class="dash-content">
+    <header class="dash-topbar" data-auto data-search="Search…"></header>
+    <main class="dash-main">
+      <div class="dash-greeting"><div class="g-blob"></div><div><h1 class="dash-h1"><span class="grad-text">Moderation</span></h1><p class="dash-sub">Review jobs, tasks and scores; investigate submissions flagged by the integrity checks.</p></div></div>
+      <div class="d-note" style="margin-bottom:16px"><span class="material-symbols-rounded">info</span><div>Automated integrity checks in this prototype: identical file fingerprints (SHA-256) or URLs across candidates, note similarity (3-word shingles, threshold set in Platform Settings), unusually fast completion and frequent tab switching. Code-similarity and image-similarity engines need the backend services listed in BACKEND.md.</div></div>
+      <div class="d-tabs" id="tabs"></div>
+      <div id="out"></div>
+    </main>
+  </div>
+</div>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
+<script>
+const $ = id => document.getElementById(id), esc = UI.esc;
+let tab = UI.param('tab') || 'integrity';
+const ST = { open: 'tint-teal', draft: 'gray', closed: 'tint-amber', flagged: 'tint-red', removed: 'tint-red', published: 'tint-teal', paused: 'tint-amber' };
+function render() {
+  const q = ($('topbarSearch') || { value: '' }).value.toLowerCase();
+  const flagged = UR.submissions.list({ flagged: true }).filter(s => s.status !== 'void');
+  const subs = UR.submissions.list();
+  const jobs = UR.admin.allJobs(), tasks = UR.admin.allTasks();
+  $('tabs').innerHTML = [['integrity', 'Integrity flags', flagged.length], ['submissions', 'Submissions & scores', subs.length], ['jobs', 'Jobs', jobs.length], ['tasks', 'Tasks', tasks.length]].map(([k, l, n]) => `<button class="d-tab ${tab === k ? 'active' : ''}" data-tab="${k}">${l}<span class="cnt">${n}</span></button>`).join('');
+  UI.tabs($('tabs'), k => { tab = k; render(); });
+  const match = (...v) => !q || v.some(x => String(x || '').toLowerCase().includes(q));
+  if (tab === 'integrity' || tab === 'submissions') {
+    const list = (tab === 'integrity' ? flagged : subs).filter(s => match(s.candidateName, s.task.title, s.companyName));
+    $('out').innerHTML = list.length ? list.map(s => `<div class="l-row" style="align-items:flex-start">${UI.avatar(s.candidateName, 40, s.candidate)}
+      <div class="l-main"><div class="l-title">${esc(s.candidateName)} · ${esc(s.task.title)}</div><div class="l-sub"><span>${esc(s.companyName)}</span><span>${UI.fmtDateTime(s.submittedAt)}</span><span>${s.durationMin} min</span><span>${UI.plural(s.focusLosses || 0, 'tab switch', 'tab switches')}</span><span><code>${s.id}</code></span></div>
+        ${s.integrity.flags.map(f => `<div class="flag ${f.severity}">${UI.icon(f.severity === 'high' ? 'gpp_bad' : 'info', 16, true)}<div><b>${UR.INTEGRITY_LABEL[f.type]}</b> — ${esc(f.detail)}${f.relatedId ? ` <button class="btn-sm" style="padding:2px 8px;font-size:11px" onclick="jump('${f.relatedId}')">View match</button>` : ''}</div></div>`).join('')}
+        ${s.integrity.clearedAt ? `<div class="l-sub" style="margin-top:6px">${UI.icon('verified_user')} Cleared ${UI.fmtDate(s.integrity.clearedAt)}: ${esc(s.integrity.clearNote || '')}</div>` : ''}</div>
+      <div class="l-acts" style="flex-direction:column;align-items:flex-end">${s.score && s.status !== 'void' ? UI.verifiedScore(s.score.total, true) : UI.subPill(s)}
+        <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${s.integrity.flags.length && !s.integrity.clearedAt ? `<button class="btn-sm good" onclick="clearF('${s.id}')">${UI.icon('verified_user')}Clear</button>` : ''}${s.status !== 'void' ? `<button class="btn-sm danger" onclick="voidS('${s.id}')">${UI.icon('block')}Void score</button>` : ''}${!s.task.companyId && s.status === 'pending' ? `<a class="btn-sm" href="interviewer-dashboard.html?sub=${s.id}">Review</a>` : ''}</div></div></div>`).join('')
+      : UI.empty(tab === 'integrity' ? 'verified_user' : 'inbox', tab === 'integrity' ? 'No open integrity flags' : 'No submissions');
+    return;
+  }
+  if (tab === 'jobs') {
+    $('out').innerHTML = `<div class="d-table-wrap"><table class="d-table stack"><thead><tr><th>Job</th><th>Company</th><th>Status</th><th>Task</th><th>Applicants</th><th></th></tr></thead><tbody>${jobs.filter(j => match(j.title, j.company)).map(j => `<tr>
+      <td class="who-cell"><b>${esc(j.title)}</b>${j.moderation ? `<br><small style="color:#be123c">${esc(j.moderation.action)}: ${esc(j.moderation.reason)}</small>` : ''}</td><td data-label="Company">${esc(j.company)} ${j.companyVerified ? '' : UI.pill('unverified', 'tint-amber')}</td>
+      <td data-label="Status">${UI.pill(j.status, ST[j.status])}</td><td data-label="Task">${j.task ? esc(j.task.title) : '<span style="color:#be123c">none</span>'}</td><td data-label="Applicants">${j.applicants}</td>
+      <td><div class="acts">${j.status === 'open' ? `<a class="btn-sm" href="job-detail.html?id=${j.id}" target="_blank">View</a>` : ''}${['flagged', 'removed'].includes(j.status) ? `<button class="btn-sm good" onclick="modJob(${j.id},'restore')">Restore</button>` : `<button class="btn-sm" onclick="modJob(${j.id},'flag')">${UI.icon('visibility_off')}Hide</button>`}${j.status !== 'removed' ? `<button class="btn-sm danger" onclick="modJob(${j.id},'remove')">${UI.icon('delete')}Remove</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
+    return;
+  }
+  $('out').innerHTML = `<div class="d-table-wrap"><table class="d-table stack"><thead><tr><th>Task</th><th>Owner</th><th>Status</th><th>Rubric</th><th>Submissions</th><th></th></tr></thead><tbody>${tasks.filter(t => match(t.title)).map(t => `<tr>
+    <td class="who-cell"><b>${esc(t.title)}</b><br><small style="color:var(--text3)">${esc(t.brief.slice(0, 90))}…</small>${t.moderation ? `<br><small style="color:#be123c">${esc(t.moderation.reason)}</small>` : ''}</td><td data-label="Owner">${t.companyId ? esc((UR.companies.get(t.companyId) || {}).name) : 'Unresume (practice)'}</td>
+    <td data-label="Status">${UI.pill(t.status, ST[t.status])}</td><td data-label="Rubric">${t.rubric.length} criteria · ${t.rubric.reduce((a, r) => a + r.points, 0)} pts</td><td data-label="Submissions">${t.submissions}</td>
+    <td><div class="acts">${['flagged', 'removed'].includes(t.status) ? `<button class="btn-sm good" onclick="modTask(${t.id},'restore')">Restore</button>` : `<button class="btn-sm" onclick="modTask(${t.id},'flag')">Flag</button>`}${t.status !== 'removed' ? `<button class="btn-sm danger" onclick="modTask(${t.id},'remove')">Remove</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
+}
+function jump(id) { tab = 'submissions'; if ($('topbarSearch')) $('topbarSearch').value = ''; render(); setTimeout(() => { const el = [...document.querySelectorAll('code')].find(c => c.textContent === id); if (el) { el.closest('.l-row').scrollIntoView({ behavior: 'smooth', block: 'center' }); el.closest('.l-row').classList.add('active'); } }, 50); }
+async function clearF(id) { const r = await UI.confirm({ title: 'Clear integrity flags?', confirmLabel: 'Clear', input: { label: 'Finding (logged)', required: true } }); if (r.ok) UI.run(() => UR.submissions.clearIntegrity(id, r.value), 'Flags cleared').catch(() => {}); }
+async function voidS(id) { const r = await UI.confirm({ title: 'Void this submission?', danger: true, confirmLabel: 'Void', text: 'The score stops counting, any linked application is closed, and the candidate and company are notified.', input: { label: 'Reason (shown to the candidate)', required: true } }); if (r.ok) UI.run(() => UR.submissions.void(id, r.value), 'Submission voided').catch(() => {}); }
+async function modJob(id, action) { const r = action === 'restore' ? { ok: true, value: '' } : await UI.confirm({ title: action === 'flag' ? 'Hide this job pending review?' : 'Remove this job?', danger: true, confirmLabel: 'Confirm', input: { label: 'Reason (sent to the company)', required: true } }); if (r.ok) UI.run(() => UR.admin.moderateJob(id, action, r.value), 'Job updated — company notified').catch(() => {}); }
+async function modTask(id, action) { const r = action === 'restore' ? { ok: true, value: '' } : await UI.confirm({ title: action === 'flag' ? 'Flag this task?' : 'Remove this task?', danger: true, confirmLabel: 'Confirm', text: 'Linked open jobs are closed.', input: { label: 'Reason (sent to the owner)', required: true } }); if (r.ok) UI.run(() => UR.admin.moderateTask(id, action, r.value), 'Task updated').catch(() => {}); }
+render();
+if ($('topbarSearch')) $('topbarSearch').addEventListener('input', UI.debounce(render, 150));
+UI.onChange(render);
+</script>
+</body>
+</html>

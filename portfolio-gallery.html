@@ -373,7 +373,7 @@
     <div class="pg-hero">
       <div class="section-badge"><span class="material-symbols-rounded" style="font-size:15px;font-variation-settings:'FILL' 1">photo_library</span> Portfolio</div>
       <h1><span class="grad-text">Portfolio</span> Gallery</h1>
-      <p>Real work from real candidates. Browse verified task outputs.</p>
+      <p>Real work from real candidates. <b style="color:#0d9488">Verified</b> badges are rubric scores from company reviewers; external work is shown but not scored.</p>
     </div>
 
     <div class="pg-wrap">
@@ -387,8 +387,10 @@
 
   <div id="footer"></div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <script src="js/components.js"></script>
   <script src="js/data.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/components.js"></script>
   <script>
     const typeStyle = {
       design:   { cls: 'tint-pink',   icon: 'palette' },
@@ -416,12 +418,14 @@
       return 'code';
     }
 
+    // Only public items of candidates whose profile is public to this viewer.
     function getAllItems() {
       const items = [];
-      const candidates = getCandidates();
-      candidates.forEach((c, ci) => {
+      UR.candidates.list().forEach((c, ci) => {
+        const res = c.stats.results || [];
         c.portfolio.filter(p => p.isPublic).forEach(p => {
-          const item = { ...p, candidate: c, ci };
+          const r = p.type === 'task' && !c.stats.hidden ? res.find(x => x.submissionId === p.submissionId || x.historyId === p.historyId) : null;
+          const item = { ...p, id: p.legacyId || p.id, pfId: p.id, score: r ? r.score : null, candidate: { ...c, score: c.stats.hidden ? null : c.stats.skillScore }, ci };
           item.category = categoryOf(item);
           items.push(item);
         });
@@ -445,12 +449,12 @@
     function badges(item, label) {
       const s = typeStyle[item.category];
       return `<span class="pg-type-badge ${s.cls}"><span class="material-symbols-rounded">${s.icon}</span>${label}</span>
-      ${item.score ? `<span class="pg-score"><span class="material-symbols-rounded">star</span>${item.score}/100</span>` : ''}`;
+      ${item.score != null ? `<span class="pg-score" title="Verified score from a company reviewer" style="background:#e6f8f5;color:#0d9488"><span class="material-symbols-rounded" style="color:#0d9488">verified</span>${item.score}/100</span>` : item.type === 'external' ? `<span class="pg-score" title="External work is not reviewed"><span class="material-symbols-rounded" style="color:var(--text4)">link</span>Not verified</span>` : ''}`;
     }
 
     function previewHTML(item) {
       const type = item.previewType;
-      if (type === 'image') {
+      if (type === 'image' && item.legacyId) {
         return `<div class="pg-preview">
       <img class="pg-preview-img" src="${getPortfolioPreview(item.id)}" alt="${item.title}" loading="lazy">
       ${badges(item, 'Image')}
@@ -503,17 +507,17 @@
         return `<div class="pg-card">
       ${previewHTML(item)}
       <div class="pg-body">
-        <div class="pg-task-title">${item.title}</div>
+        <div class="pg-task-title">${UI.esc(item.title)}</div>
         <div class="pg-author">
-          <div class="pg-av" style="background:${gradients[item.ci % gradients.length]}">${initials}</div>
+          <div class="pg-av" style="background:${UI.grad(c.username)}">${initials}</div>
           <div>
-            <div class="pg-author-name">${c.name}</div>
-            <div class="pg-author-uname">@${c.username} · Score ${c.score}</div>
+            <div class="pg-author-name">${UI.esc(c.name)}</div>
+            <div class="pg-author-uname">@${c.username}${c.score ? ` · Skill Score ${c.score}` : ''}</div>
           </div>
         </div>
         <div class="pg-footer">
-          <span class="material-symbols-rounded" style="font-size:16px;color:var(--text4)">visibility</span>
-          <span style="font-size:12px;color:var(--text3);font-weight:500">Public output</span>
+          <span class="material-symbols-rounded" style="font-size:16px;color:#e11d48" title="Community likes — not a score">favorite</span>
+          <span style="font-size:12px;color:var(--text3);font-weight:500">${UR.feed.portfolioLikes(item.pfId).count} likes</span>
           <a href="candidate-profile.html?u=${c.username}" style="margin-left:auto">View Profile <span class="material-symbols-rounded">arrow_forward</span></a>
         </div>
       </div>

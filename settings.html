@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link rel="icon" type="image/png" href="images/favicon.png">
+<title>Settings — Unresume</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link rel="stylesheet" href="css/globals.css">
+<link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/dashboard.css">
+<style>
+.st-wrap{max-width:860px;display:flex;flex-direction:column;gap:18px}
+.st-card{background:#fff;border:1px solid var(--border);border-radius:22px;padding:22px 24px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:14px}
+.st-card form{display:flex;flex-direction:column;gap:14px}
+.opt-row{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)}
+.opt-row:last-child{border-bottom:none}
+.opt-row .l-main b{font-size:14px;color:var(--text1)} .opt-row .l-main div{font-size:12.5px;color:var(--text3)}
+.radio-set{display:flex;gap:8px;flex-wrap:wrap}
+.radio-set label{display:flex;align-items:center;gap:6px;padding:9px 14px;border:1px solid var(--border-light);border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text2)}
+.radio-set input{accent-color:var(--brand)}
+.radio-set label:has(input:checked){border-color:var(--brand);background:#f5f3ff;color:var(--brand)}
+</style>
+</head>
+<body>
+<div class="dash-root">
+  <div id="sidebar" data-roles="any"></div>
+  <div class="dash-content">
+    <header class="dash-topbar" data-auto data-search="Search…"></header>
+    <main class="dash-main">
+      <div class="dash-greeting"><div class="g-blob"></div><div><h1 class="dash-h1">Settings</h1><p class="dash-sub">Manage your account, privacy, notifications and verification.</p></div></div>
+      <div class="st-wrap" id="wrap"></div>
+    </main>
+  </div>
+</div>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
+<script>
+const $ = id => document.getElementById(id), esc = UI.esc;
+const toggle = (id, on, label) => `<div class="toggle-track ${on ? 'on' : ''}" id="${id}" role="switch" tabindex="0" aria-checked="${on}" aria-label="${esc(label)}" onclick="this.classList.toggle('on');this.setAttribute('aria-checked',this.classList.contains('on'))" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();this.click()}"></div>`;
+const radio = (name, value, opts) => `<div class="radio-set">${opts.map(([v, l]) => `<label><input type="radio" name="${name}" value="${v}" ${v === value ? 'checked' : ''}>${l}</label>`).join('')}</div>`;
+
+function render() {
+  const u = UR.user(); if (!u) return;
+  const cand = u.role === 'candidate' ? UR.candidates.get(u.username) : null;
+  const org = u.orgId ? (UR.companies.get(u.orgId) || UR.academies.get(u.orgId)) : null;
+  const vreqs = UR.verifications.mine();
+  let html = `
+  <section class="st-card" aria-labelledby="h-acc"><h2 class="sec-title" id="h-acc"><span class="sec-icon tint-blue">${UI.icon('person', 19, true)}</span>Account</h2>
+    <form id="accForm"><div class="form-grid2">${UI.field({ name: 'name', label: 'Full name', value: u.name, required: true })}${UI.field({ name: 'title', label: u.role === 'candidate' ? 'Headline' : 'Job title', value: u.title || '' })}</div>
+      ${UI.field({ name: 'email', label: 'Email', value: u.email, hint: 'Changing your email needs the verification email service (backend). Contact support to change it.' })}
+      <div><button class="btn-sm primary" type="submit">${UI.icon('save')}Save account</button></div></form></section>
+  <section class="st-card" aria-labelledby="h-pw"><h2 class="sec-title" id="h-pw"><span class="sec-icon tint-purple">${UI.icon('lock', 19, true)}</span>Password</h2>
+    <form id="pwForm"><div class="form-grid3">${UI.field({ name: 'current', label: 'Current password', type: 'password', required: true })}${UI.field({ name: 'next', label: 'New password', type: 'password', required: true, hint: 'At least 8 characters' })}${UI.field({ name: 'confirm', label: 'Confirm new password', type: 'password', required: true })}</div>
+      <div><button class="btn-sm primary" type="submit">${UI.icon('key')}Change password</button></div></form></section>`;
+  if (cand) {
+    const p = cand.privacy, n = cand.notifyPrefs, v = cand.verification;
+    html += `
+  <section class="st-card" aria-labelledby="h-priv"><h2 class="sec-title" id="h-priv"><span class="sec-icon tint-teal">${UI.icon('shield_person', 19, true)}</span>Privacy</h2>
+    <div class="opt-row" style="flex-wrap:wrap"><div class="l-main"><b>Profile visibility</b><div>Who can open your profile and portfolio.</div></div>${radio('vis', p.profileVisibility, [['public', 'Everyone'], ['companies', 'Signed-in companies & academies'], ['private', 'Only me']])}</div>
+    <div class="opt-row"><div class="l-main"><b>Appear on leaderboards</b><div>When off you are left out of every track and skill leaderboard. Your scores still exist and companies you apply to still see them.</div></div>${toggle('tLb', p.leaderboard !== false, 'Appear on leaderboards')}</div>
+    <div class="opt-row" style="flex-wrap:wrap"><div class="l-main"><b>Experience level</b><div>Used for the leaderboard experience filter so you're compared with peers.</div></div>${radio('exp', cand.experience || 'Entry', [['Entry', 'Entry'], ['Mid', 'Mid'], ['Senior', 'Senior']])}</div>
+    <div class="opt-row"><div class="l-main"><b>Show my scores publicly</b><div>When off, your Skill Score and task scores are hidden from others and you appear as "Anonymous" on the leaderboard. Companies you apply to still see the score for that application.</div></div>${toggle('tShow', p.showScores, 'Show scores')}</div>
+    <div class="opt-row" style="flex-wrap:wrap"><div class="l-main"><b>Who can message me</b><div>Existing conversations are not affected.</div></div>${radio('msg', p.allowMessages, [['everyone', 'Everyone'], ['companies', 'Companies & academies'], ['none', 'Nobody new']])}</div>
+    <div><button class="btn-sm primary" onclick="savePrivacy()">${UI.icon('save')}Save privacy</button></div></section>
+  <section class="st-card" aria-labelledby="h-not"><h2 class="sec-title" id="h-not"><span class="sec-icon tint-amber">${UI.icon('notifications', 19, true)}</span>Notifications</h2>
+    ${[['applications', 'Application status changes'], ['interviews', 'Interview invitations and changes'], ['scores', 'Scores and dispute outcomes'], ['messages', 'New messages']].map(([k, l]) => `<div class="opt-row"><div class="l-main"><b>${l}</b><div>In-app notifications. Email delivery will follow these settings once the email service is connected.</div></div>${toggle('n-' + k, n[k] !== false, l)}</div>`).join('')}
+    <div><button class="btn-sm primary" onclick="saveNotif()">${UI.icon('save')}Save notifications</button></div></section>
+  ${academyCard()}
+  <section class="st-card" aria-labelledby="h-ver"><h2 class="sec-title" id="h-ver"><span class="sec-icon tint-pink">${UI.icon('verified_user', 19, true)}</span>Profile verification</h2>
+    <div class="opt-row"><div class="l-main"><b>Email address</b><div>${esc(u.email)}</div></div>${v.email ? UI.pill('Verified', 'tint-teal', 'verified') : UI.pill('Unverified — needs email service', 'tint-amber')}</div>
+    <div class="opt-row" style="flex-wrap:wrap"><div class="l-main"><b>Identity</b><div>A verified badge shows next to your name. Reviewed by an Unresume admin.</div></div>
+      ${v.identity === 'verified' ? UI.pill('Verified', 'tint-teal', 'verified') : v.identity === 'pending' ? UI.pill('Under review', 'tint-amber', 'hourglass_top') : `<button class="btn-sm" onclick="requestId()">${UI.icon('badge')}Request verification</button>`}</div>
+    <div class="opt-row"><div class="l-main"><b>Skills</b><div>Skills are verified automatically by task scores — see <a href="certificates.html" style="color:var(--brand);font-weight:700">Certificates & Badges</a>.</div></div>${UI.pill(`${cand.stats.badges.length} verified`, 'tint-purple')}</div>
+    ${vreqs.filter(r => r.status === 'rejected').slice(0, 1).map(r => `<div class="d-note bad">${UI.icon('info')}<div>Your last identity request was rejected: ${esc(r.note)}</div></div>`).join('')}
+  </section>`;
+  }
+  if (org && u.role === 'academy') {
+    html += `<section class="st-card" aria-labelledby="h-org"><h2 class="sec-title" id="h-org"><span class="sec-icon tint-pink">${UI.icon('school', 19, true)}</span>Academy profile ${org.verification === 'verified' ? UI.pill('Verified', 'tint-teal', 'verified') : UI.pill(org.verification === 'pending' ? 'Verification pending' : 'Not verified', org.verification === 'rejected' ? 'tint-red' : 'tint-amber')}</h2>
+      <form id="orgForm"><div class="form-grid2">${UI.field({ name: 'name', label: 'Academy name', value: org.name, required: true })}${UI.field({ name: 'location', label: 'Location', value: org.location || '' })}</div>
+        ${UI.field({ name: 'website', label: 'Website', value: org.website || '', placeholder: 'https://' })}${UI.field({ name: 'about', label: 'About', type: 'textarea', value: org.about || '' })}
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn-sm primary" type="submit">${UI.icon('save')}Save profile</button>${org.verification !== 'verified' && org.verification !== 'pending' ? `<button class="btn-sm" type="button" onclick="requestOrg()">${UI.icon('verified_user')}Request verification</button>` : ''}</div></form>
+      ${org.verification !== 'verified' ? `<div class="d-note warn">${UI.icon('info')}<div>Unverified academies can manage students but cannot refer them to companies.</div></div>` : ''}</section>`;
+  }
+  if (org && ['hr', 'interviewer'].includes(u.role)) html += `<section class="st-card"><h2 class="sec-title"><span class="sec-icon tint-blue">${UI.icon('apartment', 19, true)}</span>${esc(org.name)}</h2><p style="font-size:13.5px;color:var(--text3)">Company details, verification and team members are managed by HR.</p><div style="display:flex;gap:8px;flex-wrap:wrap">${u.role === 'hr' ? `<a class="btn-sm" href="company-profile.html">${UI.icon('apartment')}Company profile</a><a class="btn-sm" href="team.html">${UI.icon('badge')}Team</a>` : ''}</div></section>`;
+  html += `
+  <section class="st-card" aria-labelledby="h-sec"><h2 class="sec-title" id="h-sec"><span class="sec-icon tint-blue">${UI.icon('security', 19, true)}</span>Account security</h2>
+    <div class="opt-row"><div class="l-main"><b>Last sign-in</b><div>${u.prevLoginAt ? UI.fmtDateTime(u.prevLoginAt) + ' (previous) · ' : ''}${UI.fmtDateTime(u.lastLoginAt)} (this session)</div></div></div>
+    <div class="opt-row"><div class="l-main"><b>Sign-in protection</b><div>After ${UR.settings().maxFailedLogins} wrong passwords, sign-in is locked for 15 minutes and you're notified. Two-factor authentication needs the backend auth service (see BACKEND.md).</div></div>${UI.pill('Active', 'tint-teal', 'lock')}</div>
+    <div class="opt-row"><div class="l-main"><b>Who can open your private files</b><div>Working files: only you and reviewers at the company that owns the task. Final outputs follow each portfolio item's visibility (Public / Recruiters only / Only me).</div></div></div>
+  </section>
+  <section class="st-card" aria-labelledby="h-data"><h2 class="sec-title" id="h-data"><span class="sec-icon tint-gray">${UI.icon('folder_data', 19, true)}</span>Your data</h2>
+    <div class="opt-row"><div class="l-main"><b>Download my data</b><div>A JSON export of your account, profile, submissions, applications, messages and notifications.</div></div><button class="btn-sm" onclick="exportData()">${UI.icon('download')}Export</button></div>
+    <div class="opt-row"><div class="l-main"><b>Delete my account</b><div>Sends a deletion request to Unresume admins. Verified scores tied to company applications are retained for 90 days for dispute handling, as described in the <a href="privacy.html#retention" style="color:var(--brand);font-weight:700">Privacy Policy</a>.</div></div><button class="btn-sm danger" onclick="requestDelete()">${UI.icon('delete')}Request deletion</button></div>
+    <div class="opt-row"><div class="l-main"><b>Reset demo data</b><div>Prototype only: restores the original sample data in this browser and signs you out.</div></div><button class="btn-sm danger" onclick="resetDemo()">${UI.icon('restart_alt')}Reset</button></div>
+  </section>`;
+  $('wrap').innerHTML = html;
+  $('accForm').addEventListener('submit', e => { e.preventDefault(); const d = Object.fromEntries(new FormData(e.target)); UI.run(() => UR.auth.updateAccount({ name: d.name, title: d.title }), 'Account saved').catch(() => {}); });
+  $('accForm').querySelector('[name=email]').readOnly = true;
+  $('pwForm').addEventListener('submit', e => { e.preventDefault(); const d = Object.fromEntries(new FormData(e.target)); UI.run(() => { if (d.next !== d.confirm) throw new Error('New passwords do not match.'); UR.auth.changePassword(d.current, d.next); e.target.reset(); }, 'Password changed').catch(() => {}); });
+  if ($('orgForm')) $('orgForm').addEventListener('submit', e => { e.preventDefault(); const d = Object.fromEntries(new FormData(e.target)); UI.run(() => UR.academies.update(d), 'Academy profile saved').catch(() => {}); });
+}
+function academyCard() {
+  const reqs = UR.affiliation.requests(), cur = UR.affiliation.current();
+  return `<section class="st-card" id="academy" aria-labelledby="h-ac"><h2 class="sec-title" id="h-ac"><span class="sec-icon tint-pink">${UI.icon('school', 19, true)}</span>Academy affiliation</h2>
+    <p style="font-size:13px;color:var(--text3);line-height:1.6">Your account and verified history are always yours. An academy can see your scores and progress only while you're affiliated, and can't change your account. Past referrals and placements stay attributed after you leave.</p>
+    ${reqs.map(r => `<div class="opt-row" style="flex-wrap:wrap"><div class="l-main"><b>${esc(r.academy.name)} wants to link you as a student</b><div>Student ID ${esc(r.recordId)}${r.batch ? ' · ' + esc(r.batch) : ''}${r.academy.verification === 'verified' ? ' · verified academy' : ' · academy not yet verified'}</div></div>
+      <div style="display:flex;gap:6px"><button class="btn-sm good" onclick="respondAff('${r.id}', true)">Accept</button><button class="btn-sm" onclick="respondAff('${r.id}', false)">Decline</button></div></div>`).join('')}
+    ${cur ? `<div class="opt-row"><div class="l-main"><b>${esc(cur.academy.name)}</b><div>${esc(cur.recordId)} · ${esc(cur.status)}${cur.idType === 'student' ? ' · priority referrals' : ''}</div></div><button class="btn-sm danger" onclick="leaveAff()">Leave academy</button></div>`
+      : !reqs.length ? '<div class="opt-row"><div class="l-main"><b>Not affiliated</b><div>If your academy adds you, the request appears here for you to accept.</div></div></div>' : ''}
+  </section>`;
+}
+const respondAff = (id, ok) => UI.run(() => UR.affiliation.respond(id, ok), ok ? 'You are now linked to the academy' : 'Request declined').then(render).catch(() => {});
+async function leaveAff() {
+  const r = await UI.confirm({ title: 'Leave your academy?', danger: true, confirmLabel: 'Leave', text: 'Your Student ID becomes an independent Candidate ID. The academy stops seeing your new activity; your scores and history stay with you.', input: { label: 'Reason (optional, shared with the academy)' } });
+  if (r.ok) UI.run(() => UR.affiliation.leave(r.value || ''), 'You left the academy').then(render).catch(() => {});
+}function savePrivacy() {
+  const q = n => (document.querySelector(`input[name=${n}]:checked`) || {}).value;
+  UI.run(() => UR.candidates.updateProfile({ experience: q('exp'), privacy: { profileVisibility: q('vis'), allowMessages: q('msg'), showScores: $('tShow').classList.contains('on'), leaderboard: $('tLb').classList.contains('on') } }), 'Privacy settings saved').catch(() => {});
+}
+function saveNotif() { const p = {}; ['applications', 'interviews', 'scores', 'messages'].forEach(k => p[k] = $('n-' + k).classList.contains('on')); UI.run(() => UR.candidates.updateProfile({ notifyPrefs: p }), 'Notification settings saved').catch(() => {}); }
+function requestId() {
+  UI.modal({ title: 'Request identity verification', icon: 'badge', submitLabel: 'Submit request', sub: 'In production, ID documents are collected by a regulated ID-verification provider and never stored by Unresume. This prototype records your request for an admin to review.',
+    body: UI.field({ name: 'evidence', label: 'Details for the reviewer', type: 'textarea', required: true, placeholder: 'e.g. LinkedIn URL, university email, or the ID type you will verify with' }),
+    onSubmit: d => { if (!String(d.evidence || '').trim()) throw new Error('Add details for the reviewer.'); UR.candidates.requestIdentityVerification(d.evidence); UI.toast('Verification requested — an admin will review it'); } });
+}
+function requestOrg() {
+  UI.modal({ title: 'Request academy verification', icon: 'verified_user', submitLabel: 'Submit', body: UI.field({ name: 'evidence', label: 'Registration details', type: 'textarea', required: true, placeholder: 'Registration number, accreditation, official website…' }),
+    onSubmit: d => { UR.academies.requestVerification(d.evidence); UI.toast('Verification requested'); } });
+}
+function exportData() {
+  UI.run(() => { const data = UR.exportMine(); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })); a.download = 'unresume-my-data.json'; a.click(); }, 'Export downloaded').catch(() => {});
+}
+async function requestDelete() {
+  const r = await UI.confirm({ title: 'Request account deletion?', danger: true, confirmLabel: 'Send request', text: 'An admin will process the request and confirm by email. Until then your account stays active.', input: { label: 'Reason (optional)', placeholder: '' } });
+  if (r.ok) UI.run(() => UR.reports.create({ type: 'account_deletion', targetId: UR.user().id, targetLabel: UR.user().email, reason: 'Account deletion request', details: r.value || '' }), 'Deletion request sent to Unresume admins').catch(() => {});
+}
+async function resetDemo() {
+  const r = await UI.confirm({ title: 'Reset all demo data?', danger: true, confirmLabel: 'Reset', text: 'Everything created in this browser (submissions, jobs, messages…) is deleted and the sample data is restored.' });
+  if (r.ok) { UR.reset(); UR.auth.logout(); location.href = 'login.html'; }
+}
+render();
+</script>
+</body>
+</html>

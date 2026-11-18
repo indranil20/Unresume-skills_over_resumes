@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link rel="icon" type="image/png" href="images/favicon.png">
+<title>Applications — Unresume</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link rel="stylesheet" href="css/globals.css">
+<link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/dashboard.css">
+<style>.cmp-bar{position:sticky;bottom:0;margin-top:14px;display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:16px;background:#0e1230;color:#fff;font-size:13.5px;font-weight:600}.cmp-bar[hidden]{display:none}</style>
+</head>
+<body>
+<div class="dash-root">
+  <div id="sidebar" data-roles="hr,interviewer"></div>
+  <div class="dash-content">
+    <header class="dash-topbar" data-auto data-search="Search applicants…"></header>
+    <main class="dash-main">
+      <div class="dash-greeting"><div class="g-blob"></div>
+        <div><h1 class="dash-h1"><span class="grad-text">Applications</span></h1><p class="dash-sub">Every candidate who submitted a task for your jobs, ranked by verified score.</p></div>
+        <button class="cta-btn" onclick="exportCSV()"><span class="material-symbols-rounded" style="font-size:18px">download</span> Export CSV</button></div>
+      <div class="d-toolbar">
+        <select id="jobF" aria-label="Job"></select>
+        <select id="statusF" aria-label="Status"></select>
+        <select id="sourceF" aria-label="Source"><option value="">All sources</option><option value="direct">Direct</option><option value="academy">Academy referral</option></select>
+        <label style="display:flex;gap:6px;align-items:center;font-size:13px;font-weight:600;color:var(--text2)"><input type="checkbox" id="flagF"> Integrity flags only</label>
+        <span class="spacer"></span>
+        <select id="sort" aria-label="Sort"><option value="score">Task score (high→low)</option><option value="skill">Skill score</option><option value="recent">Most recent</option></select>
+      </div>
+      <div class="d-table-wrap"><table class="d-table stack"><thead><tr><th style="width:36px"><span class="sr-only">Compare</span></th><th>Candidate</th><th>Job</th><th>Task score</th><th>Skill score</th><th>Status</th><th>Updated</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+      <div class="cmp-bar" id="cmpBar" hidden><span id="cmpCount"></span><span style="flex:1"></span><button class="btn-sm" onclick="picked.clear();render()">Clear</button><button class="btn-sm primary" onclick="compare()">Compare side by side</button></div>
+    </main>
+  </div>
+</div>
+<div class="d-drawer-bg" id="drawer" onclick="if(event.target===this)closeDrawer()"><div class="d-drawer" role="dialog" aria-modal="true" aria-labelledby="dTitle" id="drawerBody"></div></div>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
+<script>
+const $ = id => document.getElementById(id), esc = UI.esc;
+const me = UR.user();
+const picked = new Set();
+let jobF = UI.param('job') || '', statusF = '', sort = 'score', openId = UI.param('id');
+const MOVES = { scored: ['shortlisted', 'rejected'], submitted: ['rejected'], shortlisted: ['interview', 'offer', 'rejected'], interview: ['offer', 'rejected', 'shortlisted'], offer: ['hired', 'rejected'], rejected: ['shortlisted'], hired: [] };
+
+function filtered() {
+  const q = ($('topbarSearch') || { value: '' }).value.toLowerCase();
+  let list = UR.applications.list().filter(a => (!jobF || String(a.jobId) === jobF) && (!statusF || a.status === statusF)
+    && (!$('sourceF').value || ($('sourceF').value === 'academy' ? a.referredBy : !a.referredBy))
+    && (!$('flagF').checked || (a.submission && a.submission.flags && !a.submission.cleared))
+    && (!q || a.candidateName.toLowerCase().includes(q) || a.candidateSkills.some(s => s.toLowerCase().includes(q))));
+  return sort === 'skill' ? UI.sortBy(list, 'skillScore') : sort === 'recent' ? UI.sortBy(list, a => new Date(a.updatedAt).getTime()) : UI.sortBy(list, 'taskScore');
+}
+function render() {
+  const jobs = UR.jobs.list({ status: 'all', companyId: me.orgId });
+  $('jobF').innerHTML = `<option value="">All jobs</option>` + jobs.map(j => `<option value="${j.id}" ${String(j.id) === jobF ? 'selected' : ''}>${esc(j.title)}</option>`).join('');
+  $('statusF').innerHTML = `<option value="">All statuses</option>` + Object.entries(UR.APP_STATUS).filter(([k]) => k !== 'in_progress').map(([k, v]) => `<option value="${k}" ${k === statusF ? 'selected' : ''}>${v.label}</option>`).join('');
+  const list = filtered();
+  $('rows').innerHTML = list.length ? list.map(a => `<tr class="${picked.has(a.id) ? 'sel' : ''}">
+    <td><input type="checkbox" aria-label="Select ${esc(a.candidateName)} to compare" ${picked.has(a.id) ? 'checked' : ''} onchange="togglePick('${a.id}', this.checked)"></td>
+    <td class="who-cell"><button class="who" style="border:none;background:none;cursor:pointer;text-align:left;font-family:var(--font-body)" onclick="openDrawer('${a.id}')">${UI.avatar(a.candidateName, 36, a.candidate)}<div><b>${esc(a.candidateName)}${a.identityVerified ? ' <span class="material-symbols-rounded" style="font-size:14px;color:var(--brand);font-variation-settings:\'FILL\' 1" title="Identity verified">verified</span>' : ''}</b><small>${esc(a.candidateSkills.slice(0, 3).join(', '))}${a.academyName ? ' · via ' + esc(a.academyName) : ''}</small></div></button></td>
+    <td data-label="Job">${esc(a.job.title)}</td>
+    <td data-label="Task score">${a.route === 'verified_score' ? UI.pill('Verified-score route', 'tint-teal', 'verified') : a.taskScore != null ? UI.verifiedScore(a.taskScore, true) : '<span style="font-size:12px;color:var(--text3)">Not scored</span>'}${a.submission && a.submission.flags && !a.submission.cleared ? ' ' + UI.pill('Flag', 'tint-red', 'policy') : ''}</td>
+    <td data-label="Skill score"><span class="num">${a.skillScore || '—'}</span> <small style="color:var(--text4)">${a.tasksVerified} tasks</small></td>
+    <td data-label="Status">${UI.appPill(a.status)}</td>
+    <td data-label="Updated">${UI.timeAgo(a.updatedAt)}</td>
+    <td><div class="acts"><button class="btn-sm" onclick="openDrawer('${a.id}')">Open</button></div></td></tr>`).join('')
+    : `<tr><td colspan="8">${UI.empty('inbox', 'No applications match', 'Applications appear when candidates submit your job\'s task.')}</td></tr>`;
+  $('cmpBar').hidden = !picked.size;
+  $('cmpCount').textContent = `${picked.size} selected for comparison (max 4)`;
+  if (openId) renderDrawer();
+}
+function togglePick(id, on) { if (on && picked.size >= 4) { UI.toast('Compare up to 4 candidates at a time', 'info'); render(); return; } on ? picked.add(id) : picked.delete(id); render(); }
+function compare() { location.href = `compare.html?apps=${[...picked].join(',')}`; }
+function openDrawer(id) { openId = id; history.replaceState(null, '', `?id=${id}`); renderDrawer(); $('drawer').classList.add('open'); }
+function closeDrawer() { openId = null; $('drawer').classList.remove('open'); history.replaceState(null, '', location.pathname); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && openId && !document.querySelector('.d-modal-bg')) closeDrawer(); });
+
+function renderDrawer() {
+  const a = UR.applications.list().find(x => x.id === openId);
+  if (!a) { $('drawerBody').innerHTML = `<div class="d-drawer-body">${UI.empty('search_off', 'Application not found')}</div>`; $('drawer').classList.add('open'); return; }
+  $('drawer').classList.add('open');
+  const sub = a.submission ? UR.submissions.get(a.submission.id) : null;
+  const moves = (MOVES[a.status] || []).filter(m => me.role === 'hr' || ['shortlisted', 'rejected'].includes(m));
+  $('drawerBody').innerHTML = `<div class="d-drawer-head">${UI.avatar(a.candidateName, 44, a.candidate)}<div style="flex:1;min-width:0"><h3 id="dTitle">${esc(a.candidateName)}</h3><div class="l-sub">${esc(a.job.title)} · applied ${UI.fmtDate(a.createdAt)}</div></div><button class="d-modal-close" onclick="closeDrawer()" aria-label="Close">${UI.icon('close', 22)}</button></div>
+    <div class="d-drawer-body">
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${UI.appPill(a.status)}${a.academyName ? UI.pill('Referred by ' + a.academyName, 'tint-pink', 'school') : UI.pill('Direct application', 'gray')}</div>
+      <div class="kv"><div><span>Task score (verified)</span><b>${a.taskScore != null ? a.taskScore + '/100' : '—'}</b></div><div><span>Skill score</span><b>${a.skillScore || '—'}</b></div><div><span>Verified tasks</span><b>${a.tasksVerified}</b></div></div>
+      ${a.route === 'verified_score' ? `<div><div class="d-sec-title">Applied with existing verified scores</div>${(a.evidence || []).map(r => `<div class="bd-row"><div class="bd-name">${esc(r.skill)}</div><div class="rubric-bar-outer" style="height:8px;background:#eeedfd"><div class="rubric-bar-inner" style="width:${r.score / 10}%"></div></div><div class="bd-pts">${r.score}<small>/1000</small></div></div><div class="l-sub">${r.tasks} verified task${r.tasks === 1 ? '' : 's'} · your minimum ${r.minScore}</div>`).join('')}${a.note ? `<div class="d-note" style="margin-top:8px">${UI.icon('sticky_note_2')}<div>${esc(a.note)}</div></div>` : ''}
+        ${a.taskRequested ? `<div class="d-note" style="margin-top:8px">${UI.icon('assignment')}<div>Role assessment requested ${UI.timeAgo(a.taskRequested.at)}${a.submission ? ' — submitted' : ' — waiting for the candidate'}.</div></div>` : `<button class="btn-sm" style="margin-top:8px" onclick="requestTask('${a.id}')">${UI.icon('assignment_add')}Also request the role assessment</button>`}</div>` : ''}
+      ${sub && sub.score ? `<div><div class="d-sec-title">Rubric breakdown</div>${sub.score.breakdown.map(b => `<div class="bd-row"><div class="bd-name">${esc(b.criterion)}</div><div class="rubric-bar-outer" style="height:8px;background:#eeedfd"><div class="rubric-bar-inner" style="width:${b.awarded / b.max * 100}%"></div></div><div class="bd-pts">${b.awarded}<small>/${b.max}</small></div></div>`).join('')}<div class="l-sub" style="margin-top:6px">Scored by ${esc(sub.reviewerName)}</div></div>`
+        : sub ? `<div class="d-note">${UI.icon('hourglass_top')}<div>Submission awaiting review. <a href="interviewer-dashboard.html?sub=${sub.id}" style="color:var(--brand);font-weight:700">Score it now →</a></div></div>` : ''}
+      ${sub && sub.integrity.flags.length && !sub.integrity.clearedAt ? `<div class="d-note bad">${UI.icon('policy')}<div>${sub.integrity.flags.map(f => esc(UR.INTEGRITY_LABEL[f.type] + ': ' + f.detail)).join('<br>')}</div></div>` : ''}
+      ${a.interviews.length ? `<div><div class="d-sec-title">Interviews</div>${a.interviews.map(i => `<div class="l-row" style="box-shadow:none;padding:10px 12px"><div class="l-main"><div class="l-title" style="font-size:13.5px">${esc(i.stage)}</div><div class="l-sub">${UI.fmtDateTime(i.scheduledAt)}${i.feedback ? ' · ' + esc(i.outcome || '') + ': ' + esc(i.feedback) : ''}</div></div>${UI.pill(UR.INTERVIEW_STATUS[i.status].label, UR.INTERVIEW_STATUS[i.status].tint)}</div>`).join('')}</div>` : ''}
+      <div><div class="d-sec-title">History</div><div class="timeline">${[...a.history].reverse().map(h => { const s = UR.APP_STATUS[h.status] || {}; const by = h.by ? UR.users.get(h.by) : null; return `<div class="tl-item"><span class="tl-dot ${s.tint || 'gray'}">${UI.icon(s.icon || 'circle', 15)}</span><div><div class="tl-title">${esc(s.label || h.status)}</div><div class="tl-sub">${UI.fmtDateTime(h.at)}${by ? ' · ' + esc(by.name) : ''}${h.note ? ' · ' + esc(h.note) : ''}</div></div></div>`; }).join('')}</div></div>
+    </div>
+    <div class="d-drawer-foot">
+      ${moves.map(m => m === 'interview' ? `<a class="btn-sm primary" href="hr-interviews.html?schedule=${a.id}">${UI.icon('event')}Schedule interview</a>` : `<button class="btn-sm ${m === 'rejected' ? 'danger' : m === 'hired' ? 'good' : 'primary'}" onclick="move('${a.id}','${m}')">${UI.icon(UR.APP_STATUS[m].icon)}${m === 'rejected' ? 'Not selected' : UR.APP_STATUS[m].label}</button>`).join('')}
+      ${me.role === 'hr' && a.status === 'interview' ? `<a class="btn-sm" href="hr-interviews.html?schedule=${a.id}">${UI.icon('add')}Another round</a>` : ''}
+      <button class="btn-sm" onclick="message('${a.candidateUserId}')">${UI.icon('chat')}Message</button>
+      <a class="btn-sm" href="candidate-profile.html?u=${a.candidate}" target="_blank">${UI.icon('person')}Profile</a>
+    </div>`;
+}
+async function move(id, st) {
+  const r = await UI.confirm({ title: `Move to ${UR.APP_STATUS[st].label}?`, text: 'The candidate is notified immediately.', confirmLabel: 'Confirm', danger: st === 'rejected', input: { label: 'Note (internal, optional)' } });
+  if (r.ok) UI.run(() => UR.applications.move(id, st, r.value || ''), `Moved to ${UR.APP_STATUS[st].label} — candidate notified`).then(() => { if (st === 'hired') rateHire(id); }).catch(() => {});
+}
+async function requestTask(id) {
+  const r = await UI.confirm({ title: 'Request the role assessment?', icon: 'assignment_add', confirmLabel: 'Send request', text: 'Only ask when the verified scores don\'t cover something the role needs — it adds candidate effort.', input: { label: 'What should the assessment show? (sent to the candidate)', required: true } });
+  if (r.ok) UI.run(() => UR.verifiedApply.requestTask(id, r.value), 'Request sent to the candidate').catch(() => {});
+}
+function rateHire(appId) {
+  if (UR.feedback.mine('hire', appId)) return;
+  UI.modal({ title: 'How well did Unresume work for this hire?', icon: 'reviews', submitLabel: 'Send rating', cancelLabel: 'Skip', sub: 'Optional. Ratings feed the platform satisfaction metric — we only show real responses.',
+    body: UI.field({ name: 'rating', label: 'Rating', type: 'select', required: true, options: [['', 'Choose…'], ['5', '5 — excellent'], ['4', '4 — good'], ['3', '3 — okay'], ['2', '2 — poor'], ['1', '1 — very poor']] }) + UI.field({ name: 'comment', label: 'What would make hiring easier? (optional)', type: 'textarea', rows: 3 }),
+    onSubmit: d => { UR.feedback.submit({ context: 'hire', targetId: appId, rating: d.rating, comment: d.comment }); UI.toast('Thanks for the feedback'); } });
+}
+function message(uid) { UI.run(() => UR.messages.start(uid)).then(id => location.href = `chat.html?c=${id}`).catch(() => {}); }
+function exportCSV() {
+  const list = filtered();
+  UI.csv(`applications-${new Date().toISOString().slice(0, 10)}.csv`, ['Candidate', 'Job', 'Status', 'Task score', 'Skill score', 'Verified tasks', 'Source', 'Applied', 'Updated'],
+    list.map(a => [a.candidateName, a.job.title, UR.APP_STATUS[a.status].label, a.taskScore ?? '', a.skillScore, a.tasksVerified, a.academyName || 'Direct', a.createdAt.slice(0, 10), a.updatedAt.slice(0, 10)]));
+}
+['jobF', 'statusF', 'sourceF', 'flagF', 'sort'].forEach(id => $(id).addEventListener('change', e => { if (id === 'jobF') jobF = e.target.value; if (id === 'statusF') statusF = e.target.value; if (id === 'sort') sort = e.target.value; render(); }));
+render();
+if ($('topbarSearch')) $('topbarSearch').addEventListener('input', UI.debounce(render, 150));
+UI.onChange(render);
+</script>
+</body>
+</html>

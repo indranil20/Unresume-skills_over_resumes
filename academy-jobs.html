@@ -53,37 +53,12 @@
 </head>
 <body>
 <div class="dash-root">
-  <div id="sidebar" data-role="academy"></div>
+  <div id="sidebar" data-roles="academy"></div>
   <div class="dash-content">
     <header class="dash-topbar">
       <div class="topbar-search">
         <span class="material-symbols-rounded" style="font-size:18px;color:var(--text4)">search</span>
-        <input type="text" id="searchInput" placeholder="Search by role, company, or skill…" oninput="render()">
-      </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div class="topbar-popover">
-          <button class="topbar-icon-btn" onclick="toggleTopbarPopover(this)"><span class="material-symbols-rounded" style="font-size:20px">notifications</span><span class="notif-dot"></span></button>
-          <div class="popover-panel notif-panel">
-            <div class="popover-head">Notifications <span class="mark-read" onclick="this.closest('.topbar-popover').querySelector('.notif-dot')?.remove()">Mark all read</span></div>
-            <div class="notif-list">
-              <div class="notif-item">
-                <div class="notif-icon tint-blue"><span class="material-symbols-rounded" style="font-size:17px">work</span></div>
-                <div><div class="notif-text">TechCorp has 2 open referral slots</div><div class="notif-time">2h ago</div></div>
-              </div>
-              <div class="notif-item">
-                <div class="notif-icon tint-purple"><span class="material-symbols-rounded" style="font-size:17px">handshake</span></div>
-                <div><div class="notif-text">Neha Patel was placed at DataSoft</div><div class="notif-time">1d ago</div></div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="topbar-popover">
-          <div class="topbar-avatar" onclick="toggleTopbarPopover(this)">AC</div>
-          <div class="popover-panel avatar-panel">
-            <a href="#" class="avatar-menu-item" onclick="alert('Settings coming soon');return false"><span class="material-symbols-rounded" style="font-size:18px">settings</span> Account Settings</a>
-            <a href="login.html" class="avatar-menu-item danger"><span class="material-symbols-rounded" style="font-size:18px">logout</span> Sign Out</a>
-          </div>
-        </div>
+        <input type="text" id="searchInput" placeholder="Search by role, company, or skill…" oninput="render()" data-local>
       </div>
     </header>
     <main class="dash-main">
@@ -99,90 +74,76 @@
   </div>
 </div>
 
-<script src="js/components.js"></script>
 <script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
 <script>
-const jobs = getJobs();
-const students = getCandidates();
-const catTint = { Engineering:'tint-blue', Design:'tint-pink', Data:'tint-purple' };
-let search = '', category = 'All', selectedId = jobs[0].id;
+const $ = id => document.getElementById(id), esc = UI.esc;
+const catTint = { Engineering:'tint-blue', Design:'tint-pink', Data:'tint-purple', Product:'tint-amber' };
+let category = 'All', selectedId = parseInt(UI.param('job'), 10) || null;
+const preStudent = UI.param('student');
+const picked = new Set(preStudent ? [preStudent] : []);
 
-function renderPills() {
+function renderPills(jobs) {
   const cats = ['All', ...new Set(jobs.map(j => j.category))];
-  document.getElementById('catPills').innerHTML = cats.map(c =>
-    `<button class="cat-pill ${c===category?'active':''}" onclick="setCategory('${c}')">${c}</button>`
-  ).join('');
+  $('catPills').innerHTML = cats.map(c => `<button class="cat-pill ${c === category ? 'active' : ''}" onclick="setCategory('${c}')">${c}</button>`).join('');
 }
 function setCategory(c) { category = c; render(); }
+function selectJob(id) { selectedId = id; picked.clear(); render(); }
 
-function selectJob(id) { selectedId = id; render(); }
-
-function renderDetail() {
-  const job = jobs.find(j => j.id === selectedId);
-  if (!job) {
-    document.getElementById('jobDetail').innerHTML = `<div class="aj-detail"><div class="aj-empty">Select a job to see details</div></div>`;
-    return;
-  }
-  document.getElementById('jobDetail').innerHTML = `
-    <div class="aj-detail">
-      <div style="display:flex;gap:16px;align-items:center;margin-bottom:18px">
-        <div class="aj-logo ${catTint[job.category] || 'tint-teal'}" style="width:64px;height:64px;font-size:30px;border-radius:18px">${job.logo}</div>
-        <div>
-          <div class="aj-company">${job.company}</div>
-          <div style="font-family:var(--font-display);font-size:24px;font-weight:800;color:var(--text1);letter-spacing:-.03em">${job.title}</div>
-          <span class="d-pill ${catTint[job.category] || 'tint-teal'}" style="margin-top:6px">${job.category}</span>
-        </div>
-      </div>
-      <p style="font-size:14.5px;color:var(--text2);line-height:1.75">${job.description}</p>
-      <ul class="req-list">${job.requirements.map(r=>`<li class="req-item"><span class="req-check"><span class="material-symbols-rounded" style="font-size:15px;font-weight:700">check</span></span>${r}</li>`).join('')}</ul>
-      <div class="skills-wrap">${job.skills.map(s=>`<span class="skill-tag">${s}</span>`).join('')}</div>
-
-      <div class="refer-card">
-        <div class="sec-title" style="font-size:16px;margin-bottom:6px"><span class="sec-icon" style="background:linear-gradient(90deg,#4f46e5,#7c3aed);color:#fff"><span class="material-symbols-rounded">send</span></span>Refer a Student</div>
-        <p style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:14px">Put one of your students forward for this role at ${job.company}.</p>
-        <select id="referSelect" style="width:100%;padding:12px 14px;color:var(--text1);font-size:14px;font-family:var(--font-body);margin-bottom:12px;background:#fff !important">
-          ${students.map(s => `<option value="${s.username}">${s.name}</option>`).join('')}
-        </select>
-        <button id="referBtn" class="cta-btn" style="width:100%;justify-content:center" onclick="handleRefer()">Refer Student</button>
-      </div>
-    </div>`;
+function renderDetail(job) {
+  if (!job) { $('jobDetail').innerHTML = `<div class="aj-detail"><div class="aj-empty">Select a job to see details</div></div>`; return; }
+  const ac = UR.academies.mine();
+  const used = UR.academy.referralUsage(job.id), open = Math.max(0, job.referralSlots - used);
+  const refs = UR.academy.referrals().filter(r => r.jobId === job.id);
+  const students = UR.academy.students().filter(s => !['Placed', 'Left Academy'].includes(s.status));
+  const already = new Set(refs.map(r => r.studentId));
+  const skillMatch = s => s.candidate ? (UR.candidates.stats(s.candidate) || { skills: [] }).skills.filter(k => job.skills.includes(k.skill)) : [];
+  const ranked = students.map(s => ({ s, m: skillMatch(s) })).sort((a, b) => b.m.length - a.m.length || (b.s.skillScore || 0) - (a.s.skillScore || 0));
+  [...picked].forEach(id => { if (already.has(id) || !students.some(s => s.id === id)) picked.delete(id); });
+  $('jobDetail').innerHTML = `<div class="aj-detail">
+    <div style="display:flex;gap:16px;align-items:center;margin-bottom:18px">
+      <div class="aj-logo ${catTint[job.category] || 'tint-teal'}" style="width:64px;height:64px;font-size:30px;border-radius:18px">${job.logo}</div>
+      <div><div class="aj-company">${esc(job.company)}</div><div style="font-family:var(--font-display);font-size:24px;font-weight:800;color:var(--text1);letter-spacing:-.03em">${esc(job.title)}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><span class="d-pill ${catTint[job.category] || 'tint-teal'}">${esc(job.category)}</span>${UI.pill(`Task: ${job.task.title} · ${UR.fmtDuration(job.task.timeLimitMin)}`, 'tint-purple')}${UI.pill('Closes ' + UI.fmtDate(job.deadline), 'tint-amber')}</div></div>
+    </div>
+    <p style="font-size:14.5px;color:var(--text2);line-height:1.75">${esc(job.description)}</p>
+    <ul class="req-list">${job.requirements.map(r => `<li class="req-item"><span class="req-check"><span class="material-symbols-rounded" style="font-size:15px;font-weight:700">check</span></span>${esc(r)}</li>`).join('')}</ul>
+    <div class="skills-wrap">${job.skills.map(s => `<span class="skill-tag">${esc(s)}</span>`).join('')}</div>
+    <div class="refer-card">
+      <div class="sec-title" style="font-size:16px;margin-bottom:6px"><span class="sec-icon" style="background:linear-gradient(90deg,#4f46e5,#7c3aed);color:#fff"><span class="material-symbols-rounded">send</span></span>Refer students</div>
+      <p style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:12px">${open ? `${UI.plural(open, 'slot')} left of ${job.referralSlots}.` : 'All referral slots for this job are used.'} Referred students are notified and still apply by completing the task — the company sees them as an academy referral.</p>
+      ${ac.verification !== 'verified' ? `<div class="d-note warn">${UI.icon('gpp_maybe')}<div>Referrals unlock once your academy is verified.</div></div>` : open ? `
+        <div style="display:flex;flex-direction:column;gap:6px;max-height:280px;overflow:auto;margin-bottom:12px">${ranked.map(({ s, m }) => { const on = picked.has(s.id), done = already.has(s.id), full = picked.size >= open && !on;
+          return `<button class="pick-row ${on ? 'on' : ''}" ${done || full ? 'disabled' : ''} onclick="togglePick('${s.id}')"><span class="pick-check"><span class="material-symbols-rounded">check</span></span>${UI.avatar(s.name, 34, s.email)}
+            <div style="flex:1;min-width:0"><div class="pick-name">${esc(s.name)}</div><div class="pick-sub">${s.tasksVerified ? `Skill score ${s.skillScore}` : 'No verified tasks yet'}${m.length ? ` · ${m.map(k => esc(k.skill) + ' ' + Math.round(k.avg)).join(', ')}` : ''}${s.candidate ? '' : ' · not signed up'}</div></div>
+            ${done ? '<span class="d-pill tint-teal">Referred</span>' : m.length ? `<span class="d-pill tint-purple">${m.length} skill match</span>` : ''}</button>`; }).join('') || '<div class="pick-note">No active students to refer.</div>'}</div>
+        ${UI.field({ name: 'refNote', label: 'Note to the company (optional)', placeholder: 'Why these students fit' })}
+        <button class="cta-btn" style="width:100%;justify-content:center;margin-top:10px" ${picked.size ? '' : 'disabled'} onclick="refer(${job.id})">${UI.icon('send')} Refer ${picked.size || ''} student${picked.size === 1 ? '' : 's'}</button>` : ''}
+      ${refs.length ? `<div class="d-sec-title" style="margin-top:16px">Already referred</div>${refs.map(r => `<div class="l-sub" style="margin-bottom:4px">${esc(r.studentName)} · ${UI.fmtDate(r.createdAt)} · ${r.application ? UR.APP_STATUS[r.application.status].label : r.status}</div>`).join('')}` : ''}
+    </div></div>`;
 }
-
-function handleRefer() {
-  const select = document.getElementById('referSelect');
-  const btn = document.getElementById('referBtn');
-  const name = select.options[select.selectedIndex].textContent;
-  btn.textContent = `✓ ${name} Referred`;
-  btn.style.opacity = '.7';
-  btn.disabled = true;
-  select.disabled = true;
+function togglePick(id) { picked.has(id) ? picked.delete(id) : picked.add(id); render(); }
+function refer(jobId) {
+  const note = (document.querySelector('[name=refNote]') || {}).value || '';
+  UI.run(() => UR.academy.refer([...picked], jobId, note), names => `Referred ${names.join(', ')} — they and the company were notified`).then(() => picked.clear()).catch(() => {});
 }
-
 function render() {
-  search = document.getElementById('searchInput').value;
-  renderPills();
-  const q = search.toLowerCase();
-  const filtered = jobs.filter(j => {
-    const ms = !q || j.title.toLowerCase().includes(q) || j.company.toLowerCase().includes(q) || j.skills.some(s=>s.toLowerCase().includes(q));
-    const mc = category==='All' || j.category===category;
-    return ms && mc;
-  });
-
+  const jobs = UR.jobs.list();
+  renderPills(jobs);
+  const q = $('searchInput').value.toLowerCase();
+  const filtered = jobs.filter(j => (!q || j.title.toLowerCase().includes(q) || j.company.toLowerCase().includes(q) || j.skills.some(s => s.toLowerCase().includes(q))) && (category === 'All' || j.category === category));
   if (!filtered.find(j => j.id === selectedId) && filtered.length) selectedId = filtered[0].id;
-
-  document.getElementById('jobsList').innerHTML = filtered.length ? filtered.map(j => `
-    <div class="aj-card ${j.id===selectedId?'active':''}" onclick="selectJob(${j.id})">
-      <div class="aj-card-top">
-        <div class="aj-logo ${catTint[j.category] || 'tint-teal'}">${j.logo}</div>
-        <div><div class="aj-company">${j.company}</div><div class="aj-title">${j.title}</div></div>
-      </div>
-      <div class="aj-skills">${j.skills.slice(0,3).map(s=>`<span class="skill-tag">${s}</span>`).join('')}</div>
-    </div>`).join('') : `<div class="aj-empty">No listings match your search.</div>`;
-
-  renderDetail();
+  $('jobsList').innerHTML = filtered.length ? filtered.map(j => { const used = UR.academy.referralUsage(j.id); return `
+    <div class="aj-card ${j.id === selectedId ? 'active' : ''}" role="button" tabindex="0" onclick="selectJob(${j.id})" onkeydown="if(event.key==='Enter')selectJob(${j.id})">
+      <div class="aj-card-top"><div class="aj-logo ${catTint[j.category] || 'tint-teal'}">${j.logo}</div><div><div class="aj-company">${esc(j.company)}</div><div class="aj-title">${esc(j.title)}</div></div></div>
+      <div class="aj-skills">${j.skills.slice(0, 3).map(s => `<span class="skill-tag">${esc(s)}</span>`).join('')}<span class="d-pill ${used < j.referralSlots ? 'tint-purple' : 'gray'}">${used}/${j.referralSlots} referred</span></div>
+    </div>`; }).join('') : `<div class="aj-empty">No listings match your search.</div>`;
+  renderDetail(filtered.find(j => j.id === selectedId));
 }
-
 render();
+UI.onChange(render);
 </script>
 </body>
 </html>

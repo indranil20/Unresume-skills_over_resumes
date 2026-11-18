@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link rel="icon" type="image/png" href="images/favicon.png">
+<title>Compare Candidates — Unresume</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link rel="stylesheet" href="css/globals.css">
+<link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/dashboard.css">
+<style>
+.cmp td.best{background:#e6f8f5}
+.cmp td.best .num::after{content:' ★';color:#0d9488;font-size:12px}
+.cmp th.rowh{text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--text2);background:#fff;position:sticky;left:0;min-width:150px}
+.cmp td{min-width:170px}
+</style>
+</head>
+<body>
+<div class="dash-root">
+  <div id="sidebar" data-roles="hr,interviewer"></div>
+  <div class="dash-content">
+    <header class="dash-topbar" data-auto data-search="Search…"></header>
+    <main class="dash-main">
+      <div class="dash-greeting"><div class="g-blob"></div>
+        <div><h1 class="dash-h1">Compare <span class="grad-text">Candidates</span></h1><p class="dash-sub">Side by side on verified evidence only: rubric scores on the same task, Skill Score, verified skills and integrity status.</p></div></div>
+      <div class="panel-card" style="margin-bottom:18px">
+        <div class="d-toolbar" style="margin:0"><select id="jobSel" aria-label="Job"></select><span style="font-size:13px;color:var(--text3)">Pick up to 4 applicants:</span><div id="pickers" style="display:flex;gap:6px;flex-wrap:wrap"></div></div>
+      </div>
+      <div id="out"></div>
+    </main>
+  </div>
+</div>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
+<script>
+const $ = id => document.getElementById(id), esc = UI.esc;
+const me = UR.user();
+let ids = (UI.param('apps') || '').split(',').filter(Boolean);
+const all = () => UR.applications.list().filter(a => a.status !== 'withdrawn');
+let jobId = (() => { const first = all().find(a => ids.includes(a.id)); return first ? String(first.jobId) : ''; })();
+
+function render() {
+  const apps = all();
+  const jobs = UR.jobs.list({ status: 'all', companyId: me.orgId }).filter(j => apps.some(a => a.jobId === j.id));
+  if (!jobId && jobs.length) jobId = String(jobs[0].id);
+  $('jobSel').innerHTML = jobs.map(j => `<option value="${j.id}" ${String(j.id) === jobId ? 'selected' : ''}>${esc(j.title)}</option>`).join('') || '<option>No applications yet</option>';
+  const pool = UI.sortBy(apps.filter(a => String(a.jobId) === jobId), 'taskScore');
+  ids = ids.filter(id => pool.some(a => a.id === id));
+  if (!ids.length) ids = pool.filter(a => a.taskScore != null).slice(0, 3).map(a => a.id);
+  $('pickers').innerHTML = pool.map(a => `<button class="skill-chip ${ids.includes(a.id) ? 'on' : ''}" aria-pressed="${ids.includes(a.id)}" onclick="toggle('${a.id}')">${esc(a.candidateName)}${a.taskScore != null ? ' · ' + a.taskScore : ''}</button>`).join('') || '<span style="font-size:13px;color:var(--text3)">No applicants for this job.</span>';
+  const sel = ids.map(id => pool.find(a => a.id === id)).filter(Boolean);
+  history.replaceState(null, '', `?apps=${ids.join(',')}`);
+  if (sel.length < 2) { $('out').innerHTML = UI.empty('compare_arrows', 'Select at least two applicants', 'Comparison uses only verified data, so candidates without a scored submission show blanks.'); return; }
+
+  const data = sel.map(a => {
+    const sub = a.submission ? UR.submissions.get(a.submission.id) : null;
+    const st = UR.candidates.stats(a.candidate);
+    return { a, sub, st };
+  });
+  const rubric = (data.find(d => d.sub) || {}).sub ? data.find(d => d.sub).sub.task.rubric : [];
+  const row = (label, vals, numeric) => {
+    const nums = vals.map(v => typeof v === 'number' ? v : null);
+    const max = numeric ? Math.max(...nums.filter(x => x != null)) : null;
+    return `<tr><th class="rowh" scope="row">${label}</th>${vals.map((v, i) => `<td class="${numeric && nums[i] != null && nums[i] === max && nums.filter(x => x === max).length === 1 ? 'best' : ''}">${v == null ? '<span style="color:var(--text4)">—</span>' : typeof v === 'number' ? `<span class="num">${v}</span>` : v}</td>`).join('')}</tr>`;
+  };
+  $('out').innerHTML = `<div class="d-table-wrap"><table class="d-table cmp"><thead><tr><th class="rowh"></th>${data.map(({ a }) => `<th style="text-transform:none;letter-spacing:0"><div class="who">${UI.avatar(a.candidateName, 36, a.candidate)}<div><b style="font-size:14px">${esc(a.candidateName)}</b><small>${UR.APP_STATUS[a.status].label}</small></div></div></th>`).join('')}</tr></thead><tbody>
+    ${row('Task score (verified)', data.map(d => d.a.taskScore), true)}
+    ${rubric.map((r, i) => row(`&nbsp;&nbsp;${esc(r.criterion)} <small style="color:var(--text4)">/${r.points}</small>`, data.map(d => d.sub && d.sub.score ? d.sub.score.breakdown[i].awarded : null), true)).join('')}
+    ${row('Skill Score', data.map(d => d.st.skillScore || null), true)}
+    ${row('Verified tasks', data.map(d => d.st.tasksVerified), true)}
+    ${row('Tier', data.map(d => UI.tierPill(d.st.tier)))}
+    ${row('Verified skill badges', data.map(d => d.st.badges.length ? d.st.badges.map(b => UI.pill(`${b.skill} · ${b.badge}`, 'tint-teal')).join(' ') : null))}
+    ${row('Job skills covered', data.map(({ a, st }) => { const job = a.job; const have = job.skills.filter(s => st.skills.some(x => x.skill === s)); return `${have.length}/${job.skills.length}<br><small style="color:var(--text3)">${esc(have.join(', ') || 'none verified')}</small>`; }))}
+    ${row('Time taken', data.map(d => d.sub ? `${d.sub.durationMin} min` : null))}
+    ${row('Integrity', data.map(d => !d.sub ? null : d.sub.integrity.flags.length && !d.sub.integrity.clearedAt ? UI.pill(`${d.sub.integrity.flags.length} open flag(s)`, 'tint-red', 'policy') : UI.pill(d.sub.integrity.flags.length ? 'Reviewed' : 'Clean', 'tint-teal', 'verified_user')))}
+    ${row('Identity', data.map(d => d.a.identityVerified ? UI.pill('Verified', 'tint-teal', 'verified') : UI.pill('Not verified', 'gray')))}
+    ${row('Interviews', data.map(d => d.a.interviews.length ? d.a.interviews.map(i => `${esc(i.stage)}: ${i.outcome ? esc(i.outcome) : UR.INTERVIEW_STATUS[i.status].label}`).join('<br>') : null))}
+    ${row('Source', data.map(d => d.a.academyName ? esc(d.a.academyName) : 'Direct'))}
+    <tr><th class="rowh"></th>${data.map(({ a }) => `<td><div class="acts" style="justify-content:flex-start"><a class="btn-sm" href="hr-applications.html?id=${a.id}">Open</a>${a.status === 'scored' ? `<button class="btn-sm primary" onclick="shortlist('${a.id}')">Shortlist</button>` : ''}</div></td>`).join('')}</tr>
+  </tbody></table></div><p style="font-size:12px;color:var(--text3);margin-top:10px">★ marks the single highest value in a row. Self-declared skills, followers and portfolio likes are deliberately excluded.</p>`;
+}
+function toggle(id) { if (ids.includes(id)) ids = ids.filter(x => x !== id); else if (ids.length >= 4) return UI.toast('Compare up to 4 at a time', 'info'); else ids.push(id); render(); }
+function shortlist(id) { UI.run(() => UR.applications.move(id, 'shortlisted'), 'Shortlisted — candidate notified').catch(() => {}); }
+$('jobSel').addEventListener('change', e => { jobId = e.target.value; ids = []; render(); });
+render();
+UI.onChange(render);
+</script>
+</body>
+</html>

@@ -10,172 +10,147 @@
 <link rel="stylesheet" href="css/globals.css">
 <link rel="stylesheet" href="css/navbar.css">
 <style>
-.bc-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:28px}
-.filter-pills{display:flex;gap:8px;flex-wrap:wrap;flex:1}
-.bc-count{font-size:13.5px;color:var(--text4);font-weight:600;margin-left:auto}
-.cand-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:18px}
-@media(max-width:640px){
-  .bc-toolbar{margin-bottom:18px}
-  .filter-pills{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;flex-basis:100%;padding-bottom:2px}
-  .filter-pills::-webkit-scrollbar{display:none}
-  .filter-pills .cat-pill{flex-shrink:0}
-  .bc-count{margin-left:0}
-  .cand-grid{gap:12px}
-  .cand-card{padding:20px 16px}
-}
-.cand-card{background:var(--bg-card);border:1px solid var(--border);border-radius:20px;padding:24px 20px;display:flex;flex-direction:column;gap:12px;text-decoration:none;transition:border-color .2s,transform .2s;position:relative;overflow:hidden}
+/* toolbar */
+.bc-filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.bc-filters select{padding:10px 12px;font-size:13px;font-weight:600;font-family:var(--font-body);color:var(--text1);cursor:pointer}
+.chk-chip{display:inline-flex;align-items:center;gap:7px;padding:9px 13px;border:1px solid var(--border-light);border-radius:12px;background:#fff;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;user-select:none;white-space:nowrap}
+.chk-chip input{accent-color:var(--brand);margin:0}
+.chk-chip:has(input:checked){border-color:var(--brand);background:#f5f3ff;color:var(--brand)}
+.bc-count{margin-left:auto;font-size:13px;color:var(--text3);font-weight:700;white-space:nowrap}
+.pill-strip{position:relative;margin-bottom:22px}
+.pill-strip::after{content:'';position:absolute;top:0;right:0;bottom:0;width:48px;background:linear-gradient(90deg,transparent,#f3f1fe);pointer-events:none}
+.filter-pills{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 48px 4px 2px;scroll-behavior:smooth}
+.filter-pills::-webkit-scrollbar{display:none}
+.filter-pills .cat-pill{flex-shrink:0;padding:7px 15px;font-size:12.5px}
+/* cards */
+.cand-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr));gap:18px;align-items:stretch}
+.cand-card{padding:20px !important;display:flex;flex-direction:column;gap:14px;position:relative;overflow:hidden;transition:border-color .2s,transform .2s,box-shadow .2s}
 .cand-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#4f46e5,#7c3aed,#c026d3);opacity:0;transition:opacity .2s}
-.cand-card:hover{border-color:rgba(91,108,245,.35);transform:translateY(-3px)}
+.cand-card:hover{transform:translateY(-3px)}
 .cand-card:hover::before{opacity:1}
-.cand-top{display:flex;align-items:flex-start;gap:12px}
-.cand-av{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:18px;font-weight:800;color:#fff;flex-shrink:0}
-.cand-name{font-size:15px;font-weight:800;color:var(--text1);margin-bottom:2px;font-family:var(--font-display)}
-.cand-uname{font-size:12.5px;color:var(--text4);font-weight:600}
-.cand-badge{margin-left:auto;font-size:11px;font-weight:800;padding:3px 10px;border-radius:6px}
-.cand-score-row{display:flex;align-items:center;gap:8px}
-.cand-score{font-family:var(--font-display);font-size:30px;font-weight:800;letter-spacing:-.02em}
-.cand-skills{display:flex;flex-wrap:wrap;gap:6px}
-.cand-skill{font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:100px;background:#eeedfd;color:var(--brand)}
-.cand-stats{display:flex;gap:16px;border-top:1px solid var(--border);padding-top:12px}
-.cand-stat{display:flex;flex-direction:column;gap:2px}
-.cand-stat-v{font-size:14px;font-weight:800;color:var(--text1);font-family:var(--font-display)}
-.cand-stat-l{font-size:11px;color:var(--text4);font-weight:600}
+.cand-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center}
+.cand-name{display:flex;align-items:center;gap:4px;font-size:15.5px;font-weight:800;color:var(--text1);font-family:var(--font-display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cand-name:hover{color:var(--brand)}
+.cand-meta{font-size:12.5px;color:var(--text3);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.cand-score-box{display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:16px;background:#fafaff;border:1px solid var(--border);min-height:68px}
+.cand-score{font-family:var(--font-display);font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1}
+.cand-score-lbl{font-size:11.5px;color:var(--text3);font-weight:600;line-height:1.3}
+.cand-skillscore{margin-left:auto;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.cand-private{font-size:12.5px;color:var(--text3);line-height:1.5}
+.cand-skills{display:flex;flex-wrap:wrap;gap:6px;min-height:28px;align-content:flex-start}
+.cand-skill{font-size:11.5px;font-weight:700;padding:5px 10px;border-radius:100px;background:#eeedfd;color:var(--brand);white-space:nowrap}
+.cand-skill.v{background:#e6f8f5;color:#0d9488}
+.cand-skill.more{background:var(--bg-elevated);color:var(--text3)}
+.cand-stats{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--border);padding-top:12px;margin-top:auto}
+.cand-stat{text-align:center}
+.cand-stat+.cand-stat{border-left:1px solid var(--border)}
+.cand-stat-v{font-size:16px;font-weight:800;color:var(--text1);font-family:var(--font-display);line-height:1.2}
+.cand-stat-l{font-size:11px;color:var(--text3);font-weight:600;white-space:nowrap}
+.cand-actions{display:flex;gap:8px}
+.cand-actions > *{flex:1;justify-content:center;padding:10px 12px !important}
+@media(max-width:640px){
+  .bc-count{margin-left:0;flex-basis:100%}
+  .bc-filters select{flex:1 1 150px}
+  .cand-grid{gap:12px}
+  .cand-card{padding:16px !important}
+}
 </style>
 <link rel="stylesheet" href="css/dashboard.css">
 </head>
 <body>
 <div class="dash-root">
-  <div id="sidebar" data-role="hr"></div>
+  <div id="sidebar" data-roles="hr,interviewer,academy,admin"></div>
   <div class="dash-content">
     <header class="dash-topbar">
       <div class="topbar-search">
         <span class="material-symbols-rounded" style="font-size:18px;color:var(--text4)">search</span>
-        <input type="text" id="searchInput" placeholder="Search by name or skill…" oninput="render()">
-      </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div class="topbar-popover">
-          <button class="topbar-icon-btn" onclick="toggleTopbarPopover(this)"><span class="material-symbols-rounded" style="font-size:20px">notifications</span><span class="notif-dot"></span></button>
-          <div class="popover-panel notif-panel">
-            <div class="popover-head">Notifications <span class="mark-read" onclick="this.closest('.topbar-popover').querySelector('.notif-dot')?.remove()">Mark all read</span></div>
-            <div class="notif-list">
-              <div class="notif-item">
-                <div class="notif-icon tint-blue"><span class="material-symbols-rounded" style="font-size:17px">group</span></div>
-                <div><div class="notif-text">3 new candidates applied to Frontend Developer</div><div class="notif-time">1h ago</div></div>
-              </div>
-              <div class="notif-item">
-                <div class="notif-icon tint-purple"><span class="material-symbols-rounded" style="font-size:17px">event</span></div>
-                <div><div class="notif-text">Priya Sharma accepted your interview invite</div><div class="notif-time">4h ago</div></div>
-              </div>
-              <div class="notif-item">
-                <div class="notif-icon tint-amber"><span class="material-symbols-rounded" style="font-size:17px">schedule</span></div>
-                <div><div class="notif-text">Job listing "Backend Engineer" is expiring soon</div><div class="notif-time">1d ago</div></div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <a href="chat.html" class="topbar-icon-btn"><span class="material-symbols-rounded" style="font-size:20px">chat</span></a>
-        <div class="topbar-popover">
-          <div class="topbar-avatar" onclick="toggleTopbarPopover(this)">HR</div>
-          <div class="popover-panel avatar-panel">
-            <a href="#" class="avatar-menu-item" onclick="alert('Settings coming soon');return false"><span class="material-symbols-rounded" style="font-size:18px">settings</span> Account Settings</a>
-            <a href="login.html" class="avatar-menu-item danger"><span class="material-symbols-rounded" style="font-size:18px">logout</span> Sign Out</a>
-          </div>
-        </div>
+        <input type="text" id="searchInput" placeholder="Search by name or skill…" data-local aria-label="Search candidates">
       </div>
     </header>
     <main class="dash-main">
       <div class="dash-greeting"><div class="g-blob"></div><svg class="g-spark" viewBox="0 0 44 44" aria-hidden="true"><path d="M8 30 L26 6"/><path d="M20 36 L38 14"/><path d="M30 40 L40 32"/></svg><div><h1 class="dash-h1">Browse <span class="grad-text">Top Talent</span></h1><p class="dash-sub">Find candidates proven through real tasks — not just CVs.</p></div></div>
 
-      <div class="bc-toolbar">
-        <div class="filter-pills" id="filterPills"></div>
-        <span class="bc-count" id="countLbl"></span>
+      <div class="bc-filters">
+        <select id="sortSel" class="tc-select" aria-label="Sort"><option value="score">Highest Skill Score</option><option value="tasks">Most verified tasks</option><option value="recent">Newest members</option></select>
+        <select id="minSel" class="tc-select" aria-label="Minimum score"><option value="0">Any score</option><option value="650">650+ (Silver)</option><option value="750">750+ (Gold)</option><option value="800">800+ (Diamond)</option></select>
+        <label class="chk-chip"><input type="checkbox" id="badgeOnly"> Verified skill badge</label>
+        <label class="chk-chip"><input type="checkbox" id="idOnly"> Identity verified</label>
+        <span class="bc-count" id="countLbl" aria-live="polite"></span>
       </div>
+      <div class="pill-strip"><div class="filter-pills" id="filterPills" role="toolbar" aria-label="Filter by skill"></div></div>
       <div class="cand-grid" id="candGrid"></div>
     </main>
   </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-<script src="js/components.js"></script>
 <script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
 <script>
-const gradients = [
-  'linear-gradient(135deg,#38bdf8,#2563eb)',
-  'linear-gradient(135deg,#8b5cf6,#6d28d9)',
-  'linear-gradient(135deg,#e879f9,#a855f7)',
-  'linear-gradient(135deg,#2dd4bf,#0d9488)',
-  'linear-gradient(135deg,#fbbf24,#f97316)',
-  'linear-gradient(135deg,#818cf8,#4f46e5)',
-];
-const badgeStyle = {
-  Diamond: { cls:'tint-blue',  icon:'diamond' },
-  Gold:    { cls:'tint-amber', icon:'workspace_premium' },
-  Silver:  { cls:'d-pill gray', icon:'military_tech' },
-};
-
+const $ = id => document.getElementById(id), esc = UI.esc;
+const me = UR.user();
 let activeSkill = 'all';
-
-function getAllSkills() {
-  const set = new Set();
-  getCandidates().forEach(c => c.skills.forEach(s => set.add(s)));
-  return [...set];
-}
+const searchEl = $('searchInput');
+searchEl.setAttribute('data-local', '');
+if (UI.param('q')) searchEl.value = UI.param('q');
 
 function renderPills() {
-  const skills = getAllSkills();
-  document.getElementById('filterPills').innerHTML = `
-    <button class="cat-pill ${activeSkill==='all'?'active':''}" onclick="setSkill('all',this)">All</button>
-    ${skills.map(s => `<button class="cat-pill ${activeSkill===s?'active':''}" onclick="setSkill('${s}',this)">${s}</button>`).join('')}
-  `;
+  const skills = UR.candidates.allSkills();
+  $('filterPills').innerHTML = `<button class="cat-pill ${activeSkill === 'all' ? 'active' : ''}" onclick="setSkill('all')">All</button>` +
+    skills.map(s => `<button class="cat-pill ${activeSkill === s ? 'active' : ''}" onclick="setSkill('${esc(s).replace(/'/g, '&#39;')}')">${esc(s)}</button>`).join('');
 }
-
-function setSkill(s, btn) {
-  activeSkill = s;
-  renderPills();
-  render();
-}
+function setSkill(s) { activeSkill = s; renderPills(); render(); }
 
 function render() {
-  const q = document.getElementById('searchInput').value.toLowerCase();
-  let list = getCandidates().filter(c => {
-    const matchQ = !q || c.name.toLowerCase().includes(q) || c.skills.some(s => s.toLowerCase().includes(q));
-    const matchSkill = activeSkill === 'all' || c.skills.includes(activeSkill);
-    return matchQ && matchSkill;
+  const q = searchEl.value.toLowerCase(), min = +$('minSel').value, sort = $('sortSel').value;
+  let list = UR.candidates.list().filter(c => {
+    const st = c.stats;
+    if (q && !c.name.toLowerCase().includes(q) && !c.skills.some(s => s.toLowerCase().includes(q))) return false;
+    if (activeSkill !== 'all' && !c.skills.includes(activeSkill) && !st.skills.some(x => x.skill === activeSkill)) return false;
+    if (min && (st.hidden || st.skillScore < min)) return false;
+    if ($('badgeOnly').checked && (activeSkill === 'all' ? !st.badges.length : !st.badges.some(b => b.skill === activeSkill))) return false;
+    if ($('idOnly').checked && c.verification.identity !== 'verified') return false;
+    return true;
   });
-
-  document.getElementById('countLbl').textContent = `${list.length} candidate${list.length!==1?'s':''} found`;
-
-  document.getElementById('candGrid').innerHTML = list.map((c, i) => {
-    const initials = c.name.split(' ').map(w=>w[0]).join('').slice(0,2);
-    const b = badgeStyle[c.badge] || { cls:'d-pill gray', icon:'verified' };
-    return `<a href="candidate-profile.html?u=${c.username}" class="cand-card">
-      <div class="cand-top">
-        <div class="cand-av" style="background:${gradients[getCandidates().findIndex(x=>x.username===c.username)%gradients.length]}">${initials}</div>
-        <div style="flex:1;min-width:0">
-          <div class="cand-name">${c.name}</div>
-          <div class="cand-uname">@${c.username}</div>
-        </div>
-        <span class="d-pill ${b.cls}"><span class="material-symbols-rounded">${b.icon}</span>${c.badge}</span>
-      </div>
-      <div class="cand-score-row">
-        <span class="cand-score grad-text">${c.score}</span>
-        <div>
-          <div style="font-size:11.5px;color:var(--text3);font-weight:600">Skill Score</div>
-          <div class="d-pill tint-blue" style="padding:2px 9px;margin-top:3px">Rank #${c.rank}</div>
-        </div>
-      </div>
-      <div class="cand-skills">${c.skills.slice(0,4).map(s=>`<span class="cand-skill">${s}</span>`).join('')}${c.skills.length>4?`<span class="cand-skill" style="color:var(--brand)">+${c.skills.length-4}</span>`:''}</div>
+  list = sort === 'tasks' ? UI.sortBy(list, c => c.stats.tasksVerified || 0) : sort === 'recent' ? UI.sortBy(list, c => new Date(c.joinedAt).getTime()) : UI.sortBy(list, c => c.stats.skillScore || 0);
+  $('countLbl').textContent = `${list.length} candidate${list.length !== 1 ? 's' : ''} found`;
+  $('candGrid').innerHTML = list.map(c => {
+    const st = c.stats, sk = activeSkill !== 'all' ? st.skills.find(x => x.skill === activeSkill) : null;
+    const ver = c.verification.identity === 'verified' ? '<span class="material-symbols-rounded" title="Identity verified" style="font-size:16px;color:var(--brand);font-variation-settings:\'FILL\' 1;flex-shrink:0">verified</span>' : '';
+    const skills = c.skills.slice(0, 4).map(s => { const b = st.badges.find(x => x.skill === s); return `<span class="cand-skill ${b ? 'v' : ''}" title="${b ? 'Verified · ' + b.badge : 'Self-declared'}">${b ? '✓ ' : ''}${esc(s)}</span>`; }).join('') + (c.skills.length > 4 ? `<span class="cand-skill more">+${c.skills.length - 4}</span>` : '');
+    return `<article class="cand-card">
+      <div class="cand-top">${UI.avatar(c.name, 48, c.username)}
+        <div style="min-width:0"><a href="candidate-profile.html?u=${c.username}" class="cand-name"><span style="overflow:hidden;text-overflow:ellipsis">${esc(c.name)}</span>${ver}</a>
+          <div class="cand-meta" title="@${c.username}${c.location ? ' · ' + esc(c.location) : ''}">@${c.username}${c.location ? ' · ' + esc(c.location) : ''}</div></div>
+        ${st.hidden ? UI.pill('Private', 'gray', 'lock') : UI.tierPill(st.tier)}</div>
+      <div class="cand-score-box">${st.hidden ? `<span class="cand-private">${UI.icon('lock', 16)} Scores are private. You'll see them if this candidate applies to your jobs.</span>`
+        : `<span class="cand-score grad-text">${st.skillScore || '—'}</span><div><div class="cand-score-lbl">Skill Score<br>out of 1000</div></div>
+           <div class="cand-skillscore">${sk ? `<span class="cand-score-lbl">${esc(activeSkill)}</span>${UI.verifiedScore(Math.round(sk.avg), true)}` : `<span class="d-pill tint-blue">${c.rank ? 'Rank #' + c.rank : 'Unranked'}</span>`}</div>`}</div>
+      <div class="cand-skills">${skills}</div>
       <div class="cand-stats">
-        <div class="cand-stat"><div class="cand-stat-v">${c.tasksCompleted}</div><div class="cand-stat-l">Tasks Done</div></div>
-        <div class="cand-stat"><div class="cand-stat-v">${c.followers}</div><div class="cand-stat-l">Followers</div></div>
-        <div class="cand-stat"><div class="cand-stat-v">${c.portfolio.filter(p=>p.isPublic).length}</div><div class="cand-stat-l">Portfolio</div></div>
+        <div class="cand-stat"><div class="cand-stat-v">${st.hidden ? '—' : st.tasksVerified}</div><div class="cand-stat-l">Verified tasks</div></div>
+        <div class="cand-stat"><div class="cand-stat-v">${st.hidden ? '—' : st.badges.length}</div><div class="cand-stat-l">Skill badges</div></div>
+        <div class="cand-stat"><div class="cand-stat-v">${c.portfolio.filter(p => p.isPublic).length}</div><div class="cand-stat-l">Portfolio</div></div>
       </div>
-    </a>`;
-  }).join('') || `<div class="d-empty"><div class="d-empty-icon"><span class="material-symbols-rounded" style="font-size:30px">search_off</span></div>No candidates found</div>`;
-
-  gsap.from('.cand-card', {opacity:0, y:16, duration:.4, stagger:.05, ease:'power2.out', clearProps:'transform,opacity'});
+      <div class="cand-actions"><a class="btn-sm" href="candidate-profile.html?u=${c.username}">${UI.icon('person')}Profile</a>${me.role === 'hr' && c.privacy.allowMessages !== 'none' ? `<button class="btn-sm" onclick="inviteJob('${c.username}', '${esc(c.name).replace(/'/g, '&#39;')}')">${UI.icon('send')}Invite</button>` : ''}${c.privacy.allowMessages !== 'none' ? `<button class="btn-sm primary" onclick="message('${c.userId}')">${UI.icon('chat')}Message</button>` : ''}</div>
+    </article>`;
+  }).join('') || `<div class="d-empty"><div class="d-empty-icon"><span class="material-symbols-rounded" style="font-size:30px">search_off</span></div>No candidates match these filters</div>`;
+  if (!list.length) $('candGrid').querySelector('.d-empty').insertAdjacentHTML('beforeend', '<button class="see-all" onclick="resetFilters()">Clear filters</button>');
+  if (window.gsap) gsap.from('.cand-card', { opacity: 0, y: 16, duration: .4, stagger: .05, ease: 'power2.out', clearProps: 'transform,opacity' });
 }
-
+function resetFilters() { searchEl.value = ''; ['badgeOnly', 'idOnly'].forEach(id => $(id).checked = false); $('minSel').value = '0'; activeSkill = 'all'; renderPills(); render(); }
+function inviteJob(username, name) {
+  const jobs = UR.jobs.list({ status: 'open', companyId: me.orgId });
+  if (!jobs.length) return UI.toast('Publish a job first to invite candidates.', 'info');
+  UI.modal({ title: `Invite ${name} to apply`, icon: 'send', submitLabel: 'Send invite', sub: 'They get a notification with the job. If their verified scores meet the job\'s requirements, they can apply without another task.',
+    body: UI.field({ name: 'jobId', label: 'Job', type: 'select', required: true, options: jobs.map(j => [j.id, j.title + ((j.acceptVerified || []).length ? ' · accepts verified scores' : '')]) }) + UI.field({ name: 'note', label: 'Personal note (optional)', type: 'textarea', rows: 3 }),
+    onSubmit: d => { UR.jobInvites.send(d.jobId, username, d.note); UI.toast(`Invite sent to ${name}`); } });
+}
+function message(uid) { UI.run(() => UR.messages.start(uid)).then(id => location.href = `chat.html?c=${id}`).catch(() => {}); }
+['sortSel', 'minSel', 'badgeOnly', 'idOnly'].forEach(id => $(id).addEventListener('change', render));
+searchEl.addEventListener('input', UI.debounce(render, 150));
 renderPills();
 render();
 </script>

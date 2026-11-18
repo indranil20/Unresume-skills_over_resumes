@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link rel="icon" type="image/png" href="images/favicon.png">
+<title>Academy Reports — Unresume</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link rel="stylesheet" href="css/globals.css">
+<link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+<div class="dash-root">
+  <div id="sidebar" data-roles="academy"></div>
+  <div class="dash-content">
+    <header class="dash-topbar" data-auto data-search="Search students…"></header>
+    <main class="dash-main">
+      <div class="dash-greeting"><div class="g-blob"></div>
+        <div><h1 class="dash-h1">Performance <span class="grad-text">Reports</span></h1><p class="dash-sub">Verified assessment progress, skill scores and placement outcomes for your students.</p></div>
+        <div class="no-print" style="display:flex;gap:8px;flex-wrap:wrap"><button class="cta-btn" onclick="exportStudents()"><span class="material-symbols-rounded" style="font-size:18px">download</span> Student report (CSV)</button><button class="cta-btn" style="background:#fff;color:var(--brand)" onclick="window.print()"><span class="material-symbols-rounded" style="font-size:18px">print</span> Print / PDF</button></div></div>
+      <div class="d-toolbar no-print"><select id="batchF" aria-label="Batch"></select></div>
+      <div class="stats-row" id="stats"></div>
+      <div class="grid-2" style="margin-bottom:18px">
+        <div class="panel-card"><div class="sec-head"><span class="sec-title">Batch comparison</span><span style="font-size:12px;color:var(--text3)">Avg Skill Score of students with verified tasks</span></div><div id="batchChart"></div></div>
+        <div class="panel-card"><div class="sec-head"><span class="sec-title">Verified skill coverage</span><span style="font-size:12px;color:var(--text3)">Students with a verified badge per skill</span></div><div id="skillChart"></div></div>
+      </div>
+      <div class="panel-card"><div class="sec-head"><span class="sec-title">Students</span></div>
+        <div class="d-table-wrap" style="box-shadow:none"><table class="d-table stack"><thead><tr><th>Student</th><th>Batch</th><th>Skill score</th><th>Verified tasks</th><th>Avg task</th><th>Pending</th><th>Referrals</th><th>Outcome</th></tr></thead><tbody id="rows"></tbody></table></div></div>
+    </main>
+  </div>
+</div>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
+<script>
+const $ = id => document.getElementById(id), esc = UI.esc;
+let batchId = UI.param('batch') || '';
+function data() { const q = ($('topbarSearch') || { value: '' }).value; return UR.academy.students({ batchId: batchId || undefined, q }); }
+function render() {
+  const batches = UR.academy.batches();
+  $('batchF').innerHTML = `<option value="">All batches</option>` + batches.map(b => `<option value="${b.id}" ${b.id === batchId ? 'selected' : ''}>${esc(b.name)} — ${esc(b.course)}</option>`).join('');
+  const st = data(), scored = st.filter(s => s.tasksVerified);
+  const placed = st.filter(s => s.status === 'Placed').length, done = st.filter(s => ['Placed', 'Left Academy'].includes(s.status)).length;
+  $('stats').innerHTML = [
+    ['groups', 'tint-pink', st.length, `${st.filter(s => s.candidate).length} with accounts`],
+    ['grade', 'tint-purple', scored.length ? Math.round(scored.reduce((a, s) => a + s.skillScore, 0) / scored.length) : '—', `Avg Skill Score (${scored.length} assessed)`],
+    ['task_alt', 'tint-blue', st.reduce((a, s) => a + s.tasksVerified, 0), 'Verified tasks completed'],
+    ['handshake', 'tint-teal', done ? Math.round(placed / done * 100) + '%' : '—', done ? `Placement rate · ${placed}/${done} finished` : 'Placement rate · none finished'],
+  ].map(([i, t, v, l]) => `<div class="stat-card"><div class="stat-icon ${t}">${UI.icon(i)}</div><div><div class="stat-val">${v}</div><div class="stat-lbl">${l}</div></div></div>`).join('');
+  UI.hbars($('batchChart'), batches.map(b => ({ label: b.name, value: b.avgScore || 0, note: `${b.students} students · ${b.placed} placed` })), { max: 1000, empty: 'No assessed students yet' });
+  const sk = {}; st.forEach(s => { if (!s.candidate) return; (UR.candidates.stats(s.candidate) || { badges: [] }).badges.forEach(b => sk[b.skill] = (sk[b.skill] || 0) + 1); });
+  UI.hbars($('skillChart'), Object.entries(sk).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([label, value]) => ({ label, value, note: 'students' })), { empty: 'No verified skill badges yet' });
+  $('rows').innerHTML = st.length ? UI.sortBy(st, s => s.skillScore || 0).map(s => `<tr>
+    <td class="who-cell"><div class="who">${UI.avatar(s.name, 32, s.email)}<div><b>${esc(s.name)}</b><small>${s.recordId}</small></div></div></td>
+    <td data-label="Batch">${esc(s.batchName)}</td><td data-label="Skill">${s.tasksVerified ? `<span class="num">${s.skillScore}</span>` : '—'}</td><td data-label="Tasks">${s.tasksVerified}</td>
+    <td data-label="Avg task">${s.avgTaskScore ?? '—'}</td><td data-label="Pending">${s.pendingReviews || '—'}</td><td data-label="Referrals">${s.referrals}</td>
+    <td data-label="Outcome">${s.hired ? UI.pill('Hired on Unresume', 'tint-teal', 'verified') : UI.pill(s.status, s.status === 'Placed' ? 'tint-teal' : 'gray')}</td></tr>`).join('') : `<tr><td colspan="8">${UI.empty('summarize', 'No students in this view')}</td></tr>`;
+}
+function exportStudents() {
+  UI.csv(`academy-report-${new Date().toISOString().slice(0, 10)}.csv`, ['Name', 'Email', 'ID', 'Batch', 'Course', 'Status', 'Skill score', 'Verified tasks', 'Avg task score', 'Pending reviews', 'Submissions', 'Referrals', 'Active applications', 'Hired on Unresume', 'Last activity'],
+    data().map(s => [s.name, s.email, s.recordId, s.batchName, s.course, s.status, s.tasksVerified ? s.skillScore : '', s.tasksVerified, s.avgTaskScore ?? '', s.pendingReviews, s.submissions, s.referrals, s.activeApplications, s.hired ? 'yes' : 'no', s.lastActivity ? s.lastActivity.slice(0, 10) : '']));
+}
+$('batchF').addEventListener('change', e => { batchId = e.target.value; render(); });
+render();
+if ($('topbarSearch')) $('topbarSearch').addEventListener('input', UI.debounce(render, 150));
+UI.onChange(render);
+</script>
+</body>
+</html>

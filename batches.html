@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link rel="icon" type="image/png" href="images/favicon.png">
+<title>Batches &amp; Courses — Unresume</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link rel="stylesheet" href="css/globals.css">
+<link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+<div class="dash-root">
+  <div id="sidebar" data-roles="academy"></div>
+  <div class="dash-content">
+    <header class="dash-topbar" data-auto data-search="Search batches…"></header>
+    <main class="dash-main">
+      <div class="dash-greeting"><div class="g-blob"></div>
+        <div><h1 class="dash-h1">Batches &amp; <span class="grad-text">Courses</span></h1><p class="dash-sub">Group students by cohort to track their assessment progress and placements together.</p></div>
+        <button class="cta-btn" onclick="edit()"><span class="material-symbols-rounded" style="font-size:18px">add</span> New batch</button></div>
+      <div class="grid-3" id="grid"></div>
+    </main>
+  </div>
+</div>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
+<script>
+const $ = id => document.getElementById(id), esc = UI.esc;
+function render() {
+  const q = ($('topbarSearch') || { value: '' }).value.toLowerCase();
+  const bs = UR.academy.batches().filter(b => !q || b.name.toLowerCase().includes(q) || b.course.toLowerCase().includes(q));
+  const today = new Date().toISOString().slice(0, 10);
+  $('grid').innerHTML = bs.length ? bs.map(b => {
+    const state = b.endDate && b.endDate < today ? ['Completed', 'gray'] : b.startDate && b.startDate > today ? ['Upcoming', 'tint-blue'] : ['Running', 'tint-teal'];
+    return `<div class="panel-card" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><div class="sec-title">${esc(b.name)}</div><div class="l-sub">${esc(b.course)}</div></div>${UI.pill(state[0], state[1])}</div>
+      <div class="l-sub">${UI.icon('event')} ${b.startDate ? UI.fmtDate(b.startDate) : '—'} → ${b.endDate ? UI.fmtDate(b.endDate) : '—'}</div>
+      <div class="kv"><div><span>Students</span><b>${b.students}${b.capacity ? `<small style="font-size:12px;color:var(--text4)">/${b.capacity}</small>` : ''}</b></div><div><span>Avg skill score</span><b>${b.avgScore ?? '—'}</b></div><div><span>Placed</span><b>${b.placed}</b></div></div>
+      ${b.capacity ? `<div class="rubric-bar-outer" style="height:7px;background:#eeedfd" title="Capacity used"><div class="rubric-bar-inner" style="width:${Math.min(100, b.students / b.capacity * 100)}%"></div></div>` : ''}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:auto"><a class="btn-sm" href="manage-students.html?batch=${b.id}">${UI.icon('groups')}Students</a><a class="btn-sm" href="academy-reports.html?batch=${b.id}">${UI.icon('summarize')}Report</a><button class="btn-sm" onclick="edit('${b.id}')">${UI.icon('edit')}Edit</button><button class="btn-sm danger" onclick="del('${b.id}')" aria-label="Delete batch">${UI.icon('delete')}</button></div></div>`;
+  }).join('') : `<div style="grid-column:1/-1">${UI.empty('school', 'No batches yet', 'Create a batch, then assign students to it from Manage Students or the bulk import.')}</div>`;
+}
+function edit(id) {
+  const b = id ? UR.academy.batches().find(x => x.id === id) : {};
+  UI.modal({ title: id ? 'Edit batch' : 'New batch', icon: 'school', submitLabel: 'Save batch',
+    body: `<div class="form-grid2">${UI.field({ name: 'name', label: 'Batch code', value: b.name || '', required: true, placeholder: 'FS-2026B' })}${UI.field({ name: 'course', label: 'Course', value: b.course || '', required: true, placeholder: 'Full Stack Development' })}</div>
+      <div class="form-grid3">${UI.field({ name: 'startDate', label: 'Start', type: 'date', value: b.startDate || '' })}${UI.field({ name: 'endDate', label: 'End', type: 'date', value: b.endDate || '' })}${UI.field({ name: 'capacity', label: 'Capacity', type: 'number', min: 0, value: b.capacity || '' })}</div>`,
+    onSubmit: d => { UR.academy.saveBatch({ id, ...d }); UI.toast('Batch saved'); } });
+}
+async function del(id) { const r = await UI.confirm({ title: 'Delete this batch?', danger: true, confirmLabel: 'Delete' }); if (r.ok) UI.run(() => UR.academy.deleteBatch(id), 'Batch deleted').catch(() => {}); }
+render();
+if ($('topbarSearch')) $('topbarSearch').addEventListener('input', UI.debounce(render, 150));
+UI.onChange(render);
+</script>
+</body>
+</html>

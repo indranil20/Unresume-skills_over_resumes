@@ -15,7 +15,22 @@
     rel="stylesheet">
   <link rel="stylesheet" href="css/globals.css">
   <link rel="stylesheet" href="css/navbar.css">
+  <link rel="stylesheet" href="css/dashboard.css">
   <style>
+    .wp-timer { cursor: default }
+    .wp-timer.warn { background: #fef6e4; color: #b7791f }
+    .wp-timer.danger { background: #fdecef; color: #e11d48; animation: pulse 1s ease-in-out infinite }
+    @keyframes pulse { 50% { opacity: .7 } }
+    .gate { display:flex; flex-direction:column; gap:16px; padding:28px 24px; }
+    .gate-facts { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px; }
+    .gate-facts > div { background:#fafaff; border:1px solid var(--border); border-radius:14px; padding:12px 14px; }
+    .gate-facts b { display:block; font-family:var(--font-display); font-size:16px; color:var(--text1); }
+    .gate-facts span { font-size:12px; color:var(--text3); font-weight:600; }
+    .url-row { display:flex; gap:8px; align-items:center; margin-top:4px; font-size:12px; color:var(--text3); }
+    .accepted { display:flex; flex-wrap:wrap; gap:6px; }
+    #submitError:empty { display:none }
+    .state-view { display:none; flex:1; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:60px 32px; gap:14px }
+    .wp-tabs-wrap[hidden], .submit-sec[hidden] { display:none !important }
     body {
       background: linear-gradient(135deg, #f3f1fe 0%, #f7f7fd 45%, #efedfd 100%)
     }
@@ -697,7 +712,7 @@
   </style>
 </head>
 
-<body>
+<body data-roles="candidate">
   <div class="wp-root">
     <!-- Topbar -->
     <div class="wp-topbar panel">
@@ -706,12 +721,12 @@
         <div class="wp-eyebrow">Skill Task</div>
         <div class="wp-task-name" id="wpTitle">Loading task…</div>
       </div>
-      <div class="wp-timer" id="timerDisplay" title="Click to start timer">
+      <div class="wp-timer" id="timerDisplay" role="timer" aria-live="off" title="Time remaining">
         <span class="material-symbols-rounded">timer</span>
         <span id="timerVal">--:--</span>
-        <span class="wp-timer-hint">Start</span>
+        <span class="wp-timer-hint" id="timerHint">not started</span>
       </div>
-      <a href="jobs.html" class="btn-ghost wp-exit"><span class="material-symbols-rounded"
+      <a href="assessments.html" id="exitLink" class="btn-ghost wp-exit"><span class="material-symbols-rounded"
           style="font-size:18px">arrow_back</span>Exit</a>
     </div>
 
@@ -739,14 +754,27 @@
       <div class="wp-main panel">
         <div class="wp-tabs-wrap" id="tabsWrap">
           <div class="wp-tabs">
-            <div class="wp-tab active" onclick="showPane('submit',this)"><span
-                class="material-symbols-rounded">upload</span>Submit Work</div>
-            <div class="wp-tab" onclick="showPane('guidelines',this)"><span
-                class="material-symbols-rounded">menu_book</span>Guidelines</div>
+            <button type="button" class="wp-tab active" style="border:none;font-family:var(--font-body)" onclick="showPane('submit',this)"><span
+                class="material-symbols-rounded">upload</span>Submit Work</button>
+            <button type="button" class="wp-tab" style="border:none;font-family:var(--font-body)" onclick="showPane('guidelines',this)"><span
+                class="material-symbols-rounded">menu_book</span>Guidelines</button>
           </div>
         </div>
 
         <div class="wp-scroll" id="wpScroll">
+          <!-- Start gate: the timer only starts when the candidate explicitly begins -->
+          <div class="gate" id="gateView" style="display:none">
+            <h2 style="font-family:var(--font-display);font-size:24px;font-weight:800;color:var(--text1);letter-spacing:-.02em">Before you start</h2>
+            <div class="gate-facts" id="gateFacts"></div>
+            <div class="d-note"><span class="material-symbols-rounded">timer</span><div>The countdown starts when you press <b>Start assessment</b> and keeps running if you close this page — it is saved to your account. When time runs out you can no longer submit.</div></div>
+            <div class="d-note warn"><span class="material-symbols-rounded">policy</span><div><b>Integrity checks:</b> uploaded files are fingerprinted (SHA-256) and compared with other submissions, completion time is recorded, and we count how often you leave this tab. Flags are reviewed by a person before any action is taken. <a href="terms.html#integrity" style="color:var(--brand);font-weight:700">Read the rules</a></div></div>
+            <div id="gateError"></div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button class="btn-primary" id="startBtn"><span class="material-symbols-rounded" style="font-size:18px">play_arrow</span> Start assessment</button>
+              <a class="btn-ghost" id="gateBack" href="jobs.html">Not now</a>
+            </div>
+          </div>
+
           <!-- Submit pane -->
           <div class="wp-pane active" id="submitPane">
             <div class="info-banner">
@@ -804,26 +832,33 @@
                     style="font-size:18px;color:#0d9488;font-variation-settings:'FILL' 1">check_circle</span>
                   <span></span>
                 </div>
+                <div id="urlWrap" style="display:none">
+                  <div class="url-row"><span style="flex:1;height:1px;background:var(--border)"></span>or a live URL<span style="flex:1;height:1px;background:var(--border)"></span></div>
+                  <div class="input-wrap" style="margin-top:8px"><span class="material-symbols-rounded">link</span><input type="url" id="outUrl" placeholder="https://…" aria-label="Final output URL" oninput="updateSubmitBtn()"></div>
+                </div>
               </div>
             </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--text3);font-weight:600">Accepted output: <span class="accepted" id="acceptedTypes"></span></div>
 
-            <!-- Portfolio toggle -->
-            <div class="port-toggle-card">
+            <!-- Portfolio visibility -->
+            <div class="port-toggle-card" style="flex-wrap:wrap">
               <span class="fc-icon tint-pink"><span class="material-symbols-rounded">photo_library</span></span>
-              <div style="flex:1">
-                <div style="font-size:14px;font-weight:700;color:var(--text1)">Add to public portfolio</div>
-                <div style="font-size:12.5px;color:var(--text3);margin-top:2px">Final output will be visible on your
-                  public profile</div>
+              <div style="flex:1;min-width:200px">
+                <label for="visSel" style="font-size:14px;font-weight:700;color:var(--text1)">Who can see your final output</label>
+                <div style="font-size:12.5px;color:var(--text3);margin-top:2px" id="visHint">Your working file is always private to you and the reviewing company.</div>
               </div>
-              <div class="toggle-track on" id="portToggle" onclick="this.classList.toggle('on');updatePortLabel(this)">
-              </div>
-              <span id="portLabel" style="font-size:12.5px;font-weight:700;color:#0d9488;min-width:50px">Public</span>
+              <select id="visSel" class="tc-select" style="width:auto;padding:10px 12px;font-size:13.5px;font-weight:600">
+                <option value="public">Public portfolio</option><option value="recruiters">Recruiters only</option><option value="private">Only me</option>
+              </select>
             </div>
+            <span id="portToggle" class="on" hidden></span><span id="portLabel" hidden></span>
 
+            <!-- AI-use policy -->
+            <div class="form-field" id="aiBlock"></div>
             <!-- Note -->
             <div class="form-field">
               <label class="form-label" style="color:var(--text1)">Note to Interviewer (optional)</label>
-              <textarea class="note-area" placeholder="Any context or notes about your submission…"></textarea>
+              <textarea class="note-area" id="noteInput" maxlength="2000" placeholder="Any context or notes about your submission…"></textarea>
             </div>
           </div>
 
@@ -843,16 +878,20 @@
             <h2
               style="font-family:var(--font-display);font-size:32px;font-weight:800;color:var(--text1);letter-spacing:-.03em">
               Submitted!</h2>
-            <p style="font-size:15px;color:var(--text3);max-width:420px;line-height:1.7">Your work has been sent to the
-              interviewer. You'll get a score notification once reviewed.</p>
+            <p style="font-size:15px;color:var(--text3);max-width:440px;line-height:1.7" id="submittedText">Your work has been saved and sent to the
+              reviewer. You'll get a notification when it is scored.</p>
             <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;justify-content:center">
-              <a href="candidate-dashboard.html" class="btn-primary">Back to Dashboard</a>
+              <a href="assessments.html" id="viewSubLink" class="btn-primary">View submission</a>
               <a href="jobs.html" class="btn-ghost">Browse More Tasks</a>
             </div>
           </div>
+
+          <!-- Expired / unavailable state -->
+          <div class="state-view" id="stateView"></div>
         </div>
 
         <!-- Submit button bar -->
+        <div id="submitError" style="padding:0 24px 12px"></div>
         <div class="submit-sec" id="submitBar">
           <div class="progress-wrap">
             <div class="progress-steps"><i id="prog0"></i><i id="prog1"></i></div>
@@ -866,108 +905,187 @@
     </div>
   </div>
 
-  <script src="js/components.js"></script>
   <script src="js/data.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/components.js"></script>
   <script>
-    // Load task
-    const id = parseInt(new URLSearchParams(location.search).get('id'));
-    const task = getTasks().find(t => t.id === id) || getTasks()[0];
+    const $ = id => document.getElementById(id);
+    const taskId = parseInt(UI.param('id'), 10);
+    const task = Number.isFinite(taskId) ? UR.tasks.get(taskId) : null;
+    let attempt = null, timerInterval = null, submitting = false;
+    const selected = { working: null, output: null };
 
-    if (task) {
+    function setView(view) {
+      // view: gate | work | submitted | state
+      $('gateView').style.display = view === 'gate' ? 'flex' : 'none';
+      $('submitPane').classList.toggle('active', view === 'work');
+      $('guidelinesPane').classList.remove('active');
+      $('tabsWrap').hidden = view !== 'work';
+      $('submitBar').hidden = view !== 'work';
+      $('submittedView').style.display = view === 'submitted' ? 'flex' : 'none';
+      $('stateView').style.display = view === 'state' ? 'flex' : 'none';
+      if (view !== 'work') $('submitError').innerHTML = '';
+    }
+    function showState(icon, title, text, actions) {
+      $('stateView').innerHTML = `<div class="d-empty-icon" style="width:80px;height:80px">${UI.icon(icon, 38)}</div>
+        <h2 style="font-family:var(--font-display);font-size:26px;font-weight:800;color:var(--text1)">${UI.esc(title)}</h2>
+        <p style="font-size:14.5px;color:var(--text3);max-width:460px;line-height:1.7">${text}</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">${actions || '<a href="jobs.html" class="btn-primary">Browse jobs</a>'}</div>`;
+      setView('state');
+    }
+
+    if (!task) {
+      $('wpTitle').textContent = 'Task unavailable';
+      $('wpSide').style.display = 'none';
+      showState('search_off', 'This task is not available', 'It may have been closed, paused by the company, or the link is wrong.', '<a href="jobs.html" class="btn-primary">Browse open jobs</a><a href="assessments.html" class="btn-ghost">My assessments</a>');
+    } else {
       document.title = task.title + ' — Unresume';
-      document.getElementById('wpTitle').textContent = task.title;
-      document.getElementById('briefText').textContent = task.brief;
-      document.getElementById('reqList').innerHTML = task.requirements.map(r =>
-        `<div class="req-item"><span class="tick"><span class="material-symbols-rounded">check</span></span>${r}</div>`
-      ).join('');
-      document.getElementById('rubricList').innerHTML = task.rubric.map(r => {
-        const pct = r.points.toFixed(0);
-        return `<div>
-      <div class="rubric-item-name">${r.criterion}<span class="rubric-pts">${r.points}pts</span></div>
-      <div class="rubric-bar-outer"><div class="rubric-bar-inner" style="width:${pct}%"></div></div>
-    </div>`;
-      }).join('');
-
-      document.getElementById('guideList').innerHTML = [
-        'Read the brief carefully before starting.',
-        'Your working file is completely private — only you and the interviewer can access it.',
-        'Your final output goes into your portfolio. You control public/private visibility.',
-        'Submit only original work. Plagiarism results in a permanent ban.',
-        `Time limit: ${task.timeLimit}. Start the timer only when you are ready.`,
-        'Screenshots, images, PDFs, live URLs, and zip files are all accepted as output.'
-      ].map((g, i) => `<div class="guide-item">
-    <span class="guide-num">${i + 1}</span>
-    <span style="font-size:13.5px;color:var(--text2);line-height:1.6;padding-top:2px">${g}</span>
-  </div>`).join('');
+      $('wpTitle').textContent = task.title;
+      document.querySelector('.wp-eyebrow').textContent = task.job ? `${task.job.company} · ${task.job.title}` : 'Practice task';
+      $('briefText').textContent = task.brief;
+      $('reqList').innerHTML = task.requirements.map(r => `<div class="req-item"><span class="tick"><span class="material-symbols-rounded">check</span></span>${UI.esc(r)}</div>`).join('');
+      $('rubricList').innerHTML = task.rubric.map(r => `<div>
+        <div class="rubric-item-name">${UI.esc(r.criterion)}<span class="rubric-pts">${r.points} pts</span></div>
+        <div class="rubric-bar-outer"><div class="rubric-bar-inner" style="width:${r.points}%"></div></div>
+        ${r.description ? `<div style="font-size:12px;color:var(--text3);margin-top:5px">${UI.esc(r.description)}</div>` : ''}
+      </div>`).join('') + `<div style="font-size:12px;color:var(--text3);border-top:1px solid var(--border);padding-top:10px">Total 100 pts. Your verified score is the sum awarded by the company reviewer.</div>`;
+      $('acceptedTypes').innerHTML = (task.submissionTypes || []).map(t => `<span class="skill-tag">${UI.esc(t)}</span>`).join('');
+      $('urlWrap').style.display = (task.submissionTypes || []).includes('Live URL') ? '' : 'none';
+      $('exitLink').href = task.job ? `job-detail.html?id=${task.job.id}` : 'assessments.html';
+      $('gateBack').href = task.job ? `job-detail.html?id=${task.job.id}` : 'candidate-dashboard.html';
+      $('guideList').innerHTML = [
+        'Read the brief and rubric carefully before starting.',
+        'Your working file is private — only you and the company reviewers can access it.',
+        'Your final output goes into your portfolio. You control public/private visibility at any time.',
+        'Submit only your own original work. Duplicate files, copied text and URLs are detected automatically and reviewed by Unresume moderators.',
+        `Time limit: ${task.timeLimitLabel}${task.deadline ? ` · task closes ${UI.fmtDateTime(task.deadline)}` : ''}. The countdown keeps running if you close the page.`,
+        `Maximum file size: ${UR.settings().maxUploadMB} MB per file.`,
+        task.job ? 'Job tasks can be attempted once. Practice tasks can be retried if time runs out.' : 'Practice scores count towards your Skill Score and leaderboard rank.',
+      ].map((g, i) => `<div class="guide-item"><span class="guide-num">${i + 1}</span><span style="font-size:13.5px;color:var(--text2);line-height:1.6;padding-top:2px">${UI.esc(g)}</span></div>`).join('');
+      $('gateFacts').innerHTML = [
+        ['Type', UR.ASSESSMENT_KINDS[task.kind || 'advanced'].label], ['Estimated effort', `~${task.estimatedHours}h of focused work`], ['Time window', task.timeLimitLabel], ['Difficulty', task.difficulty || '—'], ['AI policy', UR.AI_POLICY[task.aiPolicy || 'disclose'].label],
+        ['Deadline', task.deadline ? UI.fmtDate(task.deadline) : 'None'], ['Reviewed by', task.job ? task.job.company : 'Unresume reviewers'],
+      ].map(([l, v]) => `<div><span>${l}</span><b>${UI.esc(v)}</b></div>`).join('');
+      const pol = task.aiPolicy || 'disclose', polInfo = UR.AI_POLICY[pol];
+      $('aiBlock').innerHTML = `<label class="form-label" style="color:var(--text1)">AI-use policy — ${UI.esc(polInfo.label)}</label><div class="d-note" style="margin-bottom:8px">${UI.icon('smart_toy')}<div>${UI.esc(polInfo.desc)} Using AI is not treated as cheating unless this task forbids it, and flags are always reviewed by a person.</div></div>`
+        + (pol === 'disclose' ? `<textarea class="note-area" id="aiDisclosure" style="min-height:70px" maxlength="1000" placeholder="How did you use AI tools? Write &quot;None&quot; if you didn't." aria-label="AI use disclosure"></textarea>`
+        : pol === 'not_allowed' ? `<label style="display:flex;gap:8px;align-items:center;font-size:13.5px;font-weight:600;color:var(--text1)"><input type="checkbox" id="aiConfirm"> I completed this task without AI code or content generators.</label>` : '');
+      if (task.confidential) { [...$('visSel').options].find(o => o.value === 'public').disabled = true; $('visSel').value = 'recruiters'; $('visHint').textContent = 'Confidential company task: the output can be shown to recruiters, never publicly.'; }
+      init();
     }
 
-    // Timer
-    let seconds = 0, timerInterval = null, timerStarted = false;
-    function startTimer() {
-      if (timerStarted) return;
-      timerStarted = true;
-      document.getElementById('timerDisplay').classList.add('running');
-      timerInterval = setInterval(() => {
-        seconds++;
-        const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
-        const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
-        const s = (seconds % 60).toString().padStart(2, '0');
-        document.getElementById('timerVal').textContent = seconds >= 3600 ? `${h}:${m}:${s}` : `${m}:${s}`;
-      }, 1000);
+    function init() {
+      attempt = UR.attempts.current(task.id);
+      if (!attempt || attempt.status === 'withdrawn' || (attempt.status === 'expired' && !task.job)) return setView('gate');
+      if (attempt.status === 'submitted' && UI.param('retake') && !task.job) { const ri = UR.attempts.retakeInfo(task.id); if (ri && ri.allowed) { $('startBtn').innerHTML = UI.icon('replay', 18) + ' Start retake'; $('gateView').querySelector('h2').textContent = 'Retake this assessment'; return setView('gate'); } }
+      if (attempt.status === 'submitted') {
+        $('viewSubLink').href = `assessments.html?id=${attempt.submissionId}`;
+        $('submittedView').querySelector('h2').textContent = 'Already submitted';
+        const ri = !task.job && UR.attempts.retakeInfo(task.id);
+        $('submittedText').textContent = 'You have already submitted this task. You can track its review status in My Assessments.' + (ri ? (ri.allowed ? ' A retake is available — only your best score counts.' : ri.availableAt ? `  Retake available from ${UI.fmtDate(ri.availableAt)}.` : '') : '');
+        if (ri && ri.allowed) $('viewSubLink').insertAdjacentHTML('afterend', `<a class="btn-ghost" href="task-workplace.html?id=${task.id}&retake=1">Retake</a>`);
+        $('timerVal').textContent = 'Done'; $('timerHint').textContent = '';
+        return setView('submitted');
+      }
+      if (attempt.status === 'expired') { stopTimer(); $('timerVal').textContent = '00:00'; return showState('timer_off', 'Time is up', 'Your attempt for this job task expired before a submission was made. Each job task can be attempted once.', '<a href="my-applications.html" class="btn-primary">My applications</a><a href="jobs.html" class="btn-ghost">Browse jobs</a>'); }
+      setView('work');
+      startTicker();
+      updateSubmitBtn();
     }
-    document.getElementById('timerDisplay').addEventListener('click', startTimer);
-    document.getElementById('timerVal').textContent = '00:00';
 
-    // File uploads — track which inputs have a file so re-selecting doesn't double count
-    const uploaded = new Set();
+    $('startBtn').addEventListener('click', async () => {
+      const btn = $('startBtn'); btn.disabled = true; $('gateError').innerHTML = '';
+      try { attempt = UR.attempts.start(task.id, { retake: !!UI.param('retake') }); history.replaceState(null, '', `?id=${task.id}`); init(); }
+      catch (e) { $('gateError').innerHTML = UI.errorBox(e.message); btn.disabled = false; }
+    });
+
+    // ── countdown (derived from the saved deadline, so reloads don't reset it) ──
+    function fmt(ms) {
+      const s = Math.max(0, Math.floor(ms / 1000)), d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
+      const p = n => String(n).padStart(2, '0');
+      return d ? `${d}d ${p(h)}:${p(m)}:${p(sec)}` : h ? `${p(h)}:${p(m)}:${p(sec)}` : `${p(m)}:${p(sec)}`;
+    }
+    function startTicker() {
+      stopTimer();
+      const el = $('timerDisplay');
+      el.classList.add('running');
+      const tick = () => {
+        if (!attempt.deadlineAt) { $('timerVal').textContent = 'No limit'; $('timerHint').textContent = ''; return; }
+        const left = new Date(attempt.deadlineAt) - Date.now();
+        const total = new Date(attempt.deadlineAt) - new Date(attempt.startedAt);
+        $('timerVal').textContent = fmt(left);
+        $('timerHint').textContent = 'left';
+        el.classList.toggle('warn', left < total * 0.1 && left > 5 * 60e3);
+        el.classList.toggle('danger', left <= 5 * 60e3);
+        if (left <= 5 * 60e3 && !tick.warned) { tick.warned = true; UI.toast('Less than 5 minutes left — submit soon.', 'info'); }
+        if (left <= 0) { stopTimer(); if (!submitting) { attempt = UR.attempts.current(task.id); init(); } }
+      };
+      tick(); timerInterval = setInterval(tick, 1000);
+    }
+    function stopTimer() { clearInterval(timerInterval); $('timerDisplay').classList.remove('running', 'warn', 'danger'); }
+
+    // integrity signal: leaving the tab during an active attempt
+    document.addEventListener('visibilitychange', () => { if (document.hidden && attempt && attempt.status === 'active') UR.attempts.recordFocusLoss(attempt.id); });
+
+    // ── files ──
     function onFileSelect(inputId, zoneId, nameId) {
-      const f = document.getElementById(inputId).files[0];
+      const f = $(inputId).files[0];
+      const slot = inputId === 'workFile' ? 'working' : 'output';
+      const maxB = UR.settings().maxUploadMB * 1048576;
+      $('submitError').innerHTML = '';
       if (!f) return;
-      const nameEl = document.getElementById(nameId);
-      document.getElementById(zoneId).classList.add('done');
+      if (f.size > maxB) { $(inputId).value = ''; $('submitError').innerHTML = UI.errorBox(`"${f.name}" is ${UI.fmtBytes(f.size)} — the limit is ${UR.settings().maxUploadMB} MB.`); return; }
+      if (!f.size) { $(inputId).value = ''; $('submitError').innerHTML = UI.errorBox(`"${f.name}" is empty.`); return; }
+      selected[slot] = f;
+      $(zoneId).classList.add('done');
+      const nameEl = $(nameId);
       nameEl.style.display = 'flex';
-      nameEl.querySelector('span:last-child').textContent = f.name;
-      uploaded.add(inputId);
-      if (!timerStarted) startTimer();
+      nameEl.querySelector('span:last-child').textContent = `${f.name} · ${UI.fmtBytes(f.size)}`;
       updateSubmitBtn();
     }
     function updateSubmitBtn() {
-      const n = uploaded.size;
-      document.getElementById('filesStatus').textContent = `${n}/2 files uploaded`;
-      document.getElementById('prog0').classList.toggle('on', n >= 1);
-      document.getElementById('prog1').classList.toggle('on', n >= 2);
-      document.getElementById('submitBtn').disabled = n < 2;
+      const url = $('outUrl').value.trim();
+      const n = (selected.working ? 1 : 0) + (selected.output || url ? 1 : 0);
+      $('filesStatus').textContent = `${n}/2 parts ready`;
+      $('prog0').classList.toggle('on', n >= 1);
+      $('prog1').classList.toggle('on', n >= 2);
+      $('submitBtn').disabled = n < 2 || submitting;
     }
     function updatePortLabel(el) {
-      const lbl = document.getElementById('portLabel');
-      if (el.classList.contains('on')) {
-        lbl.textContent = 'Public';
-        lbl.style.color = '#0d9488';
-      } else {
-        lbl.textContent = 'Private';
-        lbl.style.color = 'var(--text4)';
-      }
+      const on = el.classList.contains('on');
+      el.setAttribute('aria-checked', on);
+      $('portLabel').textContent = on ? 'Public' : 'Private';
+      $('portLabel').style.color = on ? '#0d9488' : 'var(--text4)';
     }
 
-    function handleSubmit() {
-      const btn = document.getElementById('submitBtn');
-      btn.innerHTML = '<span class="spinner"></span>';
-      btn.disabled = true;
-      clearInterval(timerInterval);
-      setTimeout(() => {
-        document.getElementById('submitBar').style.display = 'none';
-        document.getElementById('submitPane').classList.remove('active');
-        document.getElementById('guidelinesPane').classList.remove('active');
-        document.getElementById('tabsWrap').style.display = 'none';
-        document.getElementById('submittedView').style.display = 'flex';
-      }, 1200);
+    async function handleSubmit() {
+      if (submitting) return;
+      const ok = await UI.confirm({ title: 'Submit your work?', text: 'You can\'t change a submission after sending it. Make sure both parts are the final versions.', confirmLabel: 'Submit now', icon: 'send' });
+      if (!ok.ok) return;
+      submitting = true;
+      const btn = $('submitBtn'); const label = btn.innerHTML;
+      btn.innerHTML = '<span class="spinner"></span> Uploading…'; btn.disabled = true; $('submitError').innerHTML = '';
+      try {
+        // Only switch to the success view after the store confirms the write.
+        const sub = await UR.submissions.submit({ attemptId: attempt.id, files: selected, note: $('noteInput').value, visibility: $('visSel').value, outputUrl: $('outUrl').value.trim(), aiDisclosure: ($('aiDisclosure') || {}).value || '', aiConfirm: !!($('aiConfirm') || {}).checked });
+        stopTimer();
+        $('timerVal').textContent = 'Done'; $('timerHint').textContent = '';
+        $('viewSubLink').href = `assessments.html?id=${sub.id}`;
+        if (sub.integrity && sub.integrity.flags.length) $('submittedText').textContent = 'Your work has been saved and sent to the reviewer. Our automated integrity check flagged something for a moderator to look at — this is not a penalty, and you will be contacted if anything is needed.';
+        setView('submitted');
+      } catch (e) {
+        $('submitError').innerHTML = UI.errorBox(`Submission failed — nothing was sent. ${e.message}`);
+        btn.innerHTML = label; submitting = false; updateSubmitBtn();
+        if (e.code === 'expired') { attempt = UR.attempts.current(task.id); init(); }
+      }
     }
 
     function showPane(name, el) {
       document.querySelectorAll('.wp-tab').forEach(t => t.classList.remove('active'));
       el.classList.add('active');
-      document.getElementById('submitPane').classList.toggle('active', name === 'submit');
-      document.getElementById('guidelinesPane').classList.toggle('active', name === 'guidelines');
+      $('submitPane').classList.toggle('active', name === 'submit');
+      $('guidelinesPane').classList.toggle('active', name === 'guidelines');
     }
   </script>
 </body>

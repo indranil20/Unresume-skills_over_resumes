@@ -2,8 +2,9 @@
 
 Unresume is a frontend prototype for a skill-based hiring platform: candidates prove themselves through real tasks instead of resumes, companies hire based on task scores, and academies manage and refer their students to employers.
 
-This is a **static, no-backend prototype** — pure HTML, CSS and vanilla JavaScript. There is no server, no database, and no real authentication. All "data" (jobs, candidates, tasks, conversations) lives in `js/data.js` as in-memory mock data, and any "saved" changes (new students, status updates, referrals, sign-ups) only persist for the current page session — a refresh resets them.
+This is a **static frontend with a client-side data layer**. `js/store.js` (`window.UR`) behaves like the backend API — it enforces every business rule (roles, timers, scoring, state machines, privacy, integrity checks) and persists to the browser's `localStorage`. Every workflow really completes and is visible to the other roles **in the same browser**, but nothing is shared between devices and nothing is secure. `BACKEND.md` lists the exact API, tables and services needed to replace it; `AUDIT.md` lists what was found and changed.
 
+**Try it:** open `login.html`, expand *Demo accounts* (password `demo1234`), and sign in as the candidate, a TechCorp HR/interviewer, the NextGen academy or the admin. Open two browser tabs as different roles to watch changes propagate. *Settings → Reset demo data* restores the sample data.
 ## Tech Stack
 
 - **HTML** — one standalone file per page (no build step, no bundler)
@@ -27,8 +28,10 @@ Unresume - skills over resumes/
 │   ├── auth.css         # login / register / forgot-password layout
 │   └── home.css         # landing-page-only styles (hero, features, role cards, CTA)
 ├── js/
-│   ├── components.js    # injects shared navbar/footer/sidebar into #navbar/#footer/#sidebar placeholders, role-based sidebar config, mobile drawer + popover toggle logic
-│   └── data.js          # all mock data: getJobs(), getTasks(), getCandidates(), getConversations(), getFeed()
+│   ├── data.js          # seed catalogue (jobs, tasks, candidates, companies) the store is built from
+│   ├── store.js         # data layer / API stand-in (window.UR) — persistence, rules, notifications, audit log
+│   ├── ui.js            # shared UI helpers (window.UI) — toasts, modals, states, CSV, charts
+│   └── components.js    # navbar/footer/sidebar/topbar, role guard (data-roles), live notifications & stats
 ├── images/
 │   ├── unresume-logo-dark.png  # main wordmark, used in navbar/sidebar/footer/auth pages
 │   ├── unresume-logo.png
@@ -40,68 +43,22 @@ Unresume - skills over resumes/
 
 ## Roles & Modules
 
-The platform serves four roles, each with its own dashboard module (sidebar + topbar layout). The shared sidebar is rendered by `js/components.js` based on a `data-role` attribute:
+Pages declare who may open them: `<div id="sidebar" data-roles="hr,interviewer">` (or `<body data-roles="any">`). `components.js` redirects anonymous visitors to sign-in and other roles to their own dashboard, and renders the sidebar for the signed-in user's role. Script order on every page: `data.js → store.js → ui.js → components.js`.
 
-```html
-<div id="sidebar" data-role="candidate"></div>  <!-- or hr / interviewer / academy -->
-```
+| Role | Pages |
+|---|---|
+| **Candidate** | `candidate-dashboard`, `jobs`, `job-detail`, `task-workplace`, `my-applications`, `assessments`, `candidate-interviews`, `certificates`, `candidate-profile`, `edit-profile`, `feed`, `leaderboard`, `chat`, `settings`, `notifications` |
+| **HR** | `hr-dashboard` (pipeline), `hr-jobs`, `company-tasks`, `task-create`, `hr-applications`, `interviewer-dashboard` (review queue), `compare`, `hr-interviews`, `browse-candidates`, `hr-analytics`, `team`, `company-profile` |
+| **Interviewer** | review queue, tasks, task builder, compare, interviews |
+| **Academy** | `academy-dashboard`, `manage-students` (bulk CSV), `batches`, `academy-jobs` (referrals), `placements`, `academy-reports` |
+| **Admin** | `admin-dashboard`, `admin-users`, `admin-moderation`, `admin-disputes`, `admin-audit`, `admin-settings` |
+| **Public** | `index`, `about`, `contact`, `jobs`, `job-detail`, `leaderboard`, `portfolio-gallery`, `candidate-profile?u=`, `verify`, `privacy`, `terms`, auth pages |
 
-| Role | Accent | Dashboard | Module pages |
-|---|---|---|---|
-| **Candidate** | Indigo (`#4f46e5`) | `candidate-dashboard.html` | Jobs, My Tasks, Portfolio, Messages, Feed, Leaderboard, Edit Profile |
-| **HR / Company** | Blue (`#2563eb`) | `hr-dashboard.html` | Candidates (Browse), Messages, Post Job + Task |
-| **Interviewer** | Purple (`#7c3aed`) | `interviewer-dashboard.html` | Create Task, Review Queue |
-| **Academy** | Magenta (`#c026d3`) | `academy-dashboard.html` | Students (Manage Students), Jobs (in-module), Placements |
-
-Each role's dashboard pages stay fully **inside their own module** — no role is redirected to a page styled for a different audience. For example, Academy has its own `academy-jobs.html` (list + inline detail + "Refer a Student" panel) instead of using the public `jobs.html`.
-
-## Pages
-
-### Public / marketing (shared navbar + footer, no login required)
-- `index.html` — landing page
-- `about.html` — company story, how it works, founder
-- `contact.html` — contact form + contact details
-- `jobs.html` — public job board (used by Candidates and HR)
-- `job-detail.html` — single job listing + "Start Task & Apply"
-- `leaderboard.html` — global candidate rankings (podium + table)
-- `portfolio-gallery.html` — public showcase of candidate work
-- `candidate-profile.html` — public/owner portfolio view (owner = no `?u=` param or `?u=jay-dev`)
-
-### Auth
-- `login.html` — role-aware sign in (Candidate / Company / Academy, with HR/Interviewer sub-role)
-- `register.html` — role picker (Candidate / Company / Academy)
-- `register-candidate.html`, `register-company.html`, `register-academy.html` — per-role sign-up
-- `forgot-password.html` — email-based reset flow (cosmetic, no real email sent)
-
-> **Note:** None of the forms above enforce real authentication. Fields are not required and submitting any of them redirects straight to the matching dashboard — this was intentionally simplified for demo/prototyping purposes.
-
-### Candidate module
-- `candidate-dashboard.html` — stats, job tasks, practice tasks, score ring, activity
-- `task-workplace.html` — task brief, rubric, file submission workspace (full-screen, no sidebar)
-- `edit-profile.html` — edit name/username/bio/skills
-- `feed.html` — social feed of candidate activity
-- `chat.html` — messaging inbox (full-screen, no sidebar)
-
-### HR / Company module
-- `hr-dashboard.html` — drag & drop hiring pipeline, job postings, shortlist
-- `browse-candidates.html` — talent search/filter (HR-only; not reachable without login)
-- `task-create.html` — task builder for job postings (shared with Interviewer)
-
-### Interviewer module
-- `interviewer-dashboard.html` — submissions queue, scoring panel
-
-### Academy module
-- `academy-dashboard.html` — student roster, company referral slots (with "Refer students" modal), top performers
-- `manage-students.html` — add students, issue **Student ID**, status tracking, auto-conversion to **Candidate ID**
-- `academy-jobs.html` — in-module job browser with inline "Refer a Student" action
-- `placements.html` — per-company / per-student placement visibility toggles
-
-## Key Feature Notes
-
-- **Student ID → Candidate ID system** (`manage-students.html`): Academies add students and issue them a `STU-xxxx` Student ID, shown with a "⚡ Priority Referral" tag. When a student's status is set to **Placed** or **Left Academy**, their access automatically converts to an independent `CAND-xxxx` Candidate ID.
-- **Topbar popovers**: every dashboard's notification bell and avatar open a dropdown (`toggleTopbarPopover()` in `components.js`). Renamed from an earlier `togglePopover` name because that collides with the browser's native Popover API (`HTMLElement.prototype.togglePopover`).
-- **No real backend**: "Apply", "Refer Student", "Save Draft", "Send Message", etc. are all simulated with a short fake delay (`setTimeout`) and a UI confirmation — there is no network request.
-
+## How scores work
+- **Verified task score (0–100):** a company reviewer scores the submission against the task's published rubric (always 100 points).
+- **Skill Score (0–1000):** 10 × the mean of a candidate's verified task scores. Ranked after 3 verified tasks (configurable).
+- **Certificates** for task scores ≥ 70; **skill badges** for 2+ tasks in a skill averaging ≥ 75. Portfolio likes and external projects never affect scores.
+- Candidates can dispute a score within 30 days; Unresume admins decide.
 ## Responsive Design
 
 Every page works on desktop, tablet and phone. Breakpoints are written as `@media (max-width: …)` rules, either in the shared CSS files or in each page's own `<style>` block.
@@ -147,6 +104,4 @@ A light theme, defined as CSS variables in `css/globals.css`:
 
 ## Known Limitations
 
-- No backend, no persistence — all mock data resets on page reload.
-- No real authentication/session — role access is enforced only by navigation (no link to a page = "no access"), not by any server-side check.
-- Some pages reference fixed/demo identities (e.g. candidate "self" = `jay-dev`) rather than a real logged-in user.
+See `BACKEND.md`. In short: data lives in one browser's localStorage; passwords are hashed client-side (not secure); no emails are sent; uploaded file contents are not stored (only name, size, SHA-256); identity verification is a manual admin review; plagiarism detection is heuristic.

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link rel="icon" type="image/png" href="images/favicon.png">
+<title>Users &amp; Organisations — Unresume Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link rel="stylesheet" href="css/globals.css">
+<link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+<div class="dash-root">
+  <div id="sidebar" data-roles="admin"></div>
+  <div class="dash-content">
+    <header class="dash-topbar" data-auto data-search="Search name, email, username…"></header>
+    <main class="dash-main">
+      <div class="dash-greeting"><div class="g-blob"></div><div><h1 class="dash-h1">Users &amp; <span class="grad-text">Organisations</span></h1><p class="dash-sub">Manage candidates, companies and academies; approve verification requests; suspend abusive accounts.</p></div></div>
+      <div class="d-tabs" id="tabs"></div>
+      <div id="out"></div>
+    </main>
+  </div>
+</div>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
+<script>
+const $ = id => document.getElementById(id), esc = UI.esc;
+let tab = UI.param('tab') || 'verification';
+if (UI.param('q') && $('topbarSearch')) { $('topbarSearch').value = UI.param('q'); tab = UI.param('tab') || 'candidates'; }
+const VT = { verified: 'tint-teal', pending: 'tint-amber', rejected: 'tint-red', none: 'gray' };
+function render() {
+  const q = ($('topbarSearch') || { value: '' }).value.toLowerCase();
+  const pending = UR.verifications.list({ status: 'pending' });
+  const tabs = [['verification', 'Verification requests', pending.length], ['candidates', 'Candidates'], ['companies', 'Companies'], ['academies', 'Academies'], ['staff', 'Company & academy users']];
+  $('tabs').innerHTML = tabs.map(([k, l, n]) => `<button class="d-tab ${tab === k ? 'active' : ''}" data-tab="${k}">${l}${n != null ? `<span class="cnt">${n}</span>` : ''}</button>`).join('');
+  UI.tabs($('tabs'), k => { tab = k; render(); });
+  if (tab === 'verification') {
+    const done = UR.verifications.list({ status: null }).filter(v => v.status !== 'pending').slice(0, 10);
+    $('out').innerHTML = (pending.length ? pending.map(v => `<div class="l-row"><span class="sec-icon ${v.kind === 'identity' ? 'tint-pink' : v.kind === 'company' ? 'tint-blue' : 'tint-purple'}">${UI.icon(v.kind === 'identity' ? 'badge' : v.kind === 'company' ? 'apartment' : 'school', 19, true)}</span>
+        <div class="l-main"><div class="l-title">${esc(v.label)} ${UI.pill(v.kind, 'gray')}</div><div class="l-sub">Submitted ${UI.timeAgo(v.createdAt)} by ${esc((UR.users.get(v.submittedBy) || {}).name || 'unknown')}</div><div class="l-sub" style="margin-top:4px">${UI.icon('description')} ${esc(v.evidence)}</div></div>
+        <div class="l-acts"><button class="btn-sm good" onclick="decide('${v.id}', true)">${UI.icon('check')}Approve</button><button class="btn-sm danger" onclick="decide('${v.id}', false)">${UI.icon('close')}Reject</button></div></div>`).join('') : UI.empty('verified_user', 'No pending verification requests'))
+      + (done.length ? `<div class="sec-head" style="margin-top:24px"><span class="sec-title">Recently decided</span></div>${done.map(v => `<div class="l-row" style="padding:10px 14px"><div class="l-main"><div class="l-title" style="font-size:13.5px">${esc(v.label)}</div><div class="l-sub">${v.kind} · ${UI.fmtDate(v.decidedAt)}${v.note ? ' · ' + esc(v.note) : ''}</div></div>${UI.pill(v.status, v.status === 'approved' ? 'tint-teal' : 'tint-red')}</div>`).join('')}` : '');
+    return;
+  }
+  if (tab === 'companies' || tab === 'academies') {
+    const kind = tab === 'companies' ? 'company' : 'academy';
+    const orgs = (kind === 'company' ? UR.companies : UR.academies).list().filter(o => !q || o.name.toLowerCase().includes(q));
+    $('out').innerHTML = `<div class="d-table-wrap"><table class="d-table stack"><thead><tr><th>${kind === 'company' ? 'Company' : 'Academy'}</th><th>Verification</th><th>${kind === 'company' ? 'Jobs' : 'Students'}</th><th>Members</th><th>Joined</th><th></th></tr></thead><tbody>${orgs.map(o => {
+      const members = UR.admin.users({}).filter(u => u.orgId === o.id);
+      const count = kind === 'company' ? UR.jobs.list({ status: 'all', companyId: o.id }).length : '—';
+      return `<tr><td class="who-cell"><div class="who"><span class="l-logo" style="width:36px;height:36px;font-size:17px">${o.logo}</span><div><b>${esc(o.name)}</b><small>${esc(o.website || '')} ${o.location ? '· ' + esc(o.location) : ''}</small></div></div></td>
+        <td data-label="Verification">${UI.pill(o.verification, VT[o.verification])}</td><td data-label="${kind === 'company' ? 'Jobs' : 'Students'}">${count}</td><td data-label="Members">${members.length}</td><td data-label="Joined">${UI.fmtDate(o.createdAt)}</td>
+        <td><div class="acts">${o.verification !== 'verified' ? `<button class="btn-sm good" onclick="setOrg('${kind}','${o.id}','verified')">Verify</button>` : `<button class="btn-sm danger" onclick="setOrg('${kind}','${o.id}','rejected')">Revoke</button>`}</div></td></tr>`;
+    }).join('')}</tbody></table></div>`;
+    return;
+  }
+  const role = tab === 'candidates' ? 'candidate' : null;
+  const users = UR.admin.users({ role, q }).filter(u => tab === 'candidates' ? true : ['hr', 'interviewer', 'academy', 'admin'].includes(u.role));
+  $('out').innerHTML = `<div class="d-table-wrap"><table class="d-table stack"><thead><tr><th>User</th><th>Role</th>${role ? '<th>Skill score</th><th>Identity</th>' : '<th>Organisation</th><th></th>'}<th>Status</th><th>Last sign-in</th><th></th></tr></thead><tbody>${users.map(u => `<tr>
+    <td class="who-cell"><div class="who">${UI.avatar(u.name, 34, u.id)}<div><b>${u.username ? `<a href="candidate-profile.html?u=${u.username}" target="_blank">${esc(u.name)}</a>` : esc(u.name)}</b><small>${esc(u.email)}</small></div></div></td>
+    <td data-label="Role">${UR.ROLES[u.role].label}</td>
+    ${role ? `<td data-label="Skill score">${u.stats.tasksVerified ? `<span class="num">${u.stats.skillScore}</span> <small style="color:var(--text4)">${u.stats.tasksVerified} tasks</small>` : '—'}</td><td data-label="Identity">${(() => { const c = UR.candidates.get(u.username); const v = c && c.verification ? c.verification.identity : 'none'; return UI.pill(v, VT[v] || 'gray'); })()}</td>`
+      : `<td data-label="Org">${esc(u.orgName || '—')}</td><td>${u.orgVerification ? UI.pill(u.orgVerification, VT[u.orgVerification]) : ''}</td>`}
+    <td data-label="Status">${UI.pill(u.status, u.status === 'active' ? 'tint-teal' : 'tint-red')}${u.statusReason ? `<br><small style="color:var(--text3)">${esc(u.statusReason)}</small>` : ''}</td>
+    <td data-label="Last sign-in">${u.lastLoginAt ? UI.timeAgo(u.lastLoginAt) : 'Never'}</td>
+    <td><div class="acts">${u.role === 'admin' ? '' : u.status === 'active' ? `<button class="btn-sm danger" onclick="suspend('${u.id}','${esc(u.name).replace(/'/g, '&#39;')}')">${UI.icon('block')}Suspend</button>` : u.status === 'suspended' ? `<button class="btn-sm good" onclick="reactivate('${u.id}')">Reactivate</button>` : ''}</div></td></tr>`).join('') || `<tr><td colspan="7">${UI.empty('person_search', 'No users match')}</td></tr>`}</tbody></table></div>`;
+}
+async function decide(id, approve) {
+  const r = await UI.confirm({ title: approve ? 'Approve verification?' : 'Reject verification?', danger: !approve, confirmLabel: approve ? 'Approve' : 'Reject', input: { label: approve ? 'Note (optional)' : 'Reason (sent to the requester)', required: !approve } });
+  if (r.ok) UI.run(() => UR.verifications.decide(id, approve, r.value || ''), approve ? 'Approved — requester notified' : 'Rejected — requester notified').catch(() => {});
+}
+async function setOrg(kind, id, v) { const r = await UI.confirm({ title: v === 'verified' ? 'Mark as verified?' : 'Revoke verification?', danger: v !== 'verified', confirmLabel: 'Confirm', text: v !== 'verified' && kind === 'company' ? 'All of this company\'s open jobs will be closed.' : '', input: { label: 'Note', required: v !== 'verified' } }); if (r.ok) UI.run(() => UR.admin.setOrgVerification(kind, id, v, r.value || ''), 'Verification updated').catch(() => {}); }
+async function suspend(id, name) { const r = await UI.confirm({ title: `Suspend ${name}?`, danger: true, confirmLabel: 'Suspend', text: 'They are signed out and can\'t sign in. Their content is hidden from public listings.', input: { label: 'Reason (logged)', required: true } }); if (r.ok) UI.run(() => UR.admin.setUserStatus(id, 'suspended', r.value), 'Account suspended').catch(() => {}); }
+const reactivate = id => UI.run(() => UR.admin.setUserStatus(id, 'active', ''), 'Account reactivated').catch(() => {});
+render();
+if ($('topbarSearch')) $('topbarSearch').addEventListener('input', UI.debounce(render, 150));
+UI.onChange(render);
+</script>
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link rel="icon" type="image/png" href="images/favicon.png">
+<title>Assessments — Unresume</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link rel="stylesheet" href="css/globals.css">
+<link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/dashboard.css">
+<style>
+.as-layout{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:20px;align-items:start}
+@media(max-width:1000px){.as-layout{grid-template-columns:1fr}}
+.as-list{display:flex;flex-direction:column;gap:10px}
+.as-item{cursor:pointer;text-align:left;width:100%;font-family:var(--font-body)}
+.result-hero{display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+.big-score{font-family:var(--font-display);font-size:56px;font-weight:800;line-height:1;color:var(--text1);letter-spacing:-.03em}
+.big-score small{font-size:20px;color:var(--text4)}
+.sugg{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:12px;background:#fafaff;border:1px solid var(--border);font-size:13.5px;color:var(--text2);line-height:1.55}
+.sugg+.sugg{margin-top:8px}
+.file-chip{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fafaff;border:1px solid var(--border);border-radius:12px;font-size:13px}
+.file-chip code{font-size:11px;color:var(--text4);word-break:break-all}
+</style>
+</head>
+<body>
+<div class="dash-root">
+  <div id="sidebar" data-roles="candidate"></div>
+  <div class="dash-content">
+    <header class="dash-topbar" data-auto data-search="Search assessments…"></header>
+    <main class="dash-main">
+      <div class="dash-greeting"><div class="g-blob"></div>
+        <div><h1 class="dash-h1">Assessments <span class="grad-text">&amp; Results</span></h1><p class="dash-sub">Every task you've attempted, its review status, and detailed reviewer feedback once scored.</p></div></div>
+      <div class="d-toolbar">
+        <div class="d-tabs" style="margin:0" id="tabs"></div>
+      </div>
+      <div class="as-layout">
+        <div class="as-list" id="list"></div>
+        <div id="detail"></div>
+      </div>
+    </main>
+  </div>
+</div>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
+<script>
+const $ = id => document.getElementById(id), esc = UI.esc;
+let tab = UI.param('tab') || 'all', sel = UI.param('id');
+
+function items() {
+  const me = UR.user();
+  const subs = UR.submissions.list().map(s => ({ kind: 'sub', id: s.id, title: s.task.title, company: s.companyName, date: s.submittedAt, s }));
+  const st = UR.candidates.stats(me.username);
+  const hist = st.results.filter(r => r.historyId).map(r => ({ kind: 'hist', id: r.id, title: r.title, company: 'Partner company', date: r.date, r }));
+  const attempts = UR.tasks.list({ status: 'published' }).map(t => ({ t, a: UR.attempts.current(t.id) })).filter(x => x.a && ['active', 'expired'].includes(x.a.status))
+    .map(({ t, a }) => ({ kind: 'att', id: a.id, title: t.title, company: t.job ? 'Job task' : 'Practice', date: a.startedAt, a, t }));
+  return [...attempts, ...subs, ...hist].sort((x, y) => new Date(y.date) - new Date(x.date));
+}
+function status(it) {
+  if (it.kind === 'att') return it.a.status === 'active' ? UI.pill('In progress', 'tint-blue', 'timer') : UI.pill('Time expired', 'gray', 'timer_off');
+  if (it.kind === 'hist') return UI.verifiedScore(it.r.score, true);
+  return it.s.score && it.s.status !== 'void' ? `${UI.verifiedScore(it.s.score.total, true)}${it.s.status === 'disputed' ? UI.pill('Disputed', 'tint-pink') : ''}` : UI.subPill(it.s);
+}
+
+function render() {
+  const q = ($('topbarSearch') || { value: '' }).value.toLowerCase();
+  const all = items();
+  const groups = { all, pending: all.filter(i => (i.kind === 'sub' && i.s.status === 'pending') || i.kind === 'att'), scored: all.filter(i => i.kind === 'hist' || (i.kind === 'sub' && i.s.score)), library: UR.library.standard() };
+  $('tabs').innerHTML = [['all', 'All'], ['pending', 'In progress / pending'], ['scored', 'Scored'], ['library', 'Standard assessments']].map(([k, l]) => `<button class="d-tab ${tab === k ? 'active' : ''}" data-tab="${k}">${l}<span class="cnt">${groups[k].length}</span></button>`).join('');
+  UI.tabs($('tabs'), k => { tab = k; render(); });
+  if (tab === 'library') return renderLibrary();
+  document.querySelector('.as-layout').style.display = '';
+  const list = groups[tab].filter(i => !q || i.title.toLowerCase().includes(q));
+  if (!sel && list.length) sel = (list.find(i => i.kind === 'sub') || list[0]).id;
+  $('list').innerHTML = list.length ? list.map(i => `<button class="l-row as-item ${sel === i.id ? 'active' : ''}" onclick="pick('${i.id}')">
+      <div class="l-main"><div class="l-title">${esc(i.title)}</div><div class="l-sub">${esc(i.company)} · ${UI.fmtDate(i.date)}</div></div>
+      <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">${status(i)}</div></button>`).join('')
+    : UI.empty('task_alt', 'Nothing here yet', 'Start a job task or a practice task to build your verified record.', '<a class="see-all" href="jobs.html">Browse tasks</a>');
+  const it = all.find(i => i.id === sel);
+  $('detail').innerHTML = it ? detail(it) : (list.length ? '' : '');
+  UI.bindTips($('detail'));
+}
+function pick(id) { sel = id; history.replaceState(null, '', `?id=${id}`); render(); if (innerWidth < 1000) $('detail').scrollIntoView({ behavior: 'smooth' }); }
+
+function detail(it) {
+  if (it.kind === 'att') return `<div class="panel-card"><h2 class="sec-title" style="margin-bottom:10px">${esc(it.title)}</h2>
+    ${it.a.status === 'active' ? `<div class="d-note">${UI.icon('timer')}<div>Started ${UI.fmtDateTime(it.a.startedAt)}. ${it.a.deadlineAt ? `Due ${UI.fmtDateTime(it.a.deadlineAt)}.` : ''}</div></div><a class="cta-btn" style="margin-top:14px" href="task-workplace.html?id=${it.t.id}">Continue task</a>`
+      : `<div class="d-note warn">${UI.icon('timer_off')}<div>Time ran out on ${UI.fmtDateTime(it.a.deadlineAt)} before a submission was made.${it.t.job ? '' : ' Practice tasks can be retried.'}</div></div>${it.t.job ? '' : `<a class="cta-btn" style="margin-top:14px" href="task-workplace.html?id=${it.t.id}">Try again</a>`}`}</div>`;
+  if (it.kind === 'hist') return `<div class="panel-card"><div class="result-hero"><div class="big-score">${it.r.score}<small>/100</small></div><div><h2 class="sec-title">${esc(it.title)}</h2><div class="l-sub">${esc(it.r.skills.join(', '))} · scored ${UI.fmtDate(it.r.date)}</div><div style="margin-top:8px">${UI.pill('Verified', 'tint-teal', 'verified')}</div></div></div>
+    <div class="d-note" style="margin-top:16px">${UI.icon('history')}<div>This verified result was imported from before detailed rubric breakdowns were stored, so only the total is available.</div></div></div>`;
+
+  const s = UR.submissions.get(it.id);
+  if (!s) return UI.errorBox('This submission could not be loaded.');
+  const files = s.files.map(f => `<div class="file-chip">${UI.icon(f.slot === 'working' ? 'lock' : 'visibility', 18)}<div style="min-width:0;flex:1"><b style="color:var(--text1)">${esc(f.name)}</b> · ${UI.fmtBytes(f.size)}<br><code title="SHA-256 fingerprint used for duplicate detection">sha256 ${esc(f.sha256.slice(0, 24))}…</code></div>${UI.pill(f.slot === 'working' ? 'Private' : s.isPublic ? 'Public' : 'Private', f.slot === 'working' ? 'tint-purple' : s.isPublic ? 'tint-teal' : 'gray')}</div>`).join('');
+  const head = `<div class="result-hero">
+      ${s.score && s.status !== 'void' ? `<div class="big-score">${s.score.total}<small>/100</small></div>` : `<div class="sec-icon tint-amber" style="width:64px;height:64px;border-radius:20px">${UI.icon(s.status === 'void' ? 'block' : 'hourglass_top', 32)}</div>`}
+      <div style="flex:1;min-width:200px"><h2 class="sec-title">${esc(s.task.title)}</h2><div class="l-sub">${esc(s.companyName)}${s.job ? ' · ' + esc(s.job.title) : ''} · submitted ${UI.fmtDateTime(s.submittedAt)} · ${s.durationMin} min</div>
+        <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${UI.subPill(s)}${s.score && s.score.adjustedFrom != null ? UI.pill(`Adjusted from ${s.score.adjustedFrom} after dispute`, 'tint-pink') : ''}</div></div></div>`;
+  let body = '';
+  if (s.status === 'void') body = `<div class="d-note bad">${UI.icon('block')}<div><b>Score voided by Unresume moderation.</b> ${esc(s.voidReason || '')} It no longer counts towards your Skill Score. </div></div>`;
+  if (s.status === 'void' && !s.dispute) body += `<button class="btn-sm" onclick="appeal('${s.id}')">${UI.icon('gavel')}Appeal this decision</button><p style="font-size:12px;color:var(--text3)">Appeals are reviewed by a different Unresume moderator. You may be asked for a short live walkthrough of your work.</p>`;
+  if (s.status === 'void' && s.dispute) body += `<div class="d-note">${UI.icon('gavel')}<div><b>Appeal ${s.dispute.status === 'open' || s.dispute.status === 'under_review' ? 'under review' : 'decided'}.</b> ${esc(s.dispute.resolution || 'A moderator will respond soon.')}</div></div>`;
+  if (s.status === 'void') { /* handled above */ }
+  else if (!s.score) body = `<div class="d-note">${UI.icon('hourglass_top')}<div>Waiting for a reviewer from ${esc(s.companyName)}. You'll get a notification with your score and feedback.${s.integrity.flagged && !s.integrity.cleared ? ' An automated integrity check flagged this submission for a moderator — this is a routine review, not a penalty.' : ''}</div></div>`;
+  else {
+    body = `<div><div class="d-sec-title">Score breakdown</div>${s.score.breakdown.map(b => `<div class="bd-row"><div><div class="bd-name">${esc(b.criterion)}</div>${b.comment ? `<div class="bd-comment">${esc(b.comment)}</div>` : ''}</div>
+        <div class="rubric-bar-outer" style="height:8px;background:#eeedfd"><div class="rubric-bar-inner" style="width:${b.awarded / b.max * 100}%"></div></div><div class="bd-pts">${b.awarded}<small>/${b.max}</small></div></div>`).join('')}</div>
+      <div><div class="d-sec-title">Reviewer feedback</div><div class="sugg" style="background:#fff">${UI.icon('format_quote', 18)}<div>${esc(s.score.feedback)}<div style="font-size:12px;color:var(--text4);margin-top:6px">— ${esc(s.reviewerName)}, ${UI.fmtDate(s.score.scoredAt)}</div></div></div></div>
+      ${s.score.suggestions.length ? `<div><div class="d-sec-title">How to improve</div>${s.score.suggestions.map(x => `<div class="sugg">${UI.icon('lightbulb', 18, true)}<div>${esc(x)}</div></div>`).join('')}</div>` : ''}`;
+    const d = s.dispute;
+    if (d) body += `<div><div class="d-sec-title">Dispute</div><div class="d-note ${d.status === 'resolved' ? 'good' : d.status === 'rejected' ? 'warn' : ''}">${UI.icon('gavel')}<div><b>${{ open: 'Open — awaiting an Unresume moderator', under_review: 'Under review by a moderator', resolved: 'Resolved', rejected: 'Reviewed — original score upheld' }[d.status]}</b><br>${esc(d.reason)}: ${esc(d.details)}${d.resolution ? `<br><br><b>Moderator:</b> ${esc(d.resolution)}` : ''}</div></div></div>`;
+    else if (Date.now() - new Date(s.score.scoredAt) < 30 * 864e5) body += `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn-sm" onclick="dispute('${s.id}')">${UI.icon('gavel')}Dispute / request re-review</button><span style="font-size:12px;color:var(--text3)">Disputes are reviewed by Unresume moderators, not the company. Available for 30 days after scoring.</span></div>`;
+  }
+  if (s.score && s.status !== 'void') {
+    const fb = UR.feedback.mine('review', s.id);
+    body += fb ? `<div class="l-sub">${UI.icon('reviews')} You rated this review ${fb.rating}/5. Thanks!</div>`
+      : `<div class="d-note" style="background:#fff">${UI.icon('reviews')}<div style="flex:1">How fair and useful was this review? <span style="display:inline-flex;gap:4px;margin-left:6px">${[1, 2, 3, 4, 5].map(n => `<button class="btn-sm" style="padding:4px 9px" aria-label="Rate ${n} of 5" onclick="rateReview('${s.id}', ${n})">${n}★</button>`).join('')}</span><div style="font-size:12px;color:var(--text3);margin-top:4px">Anonymous to the company. Used for the platform's satisfaction metric.</div></div></div>`;
+    if (!s.task.jobId && s.task.kind !== 'advanced') { const ri = UR.attempts.retakeInfo(s.task.id); body += ri && ri.allowed ? `<a class="btn-sm" href="task-workplace.html?id=${s.task.id}&retake=1" style="align-self:flex-start">${UI.icon('replay')}Retake — best score counts</a>` : ri && ri.availableAt ? `<div class="l-sub">${UI.icon('replay')} Retake available ${UI.fmtDate(ri.availableAt)} · only your best score counts</div>` : ''; }
+  }
+  return `<div class="panel-card" style="display:flex;flex-direction:column;gap:18px">${head}${body}
+    <div><div class="d-sec-title">Your submission</div><div style="display:flex;flex-direction:column;gap:8px">${files}${s.outputUrl ? `<div class="file-chip">${UI.icon('link', 18)}<a href="${esc(s.outputUrl)}" target="_blank" rel="noopener" style="color:var(--brand);font-weight:700;word-break:break-all">${esc(s.outputUrl)}</a></div>` : ''}</div>
+      ${s.note ? `<div class="sugg" style="margin-top:8px">${UI.icon('sticky_note_2', 18)}<div>${esc(s.note)}</div></div>` : ''}</div>
+    ${s.application ? `<a class="see-all" href="my-applications.html?id=${s.application.id}" style="align-self:flex-start">Application status: ${UR.APP_STATUS[s.application.status].label} ${UI.icon('arrow_forward', 16)}</a>` : ''}
+  </div>`;
+}
+
+function renderLibrary() {
+  document.querySelector('.as-layout').style.display = 'block';
+  const std = UR.library.standard();
+  $('detail').innerHTML = '';
+  $('list').innerHTML = `<div class="d-note" style="margin-bottom:14px">${UI.icon('verified')}<div><b>Do it once, reuse it.</b> Standard assessments are short, reviewed by Unresume and count towards your track scores. Jobs that accept verified scores let you apply without another task. Retakes are allowed after ${UR.settings().retakeCooldownDays} days — only your best score counts.</div></div>
+    <div class="grid-2">${std.map(t => { const a = UR.attempts.current(t.id), ri = UR.attempts.retakeInfo(t.id), done = a && a.status === 'submitted';
+      const jobs = UR.jobs.list().filter(j => (j.acceptVerified || []).some(r => t.skills.includes(r.skill)));
+      return `<div class="panel-card" style="display:flex;flex-direction:column;gap:10px"><div class="sec-title" style="font-size:15.5px">${esc(t.title)}</div>
+        <div class="l-sub"><span>${UI.icon('hourglass_top')} ~${t.estimatedHours}h</span><span>${UI.icon('timer')} ${t.timeLimitLabel} window</span><span>${esc(t.difficulty)}</span><span>${esc(UR.AI_POLICY[t.aiPolicy].label)}</span></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">${t.skills.map(s => `<span class="skill-tag">${esc(s)}</span>`).join('')}</div>
+        ${jobs.length ? `<div class="l-sub">${UI.icon('work')} Accepted by ${jobs.map(j => esc(j.company)).join(', ')}</div>` : ''}
+        <div style="margin-top:auto">${a && a.status === 'active' ? `<a class="btn-sm primary" href="task-workplace.html?id=${t.id}">Continue</a>` : done ? (ri.allowed ? `<a class="btn-sm" href="task-workplace.html?id=${t.id}&retake=1">${UI.icon('replay')}Retake</a>` : `<span class="l-sub">${esc(ri.reason || 'Submitted')}</span>`) : `<a class="btn-sm primary" href="task-workplace.html?id=${t.id}">Start</a>`}</div></div>`; }).join('')}</div>`;
+}
+const rateReview = (id, n) => UI.run(() => UR.feedback.submit({ context: 'review', targetId: id, rating: n }), 'Thanks for rating the review').then(render).catch(() => {});
+function appeal(id) {
+  UI.modal({ title: 'Appeal the integrity decision', icon: 'gavel', submitLabel: 'Submit appeal', sub: 'Automated checks only flag submissions; a person made this decision and a different moderator reviews appeals.',
+    body: UI.field({ name: 'details', label: 'Why is this your own work?', type: 'textarea', required: true, rows: 5, placeholder: 'e.g. links to your commit history, drafts, how you approached the task…', hint: 'At least 30 characters.' }),
+    onSubmit: d => { UR.disputes.open(id, 'Integrity appeal', d.details); UI.toast('Appeal submitted'); } });
+}function dispute(id) {
+  UI.modal({ title: 'Dispute this score', icon: 'gavel', sub: 'An Unresume moderator — not the company — re-checks your work against the rubric. They may uphold, adjust or void the score.', submitLabel: 'Submit dispute',
+    body: UI.field({ name: 'reason', label: 'Reason', type: 'select', required: true, options: [['', 'Choose…'], 'Score calculation', 'Rubric misapplied', 'Reviewer missed part of the submission', 'Bias or unprofessional feedback', 'Other'] })
+      + UI.field({ name: 'details', label: 'Explain the issue', type: 'textarea', required: true, rows: 5, placeholder: 'Refer to rubric criteria and where in your files the evidence is…', hint: 'At least 30 characters.' }),
+    onSubmit: d => { UR.disputes.open(id, d.reason, d.details); UI.toast('Dispute submitted — a moderator will review it'); } });
+}
+render();
+if ($('topbarSearch')) $('topbarSearch').addEventListener('input', UI.debounce(render, 150));
+UI.onChange(render);
+</script>
+</body>
+</html>

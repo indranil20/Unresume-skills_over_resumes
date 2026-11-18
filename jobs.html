@@ -88,10 +88,11 @@
           <input type="text" id="searchInput" placeholder="Search by role, company, or skill…">
         </div>
         <div class="toolbar-divider"></div>
-        <label class="task-toggle">
-          <input type="checkbox" id="taskOnly">
-          <div class="toggle-track" id="taskToggleTrack"></div>
-          Tasks only
+        <label class="task-toggle" for="sortSel">
+          <span class="material-symbols-rounded" style="font-size:19px;color:var(--text4)">sort</span>
+          <select id="sortSel" aria-label="Sort jobs" style="border:none;background:none;font-size:13.5px;font-weight:600;color:var(--text2);font-family:var(--font-body);cursor:pointer;outline:none">
+            <option value="new">Newest</option><option value="deadline">Closing soon</option><option value="applicants">Fewest applicants</option>
+          </select>
         </label>
       </div>
 
@@ -103,11 +104,14 @@
 </div>
 <div id="footer"></div>
 
-<script src="js/components.js"></script>
 <script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
 <script>
-const jobs = getJobs();
-let search = '', category = 'All', taskOnly = false;
+let jobs = UR.jobs.list();
+let search = UI.param('q') || '', category = 'All', sort = 'new';
+document.getElementById('searchInput').value = search;
 const catTint = {
   Engineering: { cls:'tint-blue',   dot:'#2563eb' },
   Design:      { cls:'tint-pink',   dot:'#c026d3' },
@@ -125,13 +129,16 @@ function renderPills() {
 function setCategory(c) { category = c; render(); }
 
 function render() {
-  const filtered = jobs.filter(j => {
+  const me = UR.user();
+  let filtered = jobs.filter(j => {
     const q = search.toLowerCase();
     const ms = !q || j.title.toLowerCase().includes(q) || j.company.toLowerCase().includes(q) || j.skills.some(s=>s.toLowerCase().includes(q));
     const mc = category==='All' || j.category===category;
-    const mt = !taskOnly || j.hasTask;
-    return ms && mc && mt;
+    return ms && mc;
   });
+  filtered = sort === 'deadline' ? UI.sortBy(filtered, j => j.deadline ? new Date(j.deadline).getTime() : Infinity, 'asc')
+    : sort === 'applicants' ? UI.sortBy(filtered, 'applicants', 'asc') : UI.sortBy(filtered, j => new Date(j.createdAt).getTime());
+  const applied = me && me.role === 'candidate' ? Object.fromEntries(UR.applications.list().map(a => [a.jobId, a.status])) : {};
   document.getElementById('jobsCount').innerHTML = `<b>${filtered.length}</b> listing${filtered.length!==1?'s':''}`;
   renderPills();
   if (!filtered.length) {
@@ -145,24 +152,22 @@ function render() {
       ${j.featured?'<div class="feat-badge"><span class="material-symbols-rounded">bolt</span> Featured</div>':''}
       <div class="job-top">
         <div class="job-logo ${t.cls}">${j.logo}</div>
-        <div style="min-width:0"><div class="job-company">${j.company}</div><div class="job-title">${j.title}</div></div>
+        <div style="min-width:0"><div class="job-company">${UI.esc(j.company)}</div><div class="job-title">${UI.esc(j.title)}</div></div>
       </div>
-      ${j.hasTask?`<div class="task-pill"><span class="material-symbols-rounded">task_alt</span> Includes a skill task</div>`:''}
-      <p class="job-desc">${j.description}</p>
-      <div class="job-skills">${j.skills.slice(0,4).map(s=>`<span class="skill-tag">${s}</span>`).join('')}${j.skills.length>4?`<span class="skill-tag">+${j.skills.length-4}</span>`:''}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><div class="task-pill"><span class="material-symbols-rounded">task_alt</span> ${UI.esc(j.task.title)} · ${UR.fmtDuration(j.task.timeLimitMin)}</div>${applied[j.id] ? UI.appPill(applied[j.id]) : ''}</div>
+      <p class="job-desc">${UI.esc(j.description)}</p>
+      <div style="font-size:12px;color:var(--text3);display:flex;gap:12px;flex-wrap:wrap"><span>📍 ${UI.esc(j.location || '—')}</span>${j.deadline ? `<span>⏳ Apply by ${UI.fmtDate(j.deadline, { day: 'numeric', month: 'short' })}</span>` : ''}<span>👥 ${j.applicants} applicant${j.applicants === 1 ? '' : 's'}</span></div>
+      <div class="job-skills">${j.skills.slice(0,4).map(s=>`<span class="skill-tag">${UI.esc(s)}</span>`).join('')}${j.skills.length>4?`<span class="skill-tag">+${j.skills.length-4}</span>`:''}</div>
       <div class="job-footer"><span class="job-cat"><span class="dot" style="background:${t.dot}"></span>${j.category}</span><span class="job-apply">View & Apply <span class="material-symbols-rounded">arrow_forward</span></span></div>
     </a>`;
   }).join('');
 }
 
 document.getElementById('searchInput').addEventListener('input', e => { search = e.target.value; render(); });
-document.getElementById('taskOnly').addEventListener('change', e => {
-  taskOnly = e.target.checked;
-  document.getElementById('taskToggleTrack').classList.toggle('on', taskOnly);
-  render();
-});
+document.getElementById('sortSel').addEventListener('change', e => { sort = e.target.value; render(); });
 
 render();
+UI.onChange(() => { jobs = UR.jobs.list(); render(); });
 </script>
 </body>
 </html>

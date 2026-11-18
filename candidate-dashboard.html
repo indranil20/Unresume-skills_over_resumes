@@ -5,41 +5,12 @@
 <link rel="icon" type="image/png" href="images/favicon.png">
 <title>Dashboard — Unresume</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
 <link rel="stylesheet" href="css/globals.css">
 <link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/dashboard.css">
 <style>
-/* Greeting banner */
-.dash-greeting{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:20px;padding:30px 32px;border-radius:24px;background:linear-gradient(100deg,#efedfd 0%,#e4defc 55%,#d6cefb 100%);border:1px solid #e2defb}
-.dash-greeting .g-blob{position:absolute;width:300px;height:300px;right:14%;top:-170px;border-radius:46% 54% 42% 58%/52% 38% 62% 48%;background:linear-gradient(160deg,#c7c2fa,#b9b1f7);opacity:.55}
-.dash-greeting .g-spark{position:absolute;left:58%;top:18px;width:44px;height:44px;stroke:var(--brand);stroke-width:2.4;fill:none;stroke-linecap:round;opacity:.8}
-.dash-greeting>div,.dash-greeting>a{position:relative;z-index:1}
-.dash-h1{font-family:var(--font-display);font-size:clamp(24px,3vw,34px);font-weight:800;color:var(--text1);letter-spacing:-.035em;margin-bottom:8px}
-.dash-sub{font-size:14.5px;color:var(--text2)}
-.cta-btn{display:inline-flex;align-items:center;gap:8px;padding:14px 22px;background:linear-gradient(90deg,#4f46e5,#7c3aed);border-radius:14px;font-size:14px;font-weight:700;color:#fff;text-decoration:none;box-shadow:0 8px 22px rgba(79,70,229,.3);transition:transform .15s,filter .15s}
-.cta-btn:hover{filter:brightness(1.06);transform:translateY(-1px)}
-
-/* Stats */
-.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
-@media(max-width:1100px){.stats-row{grid-template-columns:repeat(2,1fr)}}
-.stat-card{background:#fff;border:1px solid var(--border);border-radius:20px;padding:18px;display:flex;align-items:center;gap:14px;box-shadow:var(--shadow-sm);transition:transform .2s,box-shadow .2s}
-.stat-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-md)}
-.stat-icon{width:50px;height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.stat-icon .material-symbols-rounded{font-size:25px;font-variation-settings:'FILL' 1}
-.stat-val{font-family:var(--font-display);font-size:28px;font-weight:800;line-height:1.05;letter-spacing:-.02em}
-.stat-lbl{font-size:12.5px;color:var(--text3);font-weight:500;margin-top:3px}
-
-.dash-cols{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:24px;align-items:start}
-@media(max-width:1100px){.dash-cols{grid-template-columns:1fr}}
-.dash-col-side{display:flex;flex-direction:column;gap:18px;position:sticky;top:0}
-.panel-card{background:#fff;border:1px solid var(--border);border-radius:22px;padding:22px;box-shadow:var(--shadow-sm)}
-.sec-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
-.sec-title{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:800;color:var(--text1);font-family:var(--font-display);letter-spacing:-.02em}
-.sec-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center}
-.sec-icon .material-symbols-rounded{font-size:19px;font-variation-settings:'FILL' 1}
-.see-all{display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--brand);font-weight:700;text-decoration:none;padding:7px 12px;border-radius:10px;background:#eeedfd;transition:all .15s}
-.see-all:hover{background:linear-gradient(90deg,#4f46e5,#7c3aed);color:#fff}
 .task-list{display:flex;flex-direction:column;gap:10px}
 .task-row{display:flex;gap:14px;align-items:center;background:#fafaff;border:1px solid var(--border);border-radius:16px;padding:14px 16px;text-decoration:none;transition:all .15s}
 .task-row:hover{background:#fff;border-color:#e2defb;box-shadow:var(--shadow-md);transform:translateY(-2px)}
@@ -48,236 +19,201 @@
 .task-name{font-size:14.5px;font-weight:700;color:var(--text1)}
 .task-meta{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--text3);font-weight:500;margin-top:5px}
 .task-meta span{display:flex;align-items:center;gap:4px}
-.status-pill{font-size:11.5px;font-weight:700;padding:5px 12px;border-radius:100px;white-space:nowrap}
 .task-go{width:34px;height:34px;border-radius:50%;border:1px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;color:var(--text1);flex-shrink:0;transition:all .15s}
 .task-row:hover .task-go{background:linear-gradient(90deg,#4f46e5,#7c3aed);border-color:transparent;color:#fff}
 .rand-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
 .rand-card{background:#fafaff;border:1px solid var(--border);border-radius:18px;padding:18px;text-decoration:none;display:flex;flex-direction:column;gap:10px;transition:all .15s}
 .rand-card:hover{background:#fff;border-color:#e2defb;box-shadow:var(--shadow-md);transform:translateY(-2px)}
 .rand-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center}
-.rand-icon .material-symbols-rounded{font-size:22px;font-variation-settings:'FILL' 1}
 .rand-title{font-size:14px;font-weight:700;color:var(--text1);line-height:1.35}
 .rand-meta{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--text3);font-weight:600}
-/* Score ring card */
 .score-card{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
-.score-ring{position:relative;width:128px;height:128px;margin-bottom:4px}
-.score-ring svg{width:100%;height:100%}
-.score-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.score-num{font-family:var(--font-display);font-size:32px;font-weight:800;line-height:1;letter-spacing:-.02em}
-.top-pill{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;padding:5px 12px;border-radius:100px}
-/* Activity */
-.activity-item{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--border)}
+.action-item{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:14px;background:#fef6e4;border:1px solid #f6e2b8;text-decoration:none;color:var(--text1)}
+.action-item+.action-item{margin-top:8px}
+.action-item.info{background:#f5f4fd;border-color:#e9e7fb}
+.action-item b{font-size:13.5px;display:block}.action-item small{font-size:12px;color:var(--text3)}
+.activity-item{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--border);text-decoration:none}
 .activity-item:last-child{border-bottom:none;padding-bottom:0}
 .act-icon{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.act-icon .material-symbols-rounded{font-size:18px;font-variation-settings:'FILL' 1}
 .act-text{font-size:13px;color:var(--text1);font-weight:500;line-height:1.5}
 .act-time{font-size:11.5px;color:var(--text4);margin-top:2px}
-/* Portfolio CTA */
-.port-cta{position:relative;overflow:hidden;border-radius:22px;padding:24px 22px;display:flex;flex-direction:column;background:linear-gradient(140deg,#4f46e5,#7c3aed);color:#fff;box-shadow:0 20px 40px rgba(79,70,229,.28)}
-.port-cta::before{content:'';position:absolute;width:200px;height:200px;right:-70px;top:-80px;border-radius:50%;background:rgba(255,255,255,.12)}
-.port-cta>*{position:relative}
-.port-cta-icon{width:46px;height:46px;border-radius:14px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center}
-.port-cta a{display:inline-flex;align-items:center;justify-content:center;gap:6px;margin-top:16px;padding:12px;border-radius:12px;background:#fff;color:var(--brand);font-size:13.5px;font-weight:700;text-decoration:none;transition:transform .15s}
-.port-cta a:hover{transform:translateY(-1px)}
-@media(max-width:640px){
-  .dash-greeting{padding:24px 20px}
-  .dash-greeting .g-spark{left:auto;right:18px}
-  .cta-btn{width:100%;justify-content:center}
-  .stats-row{gap:10px}
-  .stat-card{flex-direction:column;align-items:flex-start;gap:10px;padding:16px}
-  .task-go{display:none}
-  .dash-greeting>div:not(.g-blob){flex-basis:100%;min-width:0}
-  .stat-val{font-size:24px}
-  .panel-card{padding:18px 16px;border-radius:18px}
-  .task-row{padding:12px;gap:12px}
-  .task-logo{width:40px;height:40px;font-size:19px}
-  .rand-grid{grid-template-columns:1fr 1fr;gap:10px}
-  .rand-card{padding:14px}
-}
+@media(max-width:640px){.task-go{display:none}.task-row{padding:12px;gap:12px}.rand-grid{grid-template-columns:1fr 1fr;gap:10px}}
 @media(max-width:380px){.rand-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div class="dash-root">
-  <div id="sidebar" data-role="candidate"></div>
+  <div id="sidebar" data-roles="candidate"></div>
   <div class="dash-content">
     <header class="dash-topbar">
       <div class="topbar-search">
         <span class="material-symbols-rounded" style="font-size:18px;color:var(--text4)">search</span>
-        <input type="text" placeholder="Search tasks, jobs…">
-      </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div class="topbar-popover">
-          <button class="topbar-icon-btn" title="Notifications" onclick="toggleTopbarPopover(this)">
-            <span class="material-symbols-rounded" style="font-size:20px">notifications</span>
-            <span class="notif-dot"></span>
-          </button>
-          <div class="popover-panel notif-panel">
-            <div class="popover-head">Notifications <span class="mark-read" onclick="this.closest('.topbar-popover').querySelector('.notif-dot')?.remove()">Mark all read</span></div>
-            <div class="notif-list">
-              <div class="notif-item">
-                <div class="notif-icon tint-teal"><span class="material-symbols-rounded" style="font-size:17px">task_alt</span></div>
-                <div><div class="notif-text">Your "React Dashboard Challenge" was scored 91/100</div><div class="notif-time">2h ago</div></div>
-              </div>
-              <div class="notif-item">
-                <div class="notif-icon tint-purple"><span class="material-symbols-rounded" style="font-size:17px">visibility</span></div>
-                <div><div class="notif-text">TechCorp viewed your profile</div><div class="notif-time">5h ago</div></div>
-              </div>
-              <div class="notif-item">
-                <div class="notif-icon" style="background:#fef6e4;color:#b7791f"><span class="material-symbols-rounded" style="font-size:17px">military_tech</span></div>
-                <div><div class="notif-text">You earned the Gold badge</div><div class="notif-time">1d ago</div></div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <a href="chat.html" class="topbar-icon-btn" title="Messages">
-          <span class="material-symbols-rounded" style="font-size:20px">chat</span>
-        </a>
-        <div class="topbar-popover">
-          <div class="topbar-avatar" onclick="toggleTopbarPopover(this)">JD</div>
-          <div class="popover-panel avatar-panel">
-            <a href="candidate-profile.html" class="avatar-menu-item"><span class="material-symbols-rounded" style="font-size:18px">person</span> View Profile</a>
-            <a href="edit-profile.html" class="avatar-menu-item"><span class="material-symbols-rounded" style="font-size:18px">edit</span> Edit Profile</a>
-            <a href="login.html" class="avatar-menu-item danger"><span class="material-symbols-rounded" style="font-size:18px">logout</span> Sign Out</a>
-          </div>
-        </div>
+        <input type="text" placeholder="Search jobs and tasks — press Enter" aria-label="Search jobs">
       </div>
     </header>
-    <main class="dash-main">
+    <main class="dash-main" id="main">
       <div class="dash-greeting">
         <div class="g-blob"></div>
         <svg class="g-spark" viewBox="0 0 44 44" aria-hidden="true"><path d="M8 30 L26 6"/><path d="M20 36 L38 14"/><path d="M30 40 L40 32"/></svg>
         <div>
-          <h1 class="dash-h1">Good morning, <span class="grad-text">Jay</span> 👋</h1>
-          <p class="dash-sub">You have 3 tasks in progress and 1 new message from HR.</p>
+          <h1 class="dash-h1" id="greet"></h1>
+          <p class="dash-sub" id="greetSub"></p>
         </div>
-        <a href="task-workplace.html?id=1" class="cta-btn">
-          <span class="material-symbols-rounded" style="font-size:19px">add_task</span> Start a Task
-        </a>
+        <a href="jobs.html" class="cta-btn"><span class="material-symbols-rounded" style="font-size:19px">add_task</span> Find a Task</a>
       </div>
 
-      <div class="stats-row">
-        <div class="stat-card">
-          <div class="stat-icon tint-blue"><span class="material-symbols-rounded">leaderboard</span></div>
-          <div><div class="stat-val c-blue">#24</div><div class="stat-lbl">Global Rank</div></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon tint-purple"><span class="material-symbols-rounded">grade</span></div>
-          <div><div class="stat-val c-purple">847</div><div class="stat-lbl">Skill Score</div></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon tint-teal"><span class="material-symbols-rounded">task_alt</span></div>
-          <div><div class="stat-val c-teal">12</div><div class="stat-lbl">Tasks Done</div></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon tint-pink"><span class="material-symbols-rounded">emoji_events</span></div>
-          <div><div class="stat-val c-pink">4</div><div class="stat-lbl">Badges</div></div>
-        </div>
-      </div>
+      <div class="stats-row" id="stats"></div>
 
       <div class="dash-cols">
         <div style="display:flex;flex-direction:column;gap:20px;min-width:0">
-          <!-- Job tasks -->
+          <div class="panel-card" id="actionsCard" hidden>
+            <div class="sec-head"><span class="sec-title"><span class="sec-icon tint-amber"><span class="material-symbols-rounded">notification_important</span></span>Needs your attention</span></div>
+            <div id="actions"></div>
+          </div>
+
           <div class="panel-card">
-            <div class="sec-head"><span class="sec-title"><span class="sec-icon tint-blue"><span class="material-symbols-rounded">work</span></span>Open Job Tasks</span><a href="jobs.html" class="see-all">See all jobs <span class="material-symbols-rounded" style="font-size:16px">arrow_forward</span></a></div>
+            <div class="sec-head"><span class="sec-title"><span class="sec-icon tint-teal"><span class="material-symbols-rounded">assignment_turned_in</span></span>My Applications</span><a href="my-applications.html" class="see-all">View all <span class="material-symbols-rounded" style="font-size:16px">arrow_forward</span></a></div>
+            <div id="apps"></div>
+          </div>
+
+          <div class="panel-card">
+            <div class="sec-head"><span class="sec-title"><span class="sec-icon tint-purple"><span class="material-symbols-rounded">show_chart</span></span>Skill Progression</span><span style="font-size:12.5px;color:var(--text3)">Verified task scores over time</span></div>
+            <div id="progress"></div>
+            <div class="grid-2" style="margin-top:18px">
+              <div><div class="d-sec-title">Score by skill</div><div id="bySkill"></div></div>
+              <div><div class="d-sec-title">Performance</div><div class="kv" id="perf"></div></div>
+            </div>
+          </div>
+
+          <div class="panel-card">
+            <div class="sec-head"><span class="sec-title"><span class="sec-icon tint-blue"><span class="material-symbols-rounded">work</span></span>Recommended Job Tasks</span><a href="jobs.html" class="see-all">See all jobs <span class="material-symbols-rounded" style="font-size:16px">arrow_forward</span></a></div>
             <div class="task-list" id="jobTaskList"></div>
           </div>
 
-          <!-- Practice tasks -->
           <div class="panel-card">
-            <div class="sec-head"><span class="sec-title"><span class="sec-icon tint-purple"><span class="material-symbols-rounded">psychology</span></span>Practice Tasks</span><span style="font-size:12.5px;color:var(--text3)">Build skills, earn scores</span></div>
+            <div class="sec-head"><span class="sec-title"><span class="sec-icon tint-pink"><span class="material-symbols-rounded">psychology</span></span>Practice Tasks</span><span style="font-size:12.5px;color:var(--text3)">Scored by Unresume reviewers · count towards your Skill Score</span></div>
             <div class="rand-grid" id="randTaskList"></div>
           </div>
         </div>
 
         <div class="dash-col-side">
-          <!-- Score ring -->
-          <div class="panel-card score-card">
-            <div class="score-ring">
-              <svg viewBox="0 0 80 80">
-                <circle cx="40" cy="40" r="34" fill="none" stroke="#eeedfd" stroke-width="7"/>
-                <circle cx="40" cy="40" r="34" fill="none" stroke="url(#sg)" stroke-width="7"
-                  stroke-dasharray="181 213.6" stroke-linecap="round" transform="rotate(-90 40 40)"/>
-                <defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stop-color="#4f46e5"/><stop offset="100%" stop-color="#c026d3"/>
-                </linearGradient></defs>
-              </svg>
-              <div class="score-inner">
-                <div class="score-num grad-text">847</div>
-                <div style="font-size:11px;color:var(--text4);font-weight:600">/1000</div>
-              </div>
-            </div>
-            <div style="font-size:15px;font-weight:800;color:var(--text1);font-family:var(--font-display)">Skill Score</div>
-            <div class="top-pill tint-teal"><span class="material-symbols-rounded" style="font-size:15px">trending_up</span>Top 5% of all candidates</div>
-            <a href="leaderboard.html" class="see-all" style="margin-top:8px">View Leaderboard <span class="material-symbols-rounded" style="font-size:16px">arrow_forward</span></a>
-          </div>
-
-          <!-- Recent activity -->
+          <div class="panel-card score-card" id="scoreCard"></div>
           <div class="panel-card">
-            <div class="sec-title" style="margin-bottom:6px">Recent Activity</div>
-            <div class="activity-item">
-              <div class="act-icon tint-purple"><span class="material-symbols-rounded">task_alt</span></div>
-              <div><div class="act-text">Submitted "UI Redesign Challenge"</div><div class="act-time">2h ago</div></div>
-            </div>
-            <div class="activity-item">
-              <div class="act-icon" style="background:#fef6e4;color:#b7791f"><span class="material-symbols-rounded">star</span></div>
-              <div><div class="act-text">Earned score 88/100 on React task</div><div class="act-time">1d ago</div></div>
-            </div>
-            <div class="activity-item">
-              <div class="act-icon tint-blue"><span class="material-symbols-rounded">chat</span></div>
-              <div><div class="act-text">HR from TechCorp sent you a message</div><div class="act-time">2d ago</div></div>
-            </div>
-            <div class="activity-item">
-              <div class="act-icon tint-pink"><span class="material-symbols-rounded">emoji_events</span></div>
-              <div><div class="act-text">Reached Rank #24 on leaderboard</div><div class="act-time">3d ago</div></div>
-            </div>
+            <div class="sec-head" style="margin-bottom:6px"><span class="sec-title">Recent Activity</span><a href="notifications.html" class="see-all">All</a></div>
+            <div id="activity"></div>
           </div>
-
-          <!-- Portfolio CTA -->
-          <div class="port-cta">
-            <div class="port-cta-icon"><span class="material-symbols-rounded" style="font-size:24px;font-variation-settings:'FILL' 1">photo_library</span></div>
-            <h3 style="font-family:var(--font-display);font-size:18px;font-weight:800;margin-top:14px">Your Portfolio</h3>
-            <p style="font-size:13px;color:rgba(255,255,255,.85);margin-top:4px;line-height:1.6">12 completed tasks. 8 set to public.</p>
-            <a href="candidate-profile.html">View Public Profile <span class="material-symbols-rounded" style="font-size:17px">arrow_forward</span></a>
-          </div>
+          <div class="grad-cta" id="portCta"></div>
         </div>
       </div>
     </main>
   </div>
 </div>
 
-<script src="js/components.js"></script>
 <script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
 <script>
-const jobs = getJobs(), tasks = getTasks();
-const linked = tasks.filter(t => t.isJobLinked);
-const random = tasks.filter(t => !t.isJobLinked);
-const catTint = { Engineering:'tint-blue', Design:'tint-pink', Data:'tint-purple' };
+const $ = id => document.getElementById(id), esc = UI.esc;
+const catTint = { Engineering:'tint-blue', Design:'tint-pink', Data:'tint-purple', Product:'tint-amber' };
 
-document.getElementById('jobTaskList').innerHTML = linked.map(t => {
-  const job = jobs.find(j => j.id === t.jobId);
-  return `<a href="task-workplace.html?id=${t.id}" class="task-row">
-    <div class="task-logo ${catTint[job?.category] || 'tint-teal'}">${job?.logo||'🏢'}</div>
-    <div style="flex:1;min-width:0">
-      <div class="task-co">${job?.company||'Company'}</div>
-      <div class="task-name">${t.title}</div>
-      <div class="task-meta">
-        <span><span class="material-symbols-rounded" style="font-size:15px">schedule</span>${t.timeLimit}</span>
-        <span><span class="material-symbols-rounded" style="font-size:15px">group</span>${t.submissionsCount} submitted</span>
-      </div>
-    </div>
-    <span class="status-pill tint-teal">Open</span>
-    <span class="task-go"><span class="material-symbols-rounded" style="font-size:18px">arrow_forward</span></span>
-  </a>`;
-}).join('');
+function render() {
+  const me = UR.user(); if (!me) return;
+  const c = UR.candidates.get(me.username), st = c.stats;
+  const apps = UR.applications.list();
+  const ivs = UR.interviews.list({ upcoming: true });
+  const subs = UR.submissions.list();
+  const active = UR.tasks.list({ status: 'published' }).map(t => ({ t, a: UR.attempts.current(t.id) })).filter(x => x.a && x.a.status === 'active');
 
-const randTints = ['tint-purple','tint-pink','tint-blue','tint-teal'];
-document.getElementById('randTaskList').innerHTML = random.map((t, i) => `
-  <a href="task-workplace.html?id=${t.id}" class="rand-card">
-    <div class="rand-icon ${randTints[i % randTints.length]}"><span class="material-symbols-rounded">psychology</span></div>
-    <div class="rand-title">${t.title}</div>
-    <div class="rand-meta"><span class="material-symbols-rounded" style="font-size:15px">schedule</span>${t.timeLimit}</div>
-  </a>`).join('');
+  const hour = new Date().getHours();
+  $('greet').innerHTML = `${hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'}, <span class="grad-text">${esc(me.name.split(' ')[0])}</span> 👋`;
+  const pendingIv = ivs.filter(i => i.status === 'proposed').length;
+  const unreadMsgs = UR.messages.unread();
+  const parts = [];
+  if (active.length) parts.push(UI.plural(active.length, 'task') + ' in progress');
+  if (pendingIv) parts.push(UI.plural(pendingIv, 'interview') + ' to confirm');
+  if (unreadMsgs) parts.push(UI.plural(unreadMsgs, 'unread message'));
+  const pendingReview = subs.filter(s => s.status === 'pending').length;
+  if (pendingReview) parts.push(UI.plural(pendingReview, 'submission') + ' awaiting review');
+  $('greetSub').textContent = parts.length ? `You have ${parts.join(', ')}.` : 'You\'re all caught up. Pick a task to grow your verified score.';
+
+  $('stats').innerHTML = [
+    ['leaderboard', 'tint-blue', c.rank ? `#${c.rank}` : '—', c.rank ? `Rank in ${st.primaryTrackLabel} (of ${c.rankedOf})` : `Ranked after ${UR.settings().rankMinTasks} tasks in a track`, `leaderboard.html?track=${st.primaryTrack || ''}`],
+    ['grade', 'tint-purple', st.skillScore || '—', st.primaryTrackLabel ? `${st.primaryTrackLabel} score /1000` : 'Skill Score /1000', 'leaderboard.html#how'],
+    ['verified', 'tint-teal', st.tasksVerified, 'Verified tasks', 'assessments.html'],
+    ['workspace_premium', 'tint-pink', st.badges.length, 'Skill badges', 'certificates.html'],
+  ].map(([ic, tint, v, l, href]) => `<a class="stat-card" href="${href}"><div class="stat-icon ${tint}"><span class="material-symbols-rounded">${ic}</span></div><div><div class="stat-val">${v}</div><div class="stat-lbl">${l}</div></div></a>`).join('');
+
+  // attention items
+  const actions = [];
+  active.forEach(({ t, a }) => { const left = a.deadlineAt ? new Date(a.deadlineAt) - Date.now() : null; actions.push(`<a class="action-item" href="task-workplace.html?id=${t.id}">${UI.icon('timer', 22, true)}<div style="flex:1"><b>Continue "${esc(t.title)}"</b><small>${left != null ? `${Math.max(0, Math.floor(left / 3600e3))}h ${Math.max(0, Math.floor(left % 3600e3 / 60e3))}m left` : 'No time limit'}</small></div>${UI.icon('arrow_forward')}</a>`); });
+  ivs.filter(i => ['proposed'].includes(i.status)).forEach(i => actions.push(`<a class="action-item" href="candidate-interviews.html">${UI.icon('event', 22, true)}<div style="flex:1"><b>Confirm ${esc(i.stage)} with ${esc(i.companyName)}</b><small>${UI.fmtDateTime(i.scheduledAt)}</small></div>${UI.icon('arrow_forward')}</a>`));
+  apps.filter(a => a.status === 'offer').forEach(a => actions.push(`<a class="action-item info" href="chat.html">${UI.icon('redeem', 22, true)}<div style="flex:1"><b>Offer from ${esc(a.job.company)}</b><small>${esc(a.job.title)} — reply to HR in Messages</small></div>${UI.icon('arrow_forward')}</a>`));
+  $('actionsCard').hidden = !actions.length;
+  $('actions').innerHTML = actions.join('');
+
+  // applications
+  const openApps = apps.filter(a => !['withdrawn'].includes(a.status)).slice(0, 4);
+  const flowIdx = s => UR.APP_FLOW.indexOf(s);
+  $('apps').innerHTML = openApps.length ? openApps.map(a => {
+    const idx = flowIdx(a.status), bad = idx < 0;
+    return `<a class="l-row" href="my-applications.html?id=${a.id}" style="text-decoration:none">
+      <div class="l-logo ${catTint[a.job.category] || 'tint-teal'}">${a.job.logo}</div>
+      <div class="l-main"><div class="l-title">${esc(a.job.title)}</div><div class="l-sub">${esc(a.job.company)} · updated ${UI.timeAgo(a.updatedAt)}</div>
+        <div class="stepper" style="margin-top:8px;max-width:320px">${UR.APP_FLOW.slice(1).map((s, i) => `<i class="${bad ? 'bad' : i < idx ? 'on' : ''}" title="${UR.APP_STATUS[s].label}"></i>`).join('')}</div></div>
+      ${a.taskScore != null ? UI.verifiedScore(a.taskScore, true) : ''}${UI.appPill(a.status)}</a>`;
+  }).join('') : UI.empty('assignment', 'No applications yet', 'Every job on Unresume is applied to by completing a skill task.', '<a href="jobs.html" class="see-all">Browse jobs</a>');
+
+  // progression
+  const res = st.results;
+  UI.line($('progress'), res.map(r => ({ label: r.title, value: r.score, short: UI.fmtDate(r.date, { month: 'short', day: 'numeric' }), date: UI.fmtDate(r.date) })), { suffix: '/100' });
+  UI.hbars($('bySkill'), st.skills.slice(0, 6).map(s => ({ label: s.skill, value: Math.round(s.avg), note: `${s.count} task${s.count > 1 ? 's' : ''}${s.badge ? ' · ' + s.badge : ''}` })), { max: 100, suffix: '' });
+  const last3 = res.slice(-3), prev3 = res.slice(-6, -3);
+  const trend = last3.length && prev3.length ? Math.round((last3.reduce((a, r) => a + r.score, 0) / last3.length - prev3.reduce((a, r) => a + r.score, 0) / prev3.length) * 10) / 10 : null;
+  $('perf').innerHTML = [
+    [st.mean || '—', 'Avg task score'],
+    [c.percentile != null ? `Top ${Math.max(1, 100 - c.percentile + 1)}%` : '—', 'Percentile'],
+    [trend == null ? '—' : (trend > 0 ? '+' : '') + trend, 'Trend (last 3 vs prev 3)'],
+    [res.length ? Math.max(...res.map(r => r.score)) : '—', 'Best score'],
+  ].map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join('');
+
+  // recommended job tasks: open jobs not applied to, skill overlap first
+  const appliedJobs = new Set(apps.map(a => a.jobId));
+  const jobs = UR.jobs.list().filter(j => !appliedJobs.has(j.id))
+    .map(j => ({ j, m: j.skills.filter(s => c.skills.includes(s)).length })).sort((a, b) => b.m - a.m).slice(0, 4);
+  $('jobTaskList').innerHTML = jobs.length ? jobs.map(({ j, m }) => `<a href="job-detail.html?id=${j.id}" class="task-row">
+    <div class="task-logo ${catTint[j.category] || 'tint-teal'}">${j.logo}</div>
+    <div style="flex:1;min-width:0"><div class="task-co">${esc(j.company)} · ${esc(j.title)}</div><div class="task-name">${esc(j.task.title)}</div>
+      <div class="task-meta"><span>${UI.icon('timer', 15)}${UR.fmtDuration(j.task.timeLimitMin)}</span><span>${UI.icon('event', 15)}Apply by ${UI.fmtDate(j.deadline, { day: 'numeric', month: 'short' })}</span>${m ? `<span style="color:#0d9488">${UI.icon('bolt', 15)}${m} matching skill${m > 1 ? 's' : ''}</span>` : ''}</div></div>
+    <span class="task-go">${UI.icon('arrow_forward')}</span></a>`).join('') : UI.empty('task_alt', 'You\'ve applied to every open job', 'New jobs appear here as companies post them.');
+
+  const practice = UR.tasks.list({ practice: true, status: 'published' });
+  const tints = ['tint-purple', 'tint-pink', 'tint-blue', 'tint-teal'];
+  $('randTaskList').innerHTML = practice.map((t, i) => { const a = UR.attempts.current(t.id); const done = subs.find(s => s.taskId === t.id);
+    return `<a href="${done ? `assessments.html?id=${done.id}` : `task-workplace.html?id=${t.id}`}" class="rand-card">
+      <div class="rand-icon ${tints[i % tints.length]}">${UI.icon('psychology', 22, true)}</div><div class="rand-title">${esc(t.title)}</div>
+      <div class="rand-meta">${UI.icon('timer', 15)}${t.timeLimitLabel} · ${esc(t.difficulty)}</div>
+      ${done ? (done.score ? UI.verifiedScore(done.score.total, true) : UI.pill('Awaiting review', 'tint-amber')) : a && a.status === 'active' ? UI.pill('In progress', 'tint-blue') : ''}</a>`; }).join('');
+
+  // score card
+  $('scoreCard').innerHTML = `${UI.scoreRing(st.skillScore, 1000, 'Skill score')}
+    <div style="font-size:15px;font-weight:800;color:var(--text1);font-family:var(--font-display)">${esc(st.primaryTrackLabel || 'Skill')} score</div>
+    <div>${UI.tierPill(st.tier)}</div>
+    <div style="width:100%;display:flex;flex-direction:column;gap:6px;margin:4px 0">${st.tracks.slice(0, 4).map(tr => `<div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--text2)"><span>${esc(tr.label)} <small style="color:var(--text4)">· ${tr.count}</small></span><b>${tr.score}</b></div>`).join('')}</div>
+    <p style="font-size:12px;color:var(--text3);line-height:1.6">Difficulty-weighted average of your best verified scores, per skill track. Tracks are never mixed.</p>
+    <a href="leaderboard.html#how" class="see-all" style="margin-top:4px">How scores work ${UI.icon('arrow_forward', 16)}</a>`;
+
+  const NI = { score: ['grade', 'tint-purple'], interview: ['event', 'tint-amber'], application: ['assignment_turned_in', 'tint-blue'], message: ['chat', 'tint-blue'], submission: ['upload', 'tint-teal'], referral: ['send', 'tint-pink'] };
+  const notes = UR.notifications.list(5);
+  $('activity').innerHTML = notes.length ? notes.map(n => { const [ic, t] = NI[n.type] || ['notifications', 'tint-purple']; return `<a class="activity-item" href="${esc(n.link || 'notifications.html')}"><div class="act-icon ${t}">${UI.icon(ic, 18, true)}</div><div><div class="act-text">${esc(n.title)}</div><div class="act-time">${UI.timeAgo(n.createdAt)}</div></div></a>`; }).join('') : '<p style="font-size:13px;color:var(--text3);padding:8px 0">No activity yet.</p>';
+
+  const pf = c.portfolio;
+  $('portCta').innerHTML = `<div class="grad-cta-icon">${UI.icon('photo_library', 24, true)}</div><h3>Your Portfolio</h3>
+    <p>${UI.plural(pf.length, 'item')} · ${pf.filter(p => p.isPublic).length} public · ${pf.filter(p => p.type === 'task').length} with verified scores.</p>
+    <a href="candidate-profile.html">Manage portfolio ${UI.icon('arrow_forward', 17)}</a>`;
+}
+render();
+UI.onChange(render);
 </script>
 </body>
 </html>

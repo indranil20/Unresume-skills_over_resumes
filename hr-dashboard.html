@@ -5,260 +5,135 @@
 <link rel="icon" type="image/png" href="images/favicon.png">
 <title>HR Dashboard — Unresume</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
 <link rel="stylesheet" href="css/globals.css">
 <link rel="stylesheet" href="css/navbar.css">
 <style>
-.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
-@media(max-width:900px){.stats-row{grid-template-columns:repeat(2,1fr)}}
-.stat-card{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:20px 18px}
-.stat-icon{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
-.stat-val{font-family:var(--font-display);font-size:28px;font-weight:800;color:var(--text1);line-height:1;margin-bottom:4px}
-.stat-lbl{font-size:12px;color:var(--text4);font-weight:600}
-.dash-cols{display:grid;grid-template-columns:1fr 300px;gap:24px}
-@media(max-width:960px){.dash-cols{grid-template-columns:1fr}}
-.sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-.sec-title{font-size:15px;font-weight:800;color:var(--text1);font-family:var(--font-display)}
-/* Pipeline */
-.pipeline-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:28px}
-@media(max-width:800px){.pipeline-cols{grid-template-columns:1fr}}
-.pipe-col{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;overflow:hidden}
-.pipe-head{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.pipe-label{font-size:12.5px;font-weight:800;color:var(--text1)}
-.pipe-count{font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px}
-.pipe-body{padding:10px 10px;display:flex;flex-direction:column;gap:8px;min-height:140px}
-.pipe-card{background:var(--bg-elevated);border:1px solid var(--border);border-radius:10px;padding:12px 12px;cursor:pointer;transition:border-color .15s}
-.pipe-card:hover{border-color:rgba(91,108,245,.3)}
-.pipe-card-name{font-size:13px;font-weight:700;color:var(--text1);margin-bottom:3px}
-.pipe-card-meta{font-size:11.5px;color:var(--text4)}
-.pipe-score{font-family:var(--font-mono);font-size:12px;font-weight:700;margin-top:5px}
-/* Job list */
-.job-row{display:flex;align-items:center;gap:12px;background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px;transition:border-color .15s}
-.job-row:hover{border-color:rgba(91,108,245,.25)}
-.job-logo{width:40px;height:40px;border-radius:10px;background:var(--bg-elevated);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
-.job-title{font-size:14px;font-weight:700;color:var(--text1);margin-bottom:3px}
-.job-meta{font-size:12px;color:var(--text4);display:flex;gap:12px}
-.job-actions{margin-left:auto;display:flex;gap:6px}
-/* Shortlist panel */
-.shortlist-panel{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:20px 18px;position:sticky;top:80px}
-.shortlist-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
-.shortlist-item:last-child{border-bottom:none}
-.sl-av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0}
-.sl-name{font-size:13px;font-weight:700;color:var(--text1)}
-.sl-meta{font-size:11.5px;color:var(--text4)}
-@media(max-width:960px){.shortlist-panel{position:static}}
-@media(max-width:1100px) and (min-width:801px){.pipeline-cols{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:520px){
-  .job-row{flex-wrap:wrap}
-  .job-row>div:nth-child(2){flex:1 1 calc(100% - 64px) !important}
-  .job-actions{margin-left:58px}
-  .job-meta{gap:6px 10px}
-}
+.pipeline-cols{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:28px}
+@media(max-width:1100px){.pipeline-cols{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.pipeline-cols{grid-template-columns:1fr}}
+.pipe-col{overflow:hidden}
+.pipe-head{border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.pipe-body{display:flex;flex-direction:column;min-height:140px}
+.pipe-card{border:1px solid var(--border);display:block}
+.pipe-card-name{font-size:13px;font-weight:700;color:var(--text1);margin-bottom:2px}
+.pipe-card-meta{font-size:11.5px;color:var(--text3)}
+.pipe-score{font-size:12px;margin-top:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.pipe-empty{font-size:12px;color:var(--text4);text-align:center;padding:16px 6px}
 </style>
 <link rel="stylesheet" href="css/dashboard.css">
 </head>
 <body>
 <div class="dash-root">
-  <div id="sidebar" data-role="hr"></div>
+  <div id="sidebar" data-roles="hr"></div>
   <div class="dash-content">
     <header class="dash-topbar">
-      <div class="topbar-search">
-        <span class="material-symbols-rounded" style="font-size:18px;color:var(--text4)">search</span>
-        <input type="text" placeholder="Search candidates, jobs…">
-      </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div class="topbar-popover">
-          <button class="topbar-icon-btn" onclick="toggleTopbarPopover(this)"><span class="material-symbols-rounded" style="font-size:20px">notifications</span><span class="notif-dot"></span></button>
-          <div class="popover-panel notif-panel">
-            <div class="popover-head">Notifications <span class="mark-read" onclick="this.closest('.topbar-popover').querySelector('.notif-dot')?.remove()">Mark all read</span></div>
-            <div class="notif-list">
-              <div class="notif-item">
-                <div class="notif-icon tint-blue"><span class="material-symbols-rounded" style="font-size:17px">group</span></div>
-                <div><div class="notif-text">3 new candidates applied to Frontend Developer</div><div class="notif-time">1h ago</div></div>
-              </div>
-              <div class="notif-item">
-                <div class="notif-icon tint-purple"><span class="material-symbols-rounded" style="font-size:17px">event</span></div>
-                <div><div class="notif-text">Priya Sharma accepted your interview invite</div><div class="notif-time">4h ago</div></div>
-              </div>
-              <div class="notif-item">
-                <div class="notif-icon tint-amber"><span class="material-symbols-rounded" style="font-size:17px">schedule</span></div>
-                <div><div class="notif-text">Job listing "Backend Engineer" is expiring soon</div><div class="notif-time">1d ago</div></div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <a href="chat.html" class="topbar-icon-btn"><span class="material-symbols-rounded" style="font-size:20px">chat</span></a>
-        <div class="topbar-popover">
-          <div class="topbar-avatar" onclick="toggleTopbarPopover(this)">HR</div>
-          <div class="popover-panel avatar-panel">
-            <a href="#" class="avatar-menu-item" onclick="alert('Settings coming soon');return false"><span class="material-symbols-rounded" style="font-size:18px">settings</span> Account Settings</a>
-            <a href="login.html" class="avatar-menu-item danger"><span class="material-symbols-rounded" style="font-size:18px">logout</span> Sign Out</a>
-          </div>
-        </div>
-      </div>
+      <div class="topbar-search"><span class="material-symbols-rounded" style="font-size:18px;color:var(--text4)">search</span><input type="text" placeholder="Search talent — press Enter" aria-label="Search candidates"></div>
     </header>
     <main class="dash-main">
+      <div id="verifyBanner"></div>
       <div class="dash-greeting"><div class="g-blob"></div><svg class="g-spark" viewBox="0 0 44 44" aria-hidden="true"><path d="M8 30 L26 6"/><path d="M20 36 L38 14"/><path d="M30 40 L40 32"/></svg>
-        <div>
-          <h1 class="dash-h1">HR Dashboard</h1>
-          <p class="dash-sub">Manage pipeline, shortlisted candidates, and job postings.</p>
-        </div>
-        <a href="task-create.html" class="cta-btn">
-          <span class="material-symbols-rounded" style="font-size:17px">add</span> Post Job 
-        </a>
+        <div><h1 class="dash-h1" id="title">HR Dashboard</h1><p class="dash-sub" id="sub"></p></div>
+        <a href="hr-jobs.html?new=1" class="cta-btn"><span class="material-symbols-rounded" style="font-size:17px">add</span> Post Job</a>
       </div>
+      <div class="stats-row" id="stats"></div>
 
-      <div class="stats-row">
-        <div class="stat-card">
-          <div class="stat-icon tint-blue"><span class="material-symbols-rounded" style="font-size:22px">groups</span></div>
-          <div class="stat-val">48</div><div class="stat-lbl">Applications</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon tint-purple"><span class="material-symbols-rounded" style="font-size:22px">star</span></div>
-          <div class="stat-val">12</div><div class="stat-lbl">Shortlisted</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon tint-pink"><span class="material-symbols-rounded" style="font-size:22px">chat</span></div>
-          <div class="stat-val">5</div><div class="stat-lbl">In Conversation</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon tint-teal"><span class="material-symbols-rounded" style="font-size:22px">handshake</span></div>
-          <div class="stat-val">3</div><div class="stat-lbl">Hired</div>
-        </div>
-      </div>
-
-      <!-- Pipeline -->
-      <div class="sec-head"><span class="sec-title">Hiring Pipeline</span></div>
+      <div class="sec-head"><span class="sec-title"><span class="sec-icon tint-blue"><span class="material-symbols-rounded">view_kanban</span></span>Hiring Pipeline</span>
+        <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><select id="jobFilter" aria-label="Filter pipeline by job" class="tc-select" style="padding:8px 12px;font-size:13px;width:auto"></select><a class="see-all" href="hr-applications.html">All applications</a></span></div>
+      <p style="font-size:12.5px;color:var(--text3);margin:-6px 0 12px">Drag a card to move a candidate to another stage. The candidate is notified of every move.</p>
       <div class="pipeline-cols" id="pipelineCols"></div>
 
       <div class="dash-cols">
         <div>
-          <div class="sec-head"><span class="sec-title">Active Job Postings</span></div>
+          <div class="sec-head"><span class="sec-title"><span class="sec-icon tint-purple"><span class="material-symbols-rounded">work</span></span>Job Postings</span><a href="hr-jobs.html" class="see-all">Manage jobs</a></div>
           <div id="jobList"></div>
         </div>
-        <div>
-          <div class="shortlist-panel">
-            <div class="sec-title" style="margin-bottom:14px">Shortlisted Candidates</div>
-            <div id="shortlistItems"></div>
-          </div>
+        <div class="dash-col-side">
+          <div class="panel-card"><div class="sec-head" style="margin-bottom:10px"><span class="sec-title">Needs review</span><a class="see-all" href="interviewer-dashboard.html">Queue</a></div><div id="toReview"></div></div>
+          <div class="panel-card"><div class="sec-head" style="margin-bottom:10px"><span class="sec-title">Upcoming interviews</span><a class="see-all" href="hr-interviews.html">All</a></div><div id="ivList"></div></div>
         </div>
       </div>
     </main>
   </div>
 </div>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
-<script src="js/components.js"></script>
 <script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
 <script>
-const pipeStages = [
-  {label:'Recommended', color:'#2563eb', tint:'tint-blue', icon:'thumb_up'},
-  {label:'In Contact', color:'#7c3aed', tint:'tint-purple', icon:'chat'},
-  {label:'Offer Stage', color:'#0d9488', tint:'tint-teal', icon:'handshake'},
+const $ = id => document.getElementById(id), esc = UI.esc;
+const stages = [
+  { key: 'shortlisted', label: 'Shortlisted', tint: 'tint-teal', icon: 'thumb_up' },
+  { key: 'interview', label: 'Interview', tint: 'tint-amber', icon: 'event' },
+  { key: 'offer', label: 'Offer', tint: 'tint-pink', icon: 'redeem' },
+  { key: 'hired', label: 'Hired', tint: 'tint-blue', icon: 'handshake' },
 ];
+let jobFilter = '', dragging = false;
 
-const candidates = getCandidates();
-const gradients = [
-  'linear-gradient(135deg,#38bdf8,#2563eb)',
-  'linear-gradient(135deg,#8b5cf6,#6d28d9)',
-  'linear-gradient(135deg,#e879f9,#a855f7)',
-  'linear-gradient(135deg,#2dd4bf,#0d9488)',
-  'linear-gradient(135deg,#fbbf24,#f97316)',
-  'linear-gradient(135deg,#818cf8,#4f46e5)',
-];
+function render() {
+  if (dragging) return;
+  const me = UR.user(), co = UR.companies.mine(), an = UR.analytics.company();
+  $('title').innerHTML = `${esc(co.name)} <span class="grad-text">Hiring</span>`;
+  $('sub').textContent = `${UI.plural(an.pendingReview, 'submission')} awaiting review · ${UI.plural(an.interviewsUpcoming, 'upcoming interview')} · ${an.avgReviewHours != null ? `avg review time ${Math.round(an.avgReviewHours)}h` : 'no reviews yet'}`;
+  $('verifyBanner').innerHTML = co.verification !== 'verified' ? `<div class="d-note warn" style="margin-bottom:16px">${UI.icon('gpp_maybe')}<div><b>${esc(co.name)} is ${co.verification === 'pending' ? 'awaiting verification' : 'not verified'}.</b> You can create drafts, but jobs can't go live until an Unresume admin verifies your company. <a href="company-profile.html" style="color:inherit;font-weight:800">Company profile →</a></div></div>` : '';
+  $('stats').innerHTML = [
+    ['work', 'tint-blue', an.openJobs, 'Open jobs', 'hr-jobs.html'],
+    ['inbox', 'tint-purple', an.applications, 'Applications', 'hr-applications.html'],
+    ['rate_review', 'tint-amber', an.pendingReview, 'Awaiting review', 'interviewer-dashboard.html'],
+    ['handshake', 'tint-teal', an.hired, 'Hired', 'hr-analytics.html'],
+  ].map(([i, t, v, l, h]) => `<a class="stat-card" href="${h}"><div class="stat-icon ${t}">${UI.icon(i)}</div><div><div class="stat-val">${v}</div><div class="stat-lbl">${l}</div></div></a>`).join('');
 
-// Pipeline: each candidate lives in exactly one stage (demo data, resets on reload)
-const byUsername = Object.fromEntries(candidates.map(c => [c.username, c]));
-const pipeData = [
-  candidates.slice(0,3).map(c => c.username),
-  candidates.slice(3,5).map(c => c.username),
-  candidates.slice(5,6).map(c => c.username),
-];
-
-function pipeCardHTML(c) {
-  const initials = c.name.split(' ').map(w=>w[0]).join('').slice(0,2);
-  return `<div class="pipe-card" data-username="${c.username}" onclick="location.href='candidate-profile.html?u=${c.username}'">
-    <div style="display:flex;align-items:center;gap:8px">
-      <div class="sl-av" style="width:34px;height:34px;background:${gradients[candidates.indexOf(c)%gradients.length]}">${initials}</div>
-      <div style="flex:1;min-width:0">
-        <div class="pipe-card-name">${c.name}</div>
-        <div class="pipe-card-meta">${c.skills[0]}${c.skills[1]?', '+c.skills[1]:''}</div>
-      </div>
-      <span class="material-symbols-rounded pipe-grip" title="Drag to move">drag_indicator</span>
-    </div>
-    <div class="pipe-score">${c.score} pts · Rank #${c.rank}</div>
-  </div>`;
-}
-
-document.getElementById('pipelineCols').innerHTML = pipeStages.map((stage, si) => `
-  <div class="pipe-col" data-stage="${si}">
-    <div class="pipe-head">
-      <span class="pipe-label"><span class="sec-icon ${stage.tint}" style="width:30px;height:30px"><span class="material-symbols-rounded" style="font-size:17px">${stage.icon}</span></span>${stage.label}</span>
-      <span class="pipe-count ${stage.tint}" id="pipeCount${si}">${pipeData[si].length}</span>
-    </div>
-    <div class="pipe-body">
-      <div class="pipe-list" data-stage="${si}">${pipeData[si].map(u => pipeCardHTML(byUsername[u])).join('')}</div>
-      <button onclick="alert('Add candidate to pipeline')" class="pipe-add">+ Add candidate</button>
-    </div>
-  </div>
-`).join('');
-
-function syncPipe() {
-  document.querySelectorAll('.pipe-list').forEach(list => {
-    document.getElementById('pipeCount'+list.dataset.stage).textContent = list.querySelectorAll('.pipe-card').length;
-  });
-}
-
-document.querySelectorAll('.pipe-list').forEach(list => {
-  new Sortable(list, {
-    group: 'pipeline',          // cards can move between any stages, in both directions
-    animation: 180,
-    ghostClass: 'pipe-ghost',
-    chosenClass: 'pipe-chosen',
-    dragClass: 'pipe-drag',
-    delayOnTouchOnly: true,     // touch: hold briefly to pick up, so the page still scrolls
-    delay: 150,
-    onStart: () => document.getElementById('pipelineCols').classList.add('dragging'),
-    onEnd: () => {
-      document.getElementById('pipelineCols').classList.remove('dragging');
-      syncPipe();
+  const jobs = UR.jobs.list({ status: 'all', companyId: me.orgId });
+  $('jobFilter').innerHTML = `<option value="">All jobs</option>` + jobs.map(j => `<option value="${j.id}" ${String(j.id) === jobFilter ? 'selected' : ''}>${esc(j.title)}</option>`).join('');
+  const apps = UR.applications.list({ jobId: jobFilter || undefined });
+  $('pipelineCols').innerHTML = stages.map(s => {
+    const cards = apps.filter(a => a.status === s.key);
+    return `<div class="pipe-col" data-stage="${s.key}">
+      <div class="pipe-head"><span class="pipe-label"><span class="sec-icon ${s.tint}" style="width:30px;height:30px">${UI.icon(s.icon, 17, true)}</span>${s.label}</span><span class="pipe-count ${s.tint}">${cards.length}</span></div>
+      <div class="pipe-body"><div class="pipe-list" data-stage="${s.key}">${cards.map(a => `<div class="pipe-card" data-id="${a.id}" tabindex="0" onkeydown="if(event.key==='Enter')location.href='hr-applications.html?id=${a.id}'">
+          <div style="display:flex;align-items:center;gap:8px">${UI.avatar(a.candidateName, 32, a.candidate)}<div style="flex:1;min-width:0"><a class="pipe-card-name" href="hr-applications.html?id=${a.id}" style="display:block">${esc(a.candidateName)}</a><div class="pipe-card-meta">${esc(a.job.title)}</div></div><span class="material-symbols-rounded pipe-grip" title="Drag to move">drag_indicator</span></div>
+          <div class="pipe-score">${a.taskScore != null ? UI.verifiedScore(a.taskScore, true) : a.route === 'verified_score' ? UI.pill('Verified scores', 'tint-teal', 'verified') : ''}${a.academyName ? UI.pill('Academy referral', 'tint-pink') : ''}${a.submission && a.submission.flags && !a.submission.cleared ? UI.pill('Integrity flag', 'tint-red') : ''}</div></div>`).join('')}</div>
+        ${s.key === 'shortlisted' ? `<button onclick="addToPipeline()" class="pipe-add">+ Shortlist a scored applicant</button>` : ''}
+        ${!cards.length && s.key !== 'shortlisted' ? '<div class="pipe-empty">Drop a card here</div>' : ''}</div></div>`;
+  }).join('');
+  if (window.Sortable) document.querySelectorAll('.pipe-list').forEach(list => new Sortable(list, {
+    group: 'pipeline', animation: 180, ghostClass: 'pipe-ghost', chosenClass: 'pipe-chosen', dragClass: 'pipe-drag', delayOnTouchOnly: true, delay: 150,
+    onStart: () => { dragging = true; $('pipelineCols').classList.add('dragging'); },
+    onEnd: async e => {
+      $('pipelineCols').classList.remove('dragging'); dragging = false;
+      const to = e.to.dataset.stage, id = e.item.dataset.id;
+      if (e.from === e.to) return;
+      if (to === 'interview') { render(); return scheduleFor(id); }
+      try { UR.applications.move(id, to); UI.toast(`Moved to ${UR.APP_STATUS[to].label} — candidate notified`); }
+      catch (err) { UI.toast(err.message, 'error'); render(); }
     },
-  });
-});
+  }));
 
-// Job list
-const jobs = getJobs();
-const catTint = { Engineering:'tint-blue', Design:'tint-pink', Data:'tint-purple' };
-document.getElementById('jobList').innerHTML = jobs.slice(0,4).map(j => `
-  <div class="job-row">
-    <div class="job-logo ${catTint[j.category] || 'tint-teal'}">${j.logo}</div>
-    <div style="flex:1;min-width:0">
-      <div class="job-title">${j.title}</div>
-      <div class="job-meta">
-        <span>${j.category}</span>
-        <span>${j.hasTask ? '<span class="d-pill tint-teal" style="padding:2px 9px">Has Task ✓</span>' : 'No task yet'}</span>
-        <span>${Math.floor(Math.random()*20)+5} applicants</span>
-      </div>
-    </div>
-    <div class="job-actions">
-      <a href="job-detail.html?id=${j.id}" class="see-all">View <span class="material-symbols-rounded" style="font-size:16px">arrow_forward</span></a>
-    </div>
-  </div>
-`).join('');
+  $('jobList').innerHTML = jobs.length ? jobs.slice(0, 6).map(j => `<div class="job-row" style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+      <div class="l-logo">${j.logo}</div>
+      <div style="flex:1;min-width:0"><div class="l-title">${esc(j.title)}</div><div class="l-sub"><span>${UI.plural(j.applicants, 'applicant')}</span><span>${j.task ? UI.icon('task_alt') + ' ' + esc(j.task.title) : '<span style="color:#be123c">No task linked</span>'}</span>${j.deadline ? `<span>Closes ${UI.fmtDate(j.deadline, { day: 'numeric', month: 'short' })}</span>` : ''}</div></div>
+      ${UI.pill(j.status[0].toUpperCase() + j.status.slice(1), { open: 'tint-teal', draft: 'gray', closed: 'tint-amber', flagged: 'tint-red', removed: 'tint-red' }[j.status])}
+      <a href="hr-applications.html?job=${j.id}" class="see-all">Applicants</a></div>`).join('') : UI.empty('work', 'No jobs yet', 'Post your first job with a skill task.', '<a href="hr-jobs.html?new=1" class="cta-btn">Post a job</a>');
 
-// Shortlist
-document.getElementById('shortlistItems').innerHTML = candidates.slice(0,5).map((c, i) => {
-  const initials = c.name.split(' ').map(w=>w[0]).join('').slice(0,2);
-  return `<div class="shortlist-item">
-    <div class="sl-av" style="background:${gradients[i%gradients.length]}">${initials}</div>
-    <div style="flex:1;min-width:0">
-      <div class="sl-name">${c.name}</div>
-      <div class="sl-meta">${c.score} pts · ${c.skills[0]}</div>
-    </div>
-    <a href="chat.html" title="Message" class="icon-chip tint-purple"><span class="material-symbols-rounded" style="font-size:18px">chat</span></a>
-  </div>`;
-}).join('');
+  const pend = UR.submissions.list({ status: 'pending' }).slice(0, 4);
+  $('toReview').innerHTML = pend.length ? pend.map(s => `<a class="l-row" style="padding:10px 12px;text-decoration:none" href="interviewer-dashboard.html?sub=${s.id}">${UI.avatar(s.candidateName, 32, s.candidate)}<div class="l-main"><div class="l-title" style="font-size:13px">${esc(s.candidateName)}</div><div class="l-sub">${esc(s.task.title)} · ${UI.timeAgo(s.submittedAt)}</div></div>${s.integrity.flags.length ? UI.icon('policy', 18) : ''}</a>`).join('') : '<p style="font-size:13px;color:var(--text3)">Queue is clear.</p>';
+  const ivs = UR.interviews.list({ upcoming: true }).slice(0, 4);
+  $('ivList').innerHTML = ivs.length ? ivs.map(i => `<div class="l-row" style="padding:10px 12px">${UI.avatar(i.candidateName, 32, i.candidate)}<div class="l-main"><div class="l-title" style="font-size:13px">${esc(i.candidateName)}</div><div class="l-sub">${esc(i.stage)} · ${UI.fmtDateTime(i.scheduledAt)}</div></div>${UI.pill(UR.INTERVIEW_STATUS[i.status].label, UR.INTERVIEW_STATUS[i.status].tint)}</div>`).join('') : '<p style="font-size:13px;color:var(--text3)">No interviews scheduled.</p>';
+}
+
+function addToPipeline() {
+  const scored = UR.applications.list({ status: 'scored' });
+  if (!scored.length) return UI.toast('No scored applicants waiting. Score submissions in the Review Queue first.', 'info');
+  UI.modal({ title: 'Shortlist an applicant', icon: 'thumb_up', submitLabel: 'Shortlist',
+    body: UI.field({ name: 'id', label: 'Scored applicant', type: 'select', required: true, options: UI.sortBy(scored, 'taskScore').map(a => [a.id, `${a.candidateName} — ${a.job.title} · ${a.taskScore}/100`]) }),
+    onSubmit: d => { UR.applications.move(d.id, 'shortlisted'); UI.toast('Shortlisted — candidate notified'); } });
+}
+function scheduleFor(appId) { location.href = `hr-interviews.html?schedule=${appId}`; }
+$('jobFilter').addEventListener('change', e => { jobFilter = e.target.value; render(); });
+render();
+UI.onChange(render);
 </script>
 </body>
 </html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link rel="icon" type="image/png" href="images/favicon.png">
+<title>Tasks — Unresume</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link rel="stylesheet" href="css/globals.css">
+<link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+<div class="dash-root">
+  <div id="sidebar" data-roles="hr,interviewer,admin"></div>
+  <div class="dash-content">
+    <header class="dash-topbar" data-auto data-search="Search tasks…"></header>
+    <main class="dash-main">
+      <div class="dash-greeting"><div class="g-blob"></div>
+        <div><h1 class="dash-h1">Skill <span class="grad-text">Tasks</span></h1><p class="dash-sub" id="sub">Tasks define what candidates build, how long they get, and exactly how they're scored.</p></div>
+        <a class="cta-btn" href="task-create.html"><span class="material-symbols-rounded" style="font-size:18px">add_task</span> Create task</a></div>
+      <div class="d-table-wrap"><table class="d-table stack"><thead><tr><th>Task</th><th>Status</th><th>Linked job</th><th>Time limit</th><th>Rubric</th><th>Reviewed</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+    </main>
+  </div>
+</div>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
+<script>
+const $ = id => document.getElementById(id), esc = UI.esc;
+const T = { published: 'tint-teal', draft: 'gray', paused: 'tint-amber', flagged: 'tint-red', removed: 'tint-red' };
+function render() {
+  const me = UR.user(), q = ($('topbarSearch') || { value: '' }).value.toLowerCase();
+  if (me.role === 'admin') $('sub').textContent = 'Practice tasks are open to every candidate and reviewed by Unresume admins.';
+  const list = UR.tasks.list({ mine: true }).filter(t => !q || t.title.toLowerCase().includes(q));
+  $('rows').innerHTML = list.length ? list.map(t => `<tr>
+    <td class="who-cell"><div class="who"><span class="sec-icon tint-purple">${UI.icon('assignment', 18, true)}</span><div><b>${esc(t.title)}</b><small>${esc((t.skills || []).join(', '))} · ${esc(t.difficulty || '')}</small></div></div>${t.moderation && ['flagged', 'removed'].includes(t.status) ? `<div class="d-note bad" style="margin-top:8px;padding:8px 10px">${UI.icon('gavel')}<div>${esc(t.moderation.reason)}</div></div>` : ''}</td>
+    <td data-label="Status">${UI.pill(t.status, T[t.status])}</td>
+    <td data-label="Job">${t.job ? esc(t.job.title) : t.companyId ? '<span style="color:var(--text4)">Not linked</span>' : 'Practice'}</td>
+    <td data-label="Time">${t.timeLimitLabel}</td>
+    <td data-label="Rubric">${t.rubric.length} criteria · ${t.rubric.reduce((a, r) => a + r.points, 0)} pts</td>
+    <td data-label="Reviewed"><span class="num">${t.reviewed}</span>/${t.submissions}</td>
+    <td><div class="acts">
+      ${!['flagged', 'removed'].includes(t.status) ? `<a class="btn-sm" href="task-create.html?id=${t.id}">${UI.icon('edit')}Edit</a>` : ''}
+      ${t.status === 'published' ? `<button class="btn-sm" onclick="setStatus(${t.id},'paused')">${UI.icon('pause')}Pause</button>` : ''}
+      ${t.status === 'paused' ? `<button class="btn-sm good" onclick="setStatus(${t.id},'published')">${UI.icon('play_arrow')}Resume</button>` : ''}
+      ${t.submissions ? `<a class="btn-sm" href="interviewer-dashboard.html?task=${t.id}">${UI.icon('rate_review')}Review</a>` : ''}
+    </div></td></tr>`).join('') : `<tr><td colspan="7">${UI.empty('assignment', 'No tasks yet', 'Create a task with instructions, a time limit and a 100-point rubric.', '<a class="cta-btn" href="task-create.html">Create task</a>')}</td></tr>`;
+}
+function setStatus(id, st) { UI.run(() => UR.tasks.setStatus(id, st), st === 'paused' ? 'Task paused — candidates can\'t start new attempts' : 'Task resumed').catch(() => {}); }
+render();
+if ($('topbarSearch')) $('topbarSearch').addEventListener('input', UI.debounce(render, 150));
+UI.onChange(render);
+</script>
+</body>
+</html>

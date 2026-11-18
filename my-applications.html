@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link rel="icon" type="image/png" href="images/favicon.png">
+<title>My Applications — Unresume</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link rel="stylesheet" href="css/globals.css">
+<link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/dashboard.css">
+<style>
+.app-detail{margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px}
+@media(max-width:800px){.app-detail{grid-template-columns:1fr}}
+.app-card{background:#fff;border:1px solid var(--border);border-radius:20px;padding:16px 18px;box-shadow:var(--shadow-sm)}
+.app-card+.app-card{margin-top:12px}
+.app-card.open{border-color:#e2defb;box-shadow:var(--shadow-md)}
+.app-top{display:flex;gap:14px;align-items:center;cursor:pointer}
+.app-top:focus-visible{outline-offset:6px;border-radius:12px}
+</style>
+</head>
+<body>
+<div class="dash-root">
+  <div id="sidebar" data-roles="candidate"></div>
+  <div class="dash-content">
+    <header class="dash-topbar" data-auto data-search="Search by job or company…"></header>
+    <main class="dash-main">
+      <div class="dash-greeting"><div class="g-blob"></div>
+        <div><h1 class="dash-h1">My <span class="grad-text">Applications</span></h1><p class="dash-sub">Track every application from task to offer. Status updates here the moment a company acts.</p></div>
+        <a href="jobs.html" class="cta-btn"><span class="material-symbols-rounded" style="font-size:18px">search</span> Find jobs</a></div>
+      <div class="stats-row" id="stats"></div>
+      <div class="d-toolbar">
+        <div class="d-tabs" style="margin:0" id="tabs" role="tablist"></div>
+        <span class="spacer"></span>
+        <select id="sort" aria-label="Sort"><option value="updated">Recently updated</option><option value="created">Date applied</option><option value="score">Task score</option></select>
+      </div>
+      <div id="list"></div>
+    </main>
+  </div>
+</div>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
+<script>
+const $ = id => document.getElementById(id), esc = UI.esc;
+const ACTIVE = ['in_progress', 'submitted', 'scored', 'shortlisted', 'interview', 'offer'];
+let tab = UI.param('tab') || 'active', open = UI.param('id'), sort = 'updated';
+
+function render() {
+  const q = ($('topbarSearch') || { value: '' }).value.toLowerCase();
+  const all = UR.applications.list();
+  const groups = { active: all.filter(a => ACTIVE.includes(a.status)), closed: all.filter(a => !ACTIVE.includes(a.status)), all };
+  $('stats').innerHTML = [
+    ['send', 'tint-blue', all.filter(a => a.status !== 'in_progress').length, 'Applications sent'],
+    ['hourglass_top', 'tint-amber', all.filter(a => ['submitted'].includes(a.status)).length, 'Awaiting review'],
+    ['thumb_up', 'tint-teal', all.filter(a => ['shortlisted', 'interview', 'offer', 'hired'].includes(a.status)).length, 'Shortlisted or further'],
+    ['event', 'tint-purple', UR.interviews.list({ upcoming: true }).length, 'Upcoming interviews'],
+  ].map(([i, t, v, l]) => `<div class="stat-card"><div class="stat-icon ${t}">${UI.icon(i)}</div><div><div class="stat-val">${v}</div><div class="stat-lbl">${l}</div></div></div>`).join('');
+  $('tabs').innerHTML = [['active', 'Active'], ['closed', 'Closed'], ['all', 'All']].map(([k, l]) => `<button class="d-tab ${tab === k ? 'active' : ''}" role="tab" aria-selected="${tab === k}" data-tab="${k}">${l}<span class="cnt">${groups[k].length}</span></button>`).join('');
+  UI.tabs($('tabs'), k => { tab = k; render(); });
+
+  let list = groups[tab].filter(a => !q || a.job.title.toLowerCase().includes(q) || a.job.company.toLowerCase().includes(q));
+  list = sort === 'score' ? UI.sortBy(list, 'taskScore') : UI.sortBy(list, a => new Date(sort === 'created' ? a.createdAt : a.updatedAt).getTime());
+  if (!list.length) { $('list').innerHTML = all.length ? UI.empty('search_off', 'No applications match', q ? `Nothing matches "${esc(q)}".` : `You have no ${tab} applications.`) : UI.empty('assignment', 'No applications yet', 'Pick a job and complete its skill task to apply — no resume needed.', '<a href="jobs.html" class="cta-btn">Browse jobs</a>'); return; }
+
+  $('list').innerHTML = list.map(a => {
+    const idx = UR.APP_FLOW.indexOf(a.status), bad = idx < 0, isOpen = open === a.id;
+    const iv = a.interviews.filter(i => !['cancelled'].includes(i.status)).sort((x, y) => new Date(y.scheduledAt) - new Date(x.scheduledAt))[0];
+    const canWithdraw = !['hired', 'withdrawn', 'rejected', 'expired'].includes(a.status);
+    return `<div class="app-card ${isOpen ? 'open' : ''}">
+      <div class="app-top" tabindex="0" role="button" aria-expanded="${isOpen}" onclick="toggle('${a.id}')" onkeydown="if(event.key==='Enter')toggle('${a.id}')">
+        <div class="l-logo">${a.job.logo}</div>
+        <div class="l-main"><div class="l-title">${esc(a.job.title)}</div><div class="l-sub"><span>${esc(a.job.company)}</span><span>Applied ${UI.fmtDate(a.createdAt)}</span>${a.academyName ? `<span>${UI.icon('school', 15)} Referred by ${esc(a.academyName)}</span>` : ''}</div>
+          <div class="stepper" style="margin-top:8px;max-width:360px">${UR.APP_FLOW.slice(1).map((s, i) => `<i class="${bad ? 'bad' : i < idx ? 'on' : ''}" title="${UR.APP_STATUS[s].label}"></i>`).join('')}</div></div>
+        ${a.taskScore != null ? UI.verifiedScore(a.taskScore, true) : ''}${UI.appPill(a.status)}
+        ${UI.icon(isOpen ? 'expand_less' : 'expand_more', 22)}
+      </div>
+      ${isOpen ? `<div class="app-detail">
+        <div><div class="d-sec-title">Timeline</div><div class="timeline">${[...a.history].reverse().map(h => { const s = UR.APP_STATUS[h.status] || {}; return `<div class="tl-item"><span class="tl-dot ${s.tint || 'gray'}">${UI.icon(s.icon || 'circle', 15)}</span><div><div class="tl-title">${esc(s.label || h.status)}</div><div class="tl-sub">${UI.fmtDateTime(h.at)}${h.note ? ' · ' + esc(h.note) : ''}</div></div></div>`; }).join('')}</div></div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          ${a.route === 'verified_score' ? `<div class="d-note good">${UI.icon('verified')}<div>You applied with your existing verified scores (${(a.evidence || []).map(r => esc(r.skill) + ' ' + r.score).join(', ')}) — no new task needed.</div></div>` : ''}
+          ${a.taskRequested && !a.submission ? `<div class="d-note warn">${UI.icon('assignment')}<div><b>${esc(a.job.company)} asked you to complete the role assessment.</b> ${esc(a.taskRequested.note || '')} <a href="job-detail.html?id=${a.jobId}" style="color:inherit;font-weight:800">Open the task →</a></div></div>` : ''}
+          ${a.status === 'submitted' && a.submission ? `<div class="l-sub">${UI.icon('schedule')} Companies aim to review within ${UR.settings().reviewSlaDays} days of submission.</div>` : ''}
+          ${a.status === 'in_progress' ? `<div class="d-note warn">${UI.icon('timer')}<div>Your task is in progress. Submit before the timer ends or the application expires.</div></div>` : ''}
+          ${a.status === 'submitted' ? `<div class="d-note">${UI.icon('hourglass_top')}<div>Your submission is waiting for a ${esc(a.job.company)} reviewer. You'll be notified when it's scored.</div></div>` : ''}
+          ${a.status === 'rejected' ? `<div class="d-note bad">${UI.icon('info')}<div>${esc(a.job.company)} chose not to proceed. Your verified score still counts towards your Skill Score${a.submission ? ' — read the reviewer feedback for ways to improve' : ''}.</div></div>` : ''}
+          ${a.status === 'hired' ? `<div class="d-note good">${UI.icon('celebration')}<div>Congratulations! You were hired by ${esc(a.job.company)}.</div></div>` : ''}
+          ${iv ? `<div><div class="d-sec-title">Interview</div><div class="l-row" style="box-shadow:none"><div class="l-main"><div class="l-title">${esc(iv.stage)}</div><div class="l-sub">${UI.fmtDateTime(iv.scheduledAt)} · ${iv.durationMin} min · ${esc(iv.mode)}</div></div>${UI.pill(UR.INTERVIEW_STATUS[iv.status].label, UR.INTERVIEW_STATUS[iv.status].tint)}</div></div>` : ''}
+          <div><div class="d-sec-title">Actions</div><div style="display:flex;gap:8px;flex-wrap:wrap">
+            ${a.status === 'in_progress' ? `<a class="btn-sm primary" href="task-workplace.html?id=${a.job.taskId}">${UI.icon('play_arrow')}Continue task</a>` : ''}
+            ${a.submission ? `<a class="btn-sm" href="assessments.html?id=${a.submission.id}">${UI.icon('grading')}Submission & feedback</a>` : ''}
+            ${iv ? `<a class="btn-sm" href="candidate-interviews.html">${UI.icon('event')}Manage interview</a>` : ''}
+            <a class="btn-sm" href="job-detail.html?id=${a.jobId}">${UI.icon('work')}Job posting</a>
+            ${a.status !== 'in_progress' ? `<button class="btn-sm" onclick="messageHR('${a.job.companyId}')">${UI.icon('chat')}Message HR</button>` : ''}
+            ${canWithdraw ? `<button class="btn-sm danger" onclick="withdraw('${a.id}')">${UI.icon('undo')}Withdraw</button>` : ''}
+          </div></div>
+        </div></div>` : ''}
+    </div>`;
+  }).join('');
+}
+function toggle(id) { open = open === id ? null : id; render(); }
+async function withdraw(id) {
+  const r = await UI.confirm({ title: 'Withdraw this application?', text: 'The company will be notified and any scheduled interviews are cancelled. Your verified score stays on your profile.', confirmLabel: 'Withdraw', danger: true, input: { label: 'Reason (optional, shared with the company)', placeholder: 'e.g. accepted another offer' } });
+  if (r.ok) UI.run(() => UR.applications.withdraw(id, r.value || ''), 'Application withdrawn').catch(() => {});
+}
+function messageHR(companyId) {
+  const hr = UR.companies.contactId(companyId);
+  if (!hr) return UI.toast('This company has no active HR contact.', 'error');
+  UI.run(() => UR.messages.start(hr)).then(cid => location.href = `chat.html?c=${cid}`).catch(() => {});
+}
+$('sort').addEventListener('change', e => { sort = e.target.value; render(); });
+render();
+if ($('topbarSearch')) $('topbarSearch').addEventListener('input', UI.debounce(render, 150));
+UI.onChange(render);
+</script>
+</body>
+</html>

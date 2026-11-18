@@ -69,24 +69,41 @@ select.tc-select:focus{border-color:rgba(91,108,245,.45)}
 </head>
 <body>
 <div class="dash-root">
-  <div id="sidebar" data-role="interviewer"></div>
+  <div id="sidebar" data-roles="hr,interviewer,admin"></div>
   <div class="dash-content">
     <header class="dash-topbar">
       <div style="display:flex;align-items:center;gap:12px;min-width:0">
-        <a href="interviewer-dashboard.html" class="topbar-icon-btn" title="Back"><span class="material-symbols-rounded" style="font-size:20px">arrow_back</span></a>
+        <a href="company-tasks.html" class="topbar-icon-btn" title="Back to tasks" aria-label="Back to tasks"><span class="material-symbols-rounded" style="font-size:20px">arrow_back</span></a>
         <div style="min-width:0">
-          <div style="font-size:10.5px;font-weight:700;color:var(--brand);letter-spacing:.08em;text-transform:uppercase">Interviewer</div>
-          <div style="font-size:17px;font-weight:800;color:var(--text1);font-family:var(--font-display);letter-spacing:-.02em">Create Task</div>
+          <div style="font-size:10.5px;font-weight:700;color:var(--brand);letter-spacing:.08em;text-transform:uppercase" id="tcEyebrow">Task builder</div>
+          <div style="font-size:17px;font-weight:800;color:var(--text1);font-family:var(--font-display);letter-spacing:-.02em" id="tcTitle">Create Task</div>
         </div>
       </div>
       <div class="tc-actions" style="margin-left:auto;display:flex;align-items:center;gap:8px">
-        <button onclick="saveDraft()" class="btn-ghost" style="font-size:13.5px;padding:11px 16px">Save Draft</button>
+        <button onclick="saveDraft(this)" class="btn-ghost" style="font-size:13.5px;padding:11px 16px">Save Draft</button>
         <button onclick="handlePublish()" class="btn-primary" style="font-size:13.5px;padding:11px 20px">Publish Task</button>
       </div>
     </header>
     <main class="dash-main">
       <div class="tc-layout">
         <div class="tc-main">
+          <!-- Library & draft assistant -->
+          <div class="tc-section" id="librarySection">
+            <div class="tc-section-title">
+              <div class="sect-icon tint-teal"><span class="material-symbols-rounded" style="font-size:17px">library_books</span></div>
+              Start faster
+              <span style="margin-left:auto;font-size:12px;color:var(--text4);font-weight:600">Optional</span>
+            </div>
+            <div class="grid-2">
+              <div class="form-field"><label class="form-label" for="tplSel">Use a template from the assessment library</label>
+                <div style="display:flex;gap:8px"><select class="tc-select" id="tplSel"></select><button type="button" class="btn-sm" onclick="applyTemplate()">Use</button></div>
+                <div class="f-hint">Proven, fair-sized tasks with 100-point rubrics. Everything stays editable.</div></div>
+              <div class="form-field"><label class="form-label">Draft assistant</label>
+                <button type="button" class="btn-sm" style="align-self:flex-start" onclick="openDraft()"><span class="material-symbols-rounded">auto_awesome</span>Draft from job &amp; skills</button>
+                <div class="f-hint">Rule-based draft (no AI service is connected yet). You must review every section before it can be published.</div></div>
+            </div>
+            <div id="draftBanner"></div>
+          </div>
           <!-- Basic info -->
           <div class="tc-section">
             <div class="tc-section-title">
@@ -95,20 +112,35 @@ select.tc-select:focus{border-color:rgba(91,108,245,.45)}
             </div>
             <div style="display:flex;flex-direction:column;gap:16px">
               <div class="form-field"><label class="form-label">Task Title *</label><div class="input-wrap"><span class="material-symbols-rounded">title</span><input type="text" id="taskTitle" placeholder="e.g. Design a Checkout Flow for Mobile" oninput="updatePreview()"></div></div>
-              <div class="form-field"><label class="form-label">Brief / Description *</label><textarea class="tc-textarea" id="taskBrief" placeholder="Describe what candidates need to do, the context, and what success looks like…" oninput="updatePreview()"></textarea></div>
+              <div class="form-field"><label class="form-label">Brief / Description *</label><textarea class="tc-textarea" id="taskBrief" placeholder="Describe what candidates need to do, the context, and what success looks like…" oninput="updatePreview()" maxlength="4000"></textarea></div>
               <div class="form-grid2">
-                <div class="form-field"><label class="form-label">Category</label>
-                  <select class="tc-select" id="taskCat">
-                    <option>UI/UX Design</option><option>Frontend Dev</option><option>Backend Dev</option>
-                    <option>Data Science</option><option>Product Management</option><option>Marketing</option>
-                  </select>
+                <div class="form-field"><label class="form-label" for="taskKind">Assessment type *</label>
+                  <select class="tc-select" id="taskKind" onchange="updateCaps()"><option value="screening">Screening task (≤2h)</option><option value="advanced" selected>Company assessment (≤8h)</option></select>
+                  <div class="f-hint" id="kindHint"></div></div>
+                <div class="form-field"><label class="form-label" for="taskEst">Estimated focused effort (hours) *</label><div class="input-wrap"><span class="material-symbols-rounded">hourglass_top</span><input type="number" id="taskEst" min="0.5" step="0.5" value="4" oninput="updateCaps()"></div><div class="f-hint" id="estHint"></div></div>
+              </div>
+              <div class="form-grid2">
+                <div class="form-field"><label class="form-label" for="taskAi">AI-use policy *</label>
+                  <select class="tc-select" id="taskAi"><option value="allowed">AI tools allowed</option><option value="disclose" selected>Allowed with disclosure</option><option value="not_allowed">No AI tools</option></select>
+                  <div class="f-hint">Candidates see this before starting. Using AI is never auto-treated as cheating.</div></div>
+                <div class="form-field"><label class="form-label">Confidentiality</label>
+                  <label style="display:flex;gap:8px;align-items:center;font-size:13.5px;font-weight:600;color:var(--text1);padding-top:8px"><input type="checkbox" id="taskConf"> Confidential — outputs can't be posted publicly</label>
+                  <div class="f-hint">Use when the brief includes non-public context. Candidates keep ownership of their work either way.</div></div>
+              </div>
+              <div class="form-grid2">
+                <div class="form-field"><label class="form-label" for="taskSkills">Skills assessed *</label><div class="input-wrap"><span class="material-symbols-rounded">psychology</span><input type="text" id="taskSkills" placeholder="e.g. React, TypeScript"></div><div class="f-hint">Comma-separated. Scores feed each candidate's per-skill results.</div></div>
+                <div class="form-field"><label class="form-label" for="taskDiff">Difficulty</label>
+                  <select class="tc-select" id="taskDiff"><option>Beginner</option><option selected>Intermediate</option><option>Advanced</option></select>
                 </div>
-                <div class="form-field"><label class="form-label">Time Limit</label>
+              </div>
+              <div class="form-grid2">
+                <div class="form-field"><label class="form-label" for="taskTime">Time limit (starts when the candidate begins) *</label>
                   <select class="tc-select" id="taskTime">
-                    <option>2 hours</option><option>4 hours</option><option>1 day</option>
-                    <option>3 days</option><option>1 week</option><option>No limit</option>
+                    <option value="120">2 hours</option><option value="180">3 hours</option><option value="240">4 hours</option><option value="1440">1 day</option>
+                    <option value="2880" selected>2 days</option><option value="4320">3 days</option>
                   </select>
                 </div>
+                <div class="form-field"><label class="form-label" for="taskDeadline">Task closes on (optional)</label><div class="input-wrap"><span class="material-symbols-rounded">event</span><input type="datetime-local" id="taskDeadline"></div><div class="f-hint">No new attempts after this. Running attempts end at this time at the latest.</div></div>
               </div>
             </div>
           </div>
@@ -168,7 +200,7 @@ select.tc-select:focus{border-color:rgba(91,108,245,.45)}
               </div>
               <div class="type-opt" id="typePractice" onclick="setTaskType('practice')">
                 <span class="type-icon">🎯</span>
-                <div class="type-name">Practice</div>
+                <div class="type-name">Practice / unlinked</div>
                 <div class="type-desc">Open for anyone to try</div>
               </div>
             </div>
@@ -190,7 +222,10 @@ select.tc-select:focus{border-color:rgba(91,108,245,.45)}
           <!-- Publish -->
           <div class="preview-card">
             <div class="preview-title">Publish</div>
-            <p style="font-size:13px;color:var(--text3);line-height:1.6;margin-bottom:16px">Once published, candidates can discover and attempt this task. You can pause it anytime.</p>
+            <p style="font-size:13px;color:var(--text3);line-height:1.6;margin-bottom:12px">Once published, candidates can attempt this task. You can pause it anytime. After the first submission the rubric is locked so every candidate is scored the same way.</p>
+            <label style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--text2);line-height:1.5;margin-bottom:10px"><input type="checkbox" id="fairUse" style="margin-top:3px"> This is an assessment exercise using provided material — not real work we will use in our product.</label>
+            <label id="reviewedWrap" style="display:none;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--text2);line-height:1.5;margin-bottom:10px"><input type="checkbox" id="humanReviewed" style="margin-top:3px"> I reviewed and edited every section of this drafted task.</label>
+            <div id="publishError" style="margin-bottom:12px"></div>
             <button class="submit-btn" onclick="handlePublish()" id="publishBtn">
               <span class="material-symbols-rounded" style="font-size:18px">publish</span> Publish Task
             </button>
@@ -208,121 +243,191 @@ select.tc-select:focus{border-color:rgba(91,108,245,.45)}
       <span class="material-symbols-rounded" style="font-size:42px;color:#fff">task_alt</span>
     </div>
     <h2 style="font-family:var(--font-display);font-size:24px;font-weight:800;color:var(--text1);margin-bottom:10px">Task Published!</h2>
-    <p style="font-size:14px;color:var(--text3);line-height:1.7;margin-bottom:24px">Your task is now live. Candidates can discover and attempt it.</p>
+    <p style="font-size:14px;color:var(--text3);line-height:1.7;margin-bottom:24px" id="successText">Your task is saved and published.</p>
     <div style="display:flex;gap:10px;justify-content:center">
-      <a href="interviewer-dashboard.html" class="btn-primary">Back to Dashboard</a>
-      <button onclick="closeSuccess()" class="btn-ghost">Create Another</button>
+      <a href="company-tasks.html" class="btn-primary">View tasks</a>
+      <a href="task-create.html" class="btn-ghost">Create Another</a>
     </div>
   </div>
 </div>
 
-<script src="js/components.js"></script>
 <script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
 <script>
-// Requirements
+const $ = id => document.getElementById(id), esc = UI.esc;
+const me = UR.user();
+const editId = parseInt(UI.param('id'), 10) || null;
+const existing = editId ? UR.tasks.get(editId) : null;
+const isPractice = me.role === 'admin';
+
 let reqs = ['', ''];
+let source = 'manual', templateId = null;
+let rubric = [{ criterion: '', points: 25, description: '' }, { criterion: '', points: 25, description: '' }, { criterion: '', points: 25, description: '' }, { criterion: '', points: 25, description: '' }];
+const subTypeOptions = [{ icon: 'image', label: 'Image / Screenshot' }, { icon: 'picture_as_pdf', label: 'PDF' }, { icon: 'folder_zip', label: 'ZIP File' }, { icon: 'link', label: 'Live URL' }, { icon: 'code', label: 'Code File' }, { icon: 'play_arrow', label: 'Video' }];
+const activeSubTypes = new Set(['Image / Screenshot', 'PDF', 'ZIP File', 'Live URL']);
+
+$('tcEyebrow').textContent = isPractice ? 'Practice task · Unresume' : (UR.companies.mine() || {}).name || 'Task builder';
+if (editId && !existing) { document.querySelector('.tc-layout').innerHTML = UI.empty('search_off', 'Task not found', 'It may have been removed or belongs to another organisation.', '<a class="cta-btn" href="company-tasks.html">Back to tasks</a>'); }
+if (existing) {
+  $('tcTitle').textContent = 'Edit Task';
+  $('taskTitle').value = existing.title; $('taskBrief').value = existing.brief;
+  $('taskSkills').value = (existing.skills || []).join(', ');
+  $('taskDiff').value = existing.difficulty || 'Intermediate';
+  if (![...$('taskTime').options].some(o => +o.value === existing.timeLimitMin)) $('taskTime').insertAdjacentHTML('beforeend', `<option value="${existing.timeLimitMin}">${UR.fmtDuration(existing.timeLimitMin)}</option>`);
+  $('taskTime').value = String(existing.timeLimitMin);
+  if (existing.deadline) $('taskDeadline').value = UI.toLocalInput(existing.deadline);
+  reqs = existing.requirements.length ? [...existing.requirements] : [''];
+  rubric = existing.rubric.map(r => ({ ...r }));
+  activeSubTypes.clear(); (existing.submissionTypes || []).forEach(s => activeSubTypes.add(s));
+  $('taskKind').value = existing.kind || 'advanced'; $('taskEst').value = existing.estimatedHours || 4; $('taskAi').value = existing.aiPolicy || 'disclose'; $('taskConf').checked = !!existing.confidential;
+  source = existing.source || 'manual'; templateId = existing.templateId || null;
+  if (existing.submissions) $('rubricList').insertAdjacentHTML('beforebegin', `<div class="d-note warn" style="margin-bottom:14px">${UI.icon('lock')}<div>This task already has ${UI.plural(existing.submissions, 'submission')}, so the rubric can't change — every candidate must be scored the same way.</div></div>`);
+}
+
 function renderReqs() {
-  document.getElementById('reqList').innerHTML = reqs.map((r, i) => `
-    <div class="req-row">
-      <div class="input-wrap" style="flex:1"><span class="material-symbols-rounded" style="font-size:16px;color:var(--text4)">fiber_manual_record</span>
-        <input type="text" value="${r}" placeholder="e.g. Use Figma for design" oninput="reqs[${i}]=this.value" style="flex:1">
-      </div>
-      <button class="req-del" onclick="removeReq(${i})"><span class="material-symbols-rounded" style="font-size:18px">close</span></button>
-    </div>`).join('');
+  $('reqList').innerHTML = reqs.map((r, i) => `<div class="req-row">
+    <div class="input-wrap" style="flex:1"><span class="material-symbols-rounded" style="font-size:16px;color:var(--text4)">fiber_manual_record</span><input type="text" value="${esc(r)}" placeholder="e.g. Deliver a Figma file with all screens" aria-label="Requirement ${i + 1}" oninput="reqs[${i}]=this.value" style="flex:1"></div>
+    <button class="req-del" onclick="removeReq(${i})" aria-label="Remove requirement"><span class="material-symbols-rounded" style="font-size:18px">close</span></button></div>`).join('');
 }
 function addReq() { reqs.push(''); renderReqs(); }
-function removeReq(i) { reqs.splice(i,1); renderReqs(); }
+function removeReq(i) { reqs.splice(i, 1); renderReqs(); }
 renderReqs();
 
-// Rubric
-let rubric = [{criterion:'', points:25},{criterion:'', points:25},{criterion:'', points:25},{criterion:'', points:25}];
 function renderRubric() {
-  document.getElementById('rubricList').innerHTML = rubric.map((r, i) => `
+  $('rubricList').innerHTML = rubric.map((r, i) => `<div style="display:flex;flex-direction:column;gap:6px;padding-bottom:10px;border-bottom:1px solid var(--border)">
     <div class="rubric-row">
-      <div class="input-wrap" style="flex:1"><input type="text" value="${r.criterion}" placeholder="e.g. Design Quality" oninput="rubric[${i}].criterion=this.value" style="flex:1"></div>
-      <input type="number" class="input-wrap" value="${r.points}" min="1" max="100" oninput="rubric[${i}].points=parseInt(this.value||0);updateTotal()" style="width:70px;text-align:center;padding:10px 8px;font-family:var(--font-mono);font-weight:700">
-      <button class="req-del" onclick="removeRubric(${i})"><span class="material-symbols-rounded" style="font-size:18px">close</span></button>
-    </div>`).join('');
+      <div class="input-wrap" style="flex:1"><input type="text" value="${esc(r.criterion)}" placeholder="Criterion, e.g. Design Quality" aria-label="Criterion ${i + 1} name" oninput="rubric[${i}].criterion=this.value" style="flex:1"></div>
+      <input type="number" class="input-wrap" value="${r.points}" min="1" max="100" aria-label="Criterion ${i + 1} points" oninput="rubric[${i}].points=parseInt(this.value||0);updateTotal()" style="width:70px;text-align:center;padding:10px 8px;font-weight:700">
+      <button class="req-del" onclick="removeRubric(${i})" aria-label="Remove criterion"><span class="material-symbols-rounded" style="font-size:18px">close</span></button></div>
+    <div class="input-wrap" style="padding:8px 12px"><input type="text" value="${esc(r.description || '')}" placeholder="What earns full marks? (shown to candidates)" aria-label="Criterion ${i + 1} description" oninput="rubric[${i}].description=this.value" style="font-size:13px"></div></div>`).join('');
   updateTotal();
 }
-function addRubricRow() { rubric.push({criterion:'', points:10}); renderRubric(); }
-function removeRubric(i) { rubric.splice(i,1); renderRubric(); }
+function addRubricRow() { rubric.push({ criterion: '', points: 10, description: '' }); renderRubric(); }
+function removeRubric(i) { rubric.splice(i, 1); renderRubric(); }
 function updateTotal() {
-  const total = rubric.reduce((a,r) => a + (r.points||0), 0);
-  const el = document.getElementById('rubricTotal');
+  const total = rubric.reduce((a, r) => a + (r.points || 0), 0), el = $('rubricTotal');
   el.textContent = total + '/100';
-  const ok = total === 100;
-  el.style.background = ok ? '#e6f8f5' : total > 100 ? '#fdecef' : '#eeedfd';
-  el.style.color = ok ? '#0d9488' : total > 100 ? '#e11d48' : 'var(--brand)';
+  el.style.background = total === 100 ? '#e6f8f5' : total > 100 ? '#fdecef' : '#eeedfd';
+  el.style.color = total === 100 ? '#0d9488' : total > 100 ? '#e11d48' : 'var(--brand)';
 }
 renderRubric();
 
-// Submission types
-const subTypeOptions = [{icon:'image',label:'Image / Screenshot'},{icon:'picture_as_pdf',label:'PDF'},{icon:'folder_zip',label:'ZIP File'},{icon:'link',label:'Live URL'},{icon:'code',label:'Code File'},{icon:'play_arrow',label:'Video'}];
-const activeSubTypes = new Set([0,1,2,3]);
 function renderSubTypes() {
-  document.getElementById('subTypes').innerHTML = subTypeOptions.map((t,i) => `
-    <button onclick="toggleSubType(${i},this)" class="skill-chip ${activeSubTypes.has(i)?'on':''}" style="display:inline-flex;align-items:center;gap:6px">
-      <span class="material-symbols-rounded" style="font-size:17px">${t.icon}</span>${t.label}
-    </button>`).join('');
+  $('subTypes').innerHTML = subTypeOptions.map(t => `<button type="button" onclick="toggleSubType('${t.label}')" aria-pressed="${activeSubTypes.has(t.label)}" class="skill-chip ${activeSubTypes.has(t.label) ? 'on' : ''}" style="display:inline-flex;align-items:center;gap:6px"><span class="material-symbols-rounded" style="font-size:17px">${t.icon}</span>${t.label}</button>`).join('');
 }
-function toggleSubType(i, btn) {
-  activeSubTypes.has(i) ? activeSubTypes.delete(i) : activeSubTypes.add(i);
-  renderSubTypes();
-}
+function toggleSubType(l) { activeSubTypes.has(l) ? activeSubTypes.delete(l) : activeSubTypes.add(l); renderSubTypes(); }
 renderSubTypes();
 
-// Task type
+let taskType = isPractice ? 'practice' : 'job';
 function setTaskType(t) {
-  document.getElementById('typeJob').classList.toggle('active', t==='job');
-  document.getElementById('typePractice').classList.toggle('active', t==='practice');
-  document.getElementById('jobLinkField').style.display = t==='job' ? '' : 'none';
+  if (isPractice && t === 'job') return;
+  taskType = t;
+  $('typeJob').classList.toggle('active', t === 'job');
+  $('typePractice').classList.toggle('active', t === 'practice');
+  $('jobLinkField').style.display = t === 'job' ? '' : 'none';
+}
+if (isPractice) { $('typeJob').style.display = 'none'; setTaskType('practice'); }
+else {
+  $('typePractice').querySelector('.type-desc').textContent = 'Saved unlinked — attach it to a job later';
+  const jobs = UR.jobs.list({ status: 'all', companyId: me.orgId }).filter(j => !['removed', 'flagged'].includes(j.status));
+  $('jobSelect').innerHTML = '<option value="">Select a job posting…</option>' + jobs.map(j => `<option value="${j.id}">${esc(j.title)} (${j.status})${j.taskId && (!existing || j.taskId !== existing.id) ? ' — replaces its current task' : ''}</option>`).join('');
+  if (existing && existing.jobId) $('jobSelect').value = existing.jobId; else if (existing) setTaskType('practice');
+  if (UI.param('job')) $('jobSelect').value = UI.param('job');
 }
 
-// Job select options
-const jobs = getJobs();
-document.getElementById('jobSelect').innerHTML = '<option value="">Select a job posting…</option>' +
-  jobs.map(j => `<option value="${j.id}">${j.title} — ${j.company}</option>`).join('');
 
-// Live preview
+// ── assessment type limits (mirrors UR settings) ──
+const caps = UR.settings();
+if (isPractice) { $('taskKind').innerHTML = '<option value="standard">Standard assessment (≤4h)</option>'; $('taskKind').value = 'standard'; }
+function updateCaps() {
+  const k = $('taskKind').value, maxH = caps.maxEstimatedHours[k], maxT = caps.maxTimeLimitMin[k];
+  $('kindHint').textContent = UR.ASSESSMENT_KINDS[k].desc;
+  const est = +$('taskEst').value;
+  $('estHint').innerHTML = est > maxH ? `<span style="color:#be123c;font-weight:700">Over the ${maxH}h limit for this type — candidates shouldn't do unpaid work.</span>` : `Limit for this type: ${maxH}h. Shown to candidates before they start.`;
+  [...$('taskTime').options].forEach(o => { o.disabled = +o.value > maxT; });
+  if (+$('taskTime').value > maxT) $('taskTime').value = [...$('taskTime').options].filter(o => !o.disabled).pop().value;
+  updatePreview();
+}
+// ── library ──
+const templates = UR.library.templates();
+const trackLabel = k => (UR.TRACKS[k] || { label: 'Other' }).label;
+$('tplSel').innerHTML = '<option value="">Choose a template…</option>' + Object.keys(UR.TRACKS).map(tr => {
+  const list = templates.filter(x => x.track === tr); if (!list.length) return '';
+  return `<optgroup label="${esc(trackLabel(tr))}">${list.map(x => `<option value="${x.id}">${esc(x.title)} · ${x.kind === 'screening' ? 'screening' : 'assessment'} · ~${x.estimatedHours}h</option>`).join('')}</optgroup>`;
+}).join('');
+function fillFrom(src) {
+  $('taskTitle').value = src.title; $('taskBrief').value = src.brief; $('taskSkills').value = (src.skills || []).join(', ');
+  $('taskDiff').value = src.difficulty || 'Intermediate'; if (!isPractice && src.kind !== 'standard') $('taskKind').value = src.kind;
+  $('taskEst').value = src.estimatedHours; $('taskAi').value = src.aiPolicy || 'disclose';
+  updateCaps();
+  if ([...$('taskTime').options].some(o => +o.value === src.timeLimitMin && !o.disabled)) $('taskTime').value = String(src.timeLimitMin);
+  reqs = [...src.requirements]; rubric = src.rubric.map(r => ({ ...r }));
+  activeSubTypes.clear(); (src.submissionTypes || []).forEach(s => activeSubTypes.add(s));
+  renderReqs(); renderRubric(); renderSubTypes(); updatePreview();
+}
+function applyTemplate() {
+  const tpl = templates.find(x => x.id === $('tplSel').value); if (!tpl) return UI.toast('Choose a template first', 'info');
+  if (existing && existing.submissions) return UI.toast('This task already has submissions — create a new task to use a template.', 'error');
+  fillFrom(tpl); source = 'template'; templateId = tpl.id; showReviewGate();
+  UI.toast('Template applied — adjust it to your role');
+}
+function openDraft() {
+  if (existing && existing.submissions) return UI.toast('This task already has submissions — create a new task instead.', 'error');
+  const job = $('jobSelect') && $('jobSelect').value ? UR.jobs.list({ status: 'all', companyId: me.orgId }).find(j => j.id == $('jobSelect').value) : null;
+  UI.modal({ title: 'Draft a task', icon: 'auto_awesome', submitLabel: 'Create draft',
+    sub: 'Builds a starting point from our template library for the role and skills you enter. It is rule-based — an AI drafting service can plug in here later (see BACKEND.md). Nothing is published until you review it.',
+    body: UI.field({ name: 'jobTitle', label: 'Role', value: job ? job.title : '', placeholder: 'e.g. Frontend Developer' }) + UI.field({ name: 'skills', label: 'Skills to assess', required: true, value: job ? job.skills.slice(0, 3).join(', ') : $('taskSkills').value }) +
+      `<div class="form-grid2">${UI.field({ name: 'kind', label: 'Type', type: 'select', value: isPractice ? 'standard' : 'screening', options: isPractice ? [['standard', 'Standard assessment']] : [['screening', 'Screening task'], ['advanced', 'Company assessment']] })}${UI.field({ name: 'difficulty', label: 'Level', type: 'select', value: 'Intermediate', options: ['Beginner', 'Intermediate', 'Advanced'] })}</div>`,
+    onSubmit: d => { const dr = UR.library.draft({ jobTitle: d.jobTitle, skills: d.skills, kind: d.kind === 'standard' ? 'screening' : d.kind, difficulty: d.difficulty }); if (isPractice) dr.kind = 'standard'; fillFrom(dr); source = 'generated'; templateId = dr.templateId; showReviewGate(); UI.toast('Draft created — review every section before publishing'); } });
+}
+function showReviewGate() {
+  const gen = source === 'generated';
+  $('reviewedWrap').style.display = gen ? 'flex' : 'none';
+  $('draftBanner').innerHTML = gen ? `<div class="d-note warn" style="margin-top:12px">${UI.icon('auto_awesome')}<div><b>Drafted by the assistant.</b> Check the brief matches your role, the requirements are fair for ~${$('taskEst').value}h, and the rubric reflects what you value. You'll confirm this before publishing.</div></div>` : source === 'template' ? `<div class="d-note good" style="margin-top:12px">${UI.icon('library_books')}<div>Started from a library template. Edit anything you need.</div></div>` : '';
+}
+updateCaps(); showReviewGate();
 function updatePreview() {
-  const title = document.getElementById('taskTitle').value;
-  const brief = document.getElementById('taskBrief').value;
-  document.getElementById('prevTitle').innerHTML = title
-    ? `<div style="font-size:14px;font-weight:700;color:var(--text1);margin-bottom:6px">${title}</div>${brief?`<div style="font-size:12px;color:var(--text3);line-height:1.5">${brief.slice(0,100)}${brief.length>100?'…':''}</div>`:''}`
+  const title = $('taskTitle').value, brief = $('taskBrief').value;
+  $('prevTitle').innerHTML = title ? `<div style="font-size:14px;font-weight:700;color:var(--text1);margin-bottom:6px">${esc(title)}</div>${brief ? `<div style="font-size:12px;color:var(--text3);line-height:1.5">${esc(brief.slice(0, 120))}${brief.length > 120 ? '…' : ''}</div>` : ''}<div style="font-size:12px;color:var(--text3);margin-top:8px">${UR.ASSESSMENT_KINDS[$('taskKind').value].label} · ~${$('taskEst').value}h · ${UR.fmtDuration(+$('taskTime').value)} window · ${rubric.length} criteria</div>`
     : '<span style="font-size:13px;color:var(--text3);font-style:italic">Task title will appear here…</span>';
 }
+updatePreview();
 
-// Publish
+function collect() {
+  return { id: existing ? existing.id : undefined, title: $('taskTitle').value, brief: $('taskBrief').value, requirements: reqs, rubric, skills: $('taskSkills').value.split(',').map(s => s.trim()).filter(Boolean),
+    difficulty: $('taskDiff').value, timeLimitMin: +$('taskTime').value, deadline: $('taskDeadline').value ? new Date($('taskDeadline').value).toISOString() : null,
+    submissionTypes: [...activeSubTypes], jobId: isPractice ? undefined : (taskType === 'job' ? (+$('jobSelect').value || null) : null),
+    kind: $('taskKind').value, estimatedHours: +$('taskEst').value, aiPolicy: $('taskAi').value, confidential: $('taskConf').checked, fairUse: $('fairUse').checked, humanReviewed: $('humanReviewed').checked, source, templateId };
+}
 function handlePublish() {
-  const title = document.getElementById('taskTitle').value.trim();
-  if (!title) {
-    document.getElementById('taskTitle').focus();
-    document.getElementById('taskTitle').style.outline = '2px solid #ef4444';
-    setTimeout(() => document.getElementById('taskTitle').style.outline = '', 2000);
-    return;
-  }
-  const btn = document.getElementById('publishBtn');
-  btn.innerHTML = '<span class="spinner"></span>';
-  btn.disabled = true;
-  setTimeout(() => {
-    const overlay = document.getElementById('successOverlay');
-    overlay.style.display = 'flex';
-  }, 1200);
+  const btn = $('publishBtn'), label = btn.innerHTML;
+  $('publishError').innerHTML = '';
+  const data = collect();
+  if (!data.skills.length) { $('publishError').innerHTML = UI.errorBox('Add at least one skill.'); return; }
+  if (!isPractice && taskType === 'job' && !data.jobId) { $('publishError').innerHTML = UI.errorBox('Choose the job this task belongs to, or switch to "Practice / unlinked".'); return; }
+  btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true;
+  try {
+    const t = UR.tasks.save(data, true);
+    const job = t.jobId ? UR.jobs.list({ status: 'all', companyId: me.orgId }).find(j => j.id === t.jobId) : null;
+    $('successText').textContent = isPractice ? 'The practice task is live for all candidates.'
+      : job ? (job.status === 'open' ? `It's live on "${job.title}" — candidates applying now complete this task.` : `It's linked to "${job.title}", which is still ${job.status}. Publish the job from Job Postings to start receiving applications.`)
+      : 'The task is published but not linked to a job yet.';
+    $('successOverlay').style.display = 'flex';
+  } catch (e) { $('publishError').innerHTML = UI.errorBox(e.message); UI.toast(e.message, 'error'); }
+  btn.innerHTML = label; btn.disabled = false;
 }
-
-function closeSuccess() {
-  document.getElementById('successOverlay').style.display = 'none';
-  document.getElementById('publishBtn').innerHTML = '<span class="material-symbols-rounded" style="font-size:18px">publish</span> Publish Task';
-  document.getElementById('publishBtn').disabled = false;
+function saveDraft(btn) {
+  try {
+    const data = collect();
+    const t = UR.tasks.save(data, false);
+    if (!existing) history.replaceState(null, '', `?id=${t.id}`);
+    UI.toast('Draft saved');
+    if (!existing) setTimeout(() => location.reload(), 500);
+  } catch (e) { UI.toast(e.message, 'error'); }
 }
-
-function saveDraft() {
-  const btn = event.target;
-  btn.textContent = 'Saved!';
-  btn.style.color = '#10b981';
-  setTimeout(() => { btn.textContent = 'Save Draft'; btn.style.color = ''; }, 2000);
-}
+function closeSuccess() { $('successOverlay').style.display = 'none'; }
 </script>
 </body>
 </html>

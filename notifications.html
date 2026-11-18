@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link rel="icon" type="image/png" href="images/favicon.png">
+<title>Notifications — Unresume</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link rel="stylesheet" href="css/globals.css">
+<link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+<div class="dash-root">
+  <div id="sidebar" data-roles="any"></div>
+  <div class="dash-content">
+    <header class="dash-topbar" data-auto data-search="Search notifications…"></header>
+    <main class="dash-main">
+      <div class="dash-greeting"><div class="g-blob"></div><div><h1 class="dash-h1">Notifications</h1><p class="dash-sub">Every update about your applications, interviews, reviews and messages.</p></div>
+        <button class="cta-btn" onclick="UR.notifications.markAllRead()"><span class="material-symbols-rounded" style="font-size:18px">done_all</span> Mark all read</button></div>
+      <div class="d-toolbar"><div class="d-tabs" style="margin:0" id="tabs"></div></div>
+      <div id="list" style="max-width:860px"></div>
+    </main>
+  </div>
+</div>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
+<script>
+const $ = id => document.getElementById(id), esc = UI.esc;
+let tab = UI.param('tab') || 'all';
+function render() {
+  const q = ($('topbarSearch') || { value: '' }).value.toLowerCase();
+  const all = UR.notifications.list();
+  const types = [...new Set(all.map(n => n.type))];
+  const groups = { all, unread: all.filter(n => !n.read) };
+  types.forEach(t => groups[t] = all.filter(n => n.type === t));
+  $('tabs').innerHTML = [['all', 'All'], ['unread', 'Unread'], ...types.map(t => [t, t[0].toUpperCase() + t.slice(1)])].map(([k, l]) => `<button class="d-tab ${tab === k ? 'active' : ''}" data-tab="${k}">${l}<span class="cnt">${(groups[k] || []).length}</span></button>`).join('');
+  UI.tabs($('tabs'), k => { tab = k; render(); });
+  const list = (groups[tab] || []).filter(n => !q || n.title.toLowerCase().includes(q));
+  $('list').innerHTML = list.length ? list.map(n => { const [ic, tint] = NOTIF_ICON[n.type] || ['notifications', 'tint-purple'];
+    return `<div class="l-row" style="${n.read ? '' : 'background:#f7f6fe'}"><span class="sec-icon ${tint}">${UI.icon(ic, 19, true)}</span>
+      <div class="l-main"><div class="l-title" style="${n.read ? 'font-weight:600' : ''}">${esc(n.title)}</div><div class="l-sub">${UI.timeAgo(n.createdAt)} · ${UI.fmtDateTime(n.createdAt)}</div></div>
+      <div class="l-acts">${n.link ? `<a class="btn-sm" href="${esc(n.link)}" onclick="UR.notifications.markRead('${n.id}')">Open</a>` : ''}${n.read ? '' : `<button class="btn-sm" onclick="UR.notifications.markRead('${n.id}')">Mark read</button>`}</div></div>`; }).join('')
+    : UI.empty('notifications_off', tab === 'unread' ? 'No unread notifications' : 'No notifications', 'Updates appear here as soon as something happens.');
+}
+render();
+if ($('topbarSearch')) $('topbarSearch').addEventListener('input', UI.debounce(render, 150));
+UI.onChange(render);
+</script>
+</body>
+</html>

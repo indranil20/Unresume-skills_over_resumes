@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link rel="icon" type="image/png" href="images/favicon.png">
+<title>Interviews — Unresume</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link rel="stylesheet" href="css/globals.css">
+<link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+<div class="dash-root">
+  <div id="sidebar" data-roles="hr,interviewer"></div>
+  <div class="dash-content">
+    <header class="dash-topbar" data-auto data-search="Search candidate or stage…"></header>
+    <main class="dash-main">
+      <div class="dash-greeting"><div class="g-blob"></div>
+        <div><h1 class="dash-h1">Interview <span class="grad-text">Stages</span></h1><p class="dash-sub">Schedule rounds for shortlisted candidates, assign interviewers and record structured feedback.</p></div>
+        <button class="cta-btn" id="newBtn" onclick="schedule()"><span class="material-symbols-rounded" style="font-size:18px">add</span> Schedule interview</button></div>
+      <div class="d-toolbar"><div class="d-tabs" style="margin:0" id="tabs"></div><span class="spacer"></span><label style="display:flex;gap:6px;align-items:center;font-size:13px;font-weight:600;color:var(--text2)"><input type="checkbox" id="mineF"> Only my interviews</label></div>
+      <div id="list"></div>
+    </main>
+  </div>
+</div>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
+<script>
+const $ = id => document.getElementById(id), esc = UI.esc;
+const me = UR.user();
+let tab = UI.param('tab') || 'upcoming';
+if (me.role !== 'hr') $('newBtn').style.display = 'none';
+const STAGES = ['Phone screen', 'Technical interview', 'Task walkthrough', 'System design', 'Culture & values', 'Final round'];
+
+function render() {
+  const q = ($('topbarSearch') || { value: '' }).value.toLowerCase();
+  const all = UR.interviews.list().filter(i => (!$('mineF').checked || i.interviewerId === me.id) && (!q || [i.candidateName, i.stage, i.jobTitle].some(v => (v || '').toLowerCase().includes(q))));
+  const live = i => ['proposed', 'confirmed', 'reschedule'].includes(i.status);
+  const past = i => new Date(i.scheduledAt) < Date.now();
+  const groups = { upcoming: all.filter(i => live(i) && !past(i)), feedback: all.filter(i => live(i) && past(i)), done: all.filter(i => ['completed', 'cancelled'].includes(i.status)) };
+  $('tabs').innerHTML = [['upcoming', 'Upcoming'], ['feedback', 'Awaiting feedback'], ['done', 'Completed / cancelled']].map(([k, l]) => `<button class="d-tab ${tab === k ? 'active' : ''}" data-tab="${k}">${l}<span class="cnt">${groups[k].length}</span></button>`).join('');
+  UI.tabs($('tabs'), k => { tab = k; render(); });
+  const list = tab === 'done' ? [...groups.done].reverse() : groups[tab];
+  $('list').innerHTML = list.length ? list.map(i => { const st = UR.INTERVIEW_STATUS[i.status];
+    return `<div class="l-row">${UI.avatar(i.candidateName, 42, i.candidate)}
+      <div class="l-main"><div class="l-title">${esc(i.candidateName)} · ${esc(i.stage)}</div>
+        <div class="l-sub"><span>${UI.icon('event')} ${UI.fmtDateTime(i.scheduledAt)} · ${i.durationMin} min</span><span>${UI.icon('videocam')} ${esc(i.mode)}</span><span>${UI.icon('work')} ${esc(i.jobTitle)}</span><span>${UI.icon('person')} ${esc(i.interviewerName)}</span></div>
+        ${i.candidateNote ? `<div class="d-note warn" style="margin-top:8px;padding:8px 10px">${UI.icon('reply')}<div><b>Candidate asked to reschedule:</b> ${esc(i.candidateNote)}</div></div>` : ''}
+        ${i.feedback ? `<div class="l-sub" style="margin-top:6px">${UI.icon('rate_review')} <b>${esc(i.outcome || '')}</b> — ${esc(i.feedback)}</div>` : ''}
+        ${i.cancelReason ? `<div class="l-sub" style="margin-top:6px;color:#be123c">${UI.icon('cancel')} ${esc(i.cancelReason)}</div>` : ''}</div>
+      <div class="l-acts">${UI.pill(st.label, st.tint)}
+        ${live(i) ? `<button class="btn-sm primary" onclick="complete('${i.id}')">${UI.icon('rate_review')}Feedback</button>` : ''}
+        ${live(i) && me.role === 'hr' ? `<button class="btn-sm" onclick="reschedule('${i.id}')">${UI.icon('edit_calendar')}Reschedule</button><button class="btn-sm danger" onclick="cancel('${i.id}')">${UI.icon('cancel')}Cancel</button>` : ''}
+        <a class="btn-sm" href="hr-applications.html?id=${i.applicationId}">${UI.icon('open_in_new')}Application</a></div></div>`; }).join('')
+    : UI.empty('event', { upcoming: 'No upcoming interviews', feedback: 'No interviews awaiting feedback', done: 'Nothing here yet' }[tab], tab === 'upcoming' && me.role === 'hr' ? 'Schedule a round for a shortlisted candidate.' : '');
+}
+function teamOptions() { return [['', 'Unassigned'], ...UR.team.list().members.filter(m => m.status === 'active').map(m => [m.id, `${m.name} (${UR.ROLES[m.role].label})`])]; }
+function schedule(appId) {
+  const eligible = UR.applications.list({ status: ['shortlisted', 'interview', 'offer'] });
+  if (!eligible.length) return UI.toast('Shortlist a candidate first — scored applicants can be shortlisted in the Review Queue or Applications.', 'info');
+  const d = new Date(Date.now() + 2 * 864e5); d.setHours(11, 0, 0, 0);
+  UI.modal({ title: 'Schedule interview', icon: 'event', wide: true, submitLabel: 'Send invite', sub: 'The candidate is asked to confirm the slot. Calendar and video links are generated once a calendar integration is connected (see BACKEND.md); add a meeting link manually for now.',
+    body: UI.field({ name: 'applicationId', label: 'Candidate', type: 'select', required: true, value: appId || '', options: eligible.map(a => [a.id, `${a.candidateName} — ${a.job.title} (${UR.APP_STATUS[a.status].label})`]) })
+      + `<div class="form-grid2">${UI.field({ name: 'stage', label: 'Stage', type: 'select', value: 'Technical interview', options: STAGES })}${UI.field({ name: 'interviewerId', label: 'Interviewer', type: 'select', value: me.role === 'interviewer' ? me.id : '', options: teamOptions() })}</div>
+      <div class="form-grid3">${UI.field({ name: 'scheduledAt', label: 'Date & time', type: 'datetime-local', required: true, value: UI.toLocalInput(d.toISOString()) })}${UI.field({ name: 'durationMin', label: 'Duration', type: 'select', value: '45', options: [['30', '30 min'], ['45', '45 min'], ['60', '60 min'], ['90', '90 min']] })}${UI.field({ name: 'mode', label: 'Format', type: 'select', options: ['Video call', 'Phone', 'On-site'] })}</div>
+      ${UI.field({ name: 'location', label: 'Meeting link or address', placeholder: 'https://meet… or office address' })}${UI.field({ name: 'notes', label: 'What to expect (shared with candidate)', type: 'textarea', rows: 3 })}`,
+    onSubmit: f => { UR.interviews.schedule({ ...f, scheduledAt: new Date(f.scheduledAt).toISOString() }); UI.toast('Interview proposed — candidate notified'); history.replaceState(null, '', location.pathname); } });
+}
+function reschedule(id) {
+  const i = UR.interviews.list().find(x => x.id === id);
+  UI.modal({ title: 'Reschedule interview', icon: 'edit_calendar', submitLabel: 'Propose new time',
+    body: `<div class="form-grid2">${UI.field({ name: 'scheduledAt', label: 'New date & time', type: 'datetime-local', required: true, value: UI.toLocalInput(i.scheduledAt) })}${UI.field({ name: 'interviewerId', label: 'Interviewer', type: 'select', value: i.interviewerId || '', options: teamOptions() })}</div>${UI.field({ name: 'location', label: 'Meeting link or address', value: i.location })}`,
+    onSubmit: f => { UR.interviews.update(id, { ...f, scheduledAt: new Date(f.scheduledAt).toISOString() }); UI.toast('New time proposed — candidate asked to confirm'); } });
+}
+function complete(id) {
+  UI.modal({ title: 'Interview feedback', icon: 'rate_review', submitLabel: 'Save feedback', sub: 'Internal to your company — the candidate does not see interview feedback.',
+    body: UI.field({ name: 'outcome', label: 'Recommendation', type: 'select', required: true, options: [['', 'Choose…'], ['pass', 'Pass — proceed'], ['hold', 'Hold — undecided'], ['fail', 'Do not proceed']] }) + UI.field({ name: 'feedback', label: 'Structured feedback', type: 'textarea', required: true, rows: 5, placeholder: 'Strengths, concerns, evidence…' }),
+    onSubmit: f => { UR.interviews.complete(id, f); UI.toast('Feedback saved'); } });
+}
+async function cancel(id) { const r = await UI.confirm({ title: 'Cancel this interview?', danger: true, confirmLabel: 'Cancel interview', input: { label: 'Reason (sent to the candidate)', required: true } }); if (r.ok) UI.run(() => UR.interviews.cancel(id, r.value), 'Interview cancelled — candidate notified').catch(() => {}); }
+$('mineF').addEventListener('change', render);
+render();
+if (UI.param('schedule') && me.role === 'hr') schedule(UI.param('schedule'));
+if ($('topbarSearch')) $('topbarSearch').addEventListener('input', UI.debounce(render, 150));
+UI.onChange(render);
+</script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link rel="icon" type="image/png" href="images/favicon.png">
+<title>Certificates &amp; Badges — Unresume</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Caveat:wght@600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link rel="stylesheet" href="css/globals.css">
+<link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/dashboard.css">
+<style>
+.badge-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+.sk-badge{background:#fff;border:1px solid var(--border);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow-sm)}
+.sk-badge.locked{opacity:.6;background:#fafaff}
+.sk-medal{width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff}
+.sk-badge.locked .sk-medal{background:var(--bg-elevated);color:var(--text4)}
+.cert{position:relative;background:#fff;border:1px solid var(--border);border-radius:24px;padding:40px 44px;overflow:hidden}
+.cert::before{content:'';position:absolute;inset:10px;border:2px solid #e2defb;border-radius:18px;pointer-events:none}
+.cert h2{font-family:var(--font-display);font-size:30px;font-weight:800;color:var(--text1);letter-spacing:-.02em}
+.cert .who{font-family:var(--font-hand);font-size:44px;color:var(--brand);line-height:1.1;margin:8px 0}
+.cert-meta{display:flex;gap:24px;flex-wrap:wrap;margin-top:20px;font-size:13px;color:var(--text3)}
+.cert-meta b{display:block;color:var(--text1);font-size:14px}
+@media print{body *{visibility:hidden}#printArea,#printArea *{visibility:visible}#printArea{position:absolute;inset:0;padding:30px}}
+</style>
+</head>
+<body>
+<div class="dash-root">
+  <div id="sidebar" data-roles="candidate"></div>
+  <div class="dash-content">
+    <header class="dash-topbar" data-auto data-search="Search certificates…"></header>
+    <main class="dash-main">
+      <div class="dash-greeting"><div class="g-blob"></div>
+        <div><h1 class="dash-h1">Certificates &amp; <span class="grad-text">Skill Badges</span></h1><p class="dash-sub">Earned only from verified task scores. Anyone can check a certificate's ID on the public <a href="verify.html" style="color:var(--brand);font-weight:700">verification page</a>.</p></div></div>
+      <div class="sec-head"><span class="sec-title"><span class="sec-icon tint-pink"><span class="material-symbols-rounded">military_tech</span></span>Verified skill badges</span><span style="font-size:12.5px;color:var(--text3)" id="badgeRule"></span></div>
+      <div class="badge-grid" id="badges"></div>
+      <div class="sec-head" style="margin-top:30px"><span class="sec-title"><span class="sec-icon tint-teal"><span class="material-symbols-rounded">workspace_premium</span></span>Task certificates</span><span style="font-size:12.5px;color:var(--text3)" id="certRule"></span></div>
+      <div id="certs"></div>
+    </main>
+  </div>
+</div>
+<div id="printArea" style="display:none"></div>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
+<script>
+const $ = id => document.getElementById(id), esc = UI.esc;
+function render() {
+  const me = UR.user(), st = UR.candidates.stats(me.username), s = UR.settings();
+  const q = ($('topbarSearch') || { value: '' }).value.toLowerCase();
+  $('badgeRule').textContent = `${s.badgeMinTasks}+ verified tasks in a skill averaging ${s.badgeMinAvg}+ · Advanced 80+ · Expert 90+`;
+  $('certRule').textContent = `Issued for every verified task score of ${s.certificateThreshold}+`;
+  $('badges').innerHTML = st.skills.length ? st.skills.filter(k => !q || k.skill.toLowerCase().includes(q)).map(k => `<div class="sk-badge ${k.badge ? '' : 'locked'}">
+      <div class="sk-medal">${UI.icon(k.badge ? 'verified' : 'lock', 26, true)}</div>
+      <div style="font-family:var(--font-display);font-weight:800;color:var(--text1);font-size:15px">${esc(k.skill)}</div>
+      <div>${k.badge ? UI.pill(k.badge, 'tint-teal') : UI.pill('Not yet earned', 'gray')}</div>
+      <div style="font-size:12.5px;color:var(--text3)">${k.count} verified task${k.count > 1 ? 's' : ''} · avg ${k.avg}/100</div>
+      ${!k.badge ? `<div style="font-size:12px;color:var(--text3)">${k.count < s.badgeMinTasks ? `${s.badgeMinTasks - k.count} more task${s.badgeMinTasks - k.count > 1 ? 's' : ''} needed` : `Raise your average to ${s.badgeMinAvg}`}</div>` : ''}</div>`).join('')
+    : UI.empty('military_tech', 'No skills assessed yet', 'Complete tasks to start earning verified badges.', '<a class="see-all" href="jobs.html">Find a task</a>');
+  const certs = st.certificates.filter(c => !q || c.title.toLowerCase().includes(q)).reverse();
+  $('certs').innerHTML = certs.length ? `<div class="d-table-wrap"><table class="d-table stack"><thead><tr><th>Certificate</th><th>Score</th><th>Issued by</th><th>Date</th><th>ID</th><th></th></tr></thead><tbody>${certs.map(c => `<tr>
+      <td class="who-cell"><div class="who"><span class="sec-icon tint-teal">${UI.icon('workspace_premium', 18, true)}</span><div><b>${esc(c.title)}</b><small>${esc(c.skills.join(', '))}</small></div></div></td>
+      <td data-label="Score">${UI.verifiedScore(c.score, true)}</td><td data-label="Issued by">${esc(c.companyId ? (UR.companies.get(c.companyId) || {}).name : 'Unresume')}</td>
+      <td data-label="Date">${UI.fmtDate(c.date)}</td><td data-label="ID"><code style="font-size:12px">${c.id}</code></td>
+      <td><div class="acts"><button class="btn-sm" onclick="view('${c.id}')">${UI.icon('visibility')}View</button><button class="btn-sm" onclick="copyLink('${c.id}')">${UI.icon('link')}Copy link</button></div></td></tr>`).join('')}</tbody></table></div>`
+    : UI.empty('workspace_premium', 'No certificates yet', `Score ${s.certificateThreshold}+ on any verified task to earn one.`);
+}
+function certHTML(c, name) {
+  return `<div class="cert"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap"><img src="images/unresume-logo-dark.png" alt="Unresume" style="height:34px">${UI.pill('Verified', 'tint-teal', 'verified')}</div>
+    <div style="margin-top:26px;font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text4)">Certificate of verified skill</div>
+    <h2>${esc(c.title)}</h2><div style="font-size:14px;color:var(--text3);margin-top:14px">Awarded to</div><div class="who">${esc(name)}</div>
+    <p style="font-size:14px;color:var(--text2);line-height:1.7;max-width:560px">for completing this real-world task and receiving a verified score of <b>${c.score}/100</b> from the reviewing company against a published rubric.</p>
+    <div class="cert-meta"><div><b>${esc(c.companyId ? (UR.companies.get(c.companyId) || {}).name : 'Unresume')}</b>Reviewed by</div><div><b>${UI.fmtDate(c.date)}</b>Issued</div><div><b>${esc(c.skills.join(', '))}</b>Skills</div><div><b style="font-family:monospace">${c.id}</b>Verify at ${location.origin === 'null' ? 'verify.html' : location.href.replace(/[^/]*$/, '')}verify.html</div></div></div>`;
+}
+function view(id) {
+  const me = UR.user(), c = UR.candidates.stats(me.username).certificates.find(x => x.id === id);
+  const m = UI.modal({ title: 'Certificate', wide: true, body: certHTML(c, me.name), submitLabel: 'Print / save as PDF', onSubmit: () => { $('printArea').innerHTML = certHTML(c, me.name); $('printArea').style.display = 'block'; window.print(); $('printArea').style.display = 'none'; return false; } });
+}
+function copyLink(id) {
+  const url = location.href.replace(/[^/]*$/, '') + 'verify.html?id=' + id;
+  if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => UI.toast('Verification link copied'), () => UI.toast(url, 'info'));
+  else UI.toast(url, 'info');
+}
+render();
+if ($('topbarSearch')) $('topbarSearch').addEventListener('input', UI.debounce(render, 150));
+UI.onChange(render);
+</script>
+</body>
+</html>

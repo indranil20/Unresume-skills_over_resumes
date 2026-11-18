@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
 <link rel="stylesheet" href="css/globals.css">
 <link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/dashboard.css">
 <style>
 .page-wrap{overflow-x:clip}
 .lb-hero{position:relative;padding:56px 24px 12px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:16px}
@@ -92,22 +93,24 @@
 <div class="page-wrap">
   <div class="lb-hero">
     <div class="section-badge"><span class="material-symbols-rounded" style="font-size:15px;font-variation-settings:'FILL' 1">trophy</span> Leaderboard</div>
-    <h1><span class="grad-text">Global</span> Leaderboard</h1>
-    <p>Rankings based on verified task scores. Real skills, real proof.</p>
-    <div class="lb-filter">
-      <button class="lb-tab active" onclick="setFilter('all',this)">All Skills</button>
-      <button class="lb-tab" onclick="setFilter('React',this)">React</button>
-      <button class="lb-tab" onclick="setFilter('Python',this)">Python</button>
-      <button class="lb-tab" onclick="setFilter('UI/UX',this)">UI/UX</button>
-      <button class="lb-tab" onclick="setFilter('Data Science',this)">Data Science</button>
+    <h1>Skill <span class="grad-text">Leaderboards</span></h1>
+    <p>Rankings based only on verified task scores — awarded by company reviewers against published rubrics. <a href="#how" onclick="document.getElementById('how').open=true" style="color:var(--brand);font-weight:700">How it works</a></p>
+    <div class="lb-filter" id="trackTabs" role="tablist" aria-label="Skill track"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:6px">
+      <select id="skillSel" class="tc-select" aria-label="Skill within track" style="width:auto;padding:9px 12px;font-size:13px;font-weight:600"></select>
+      <select id="expSel" class="tc-select" aria-label="Experience level" style="width:auto;padding:9px 12px;font-size:13px;font-weight:600"><option value="">All experience levels</option><option>Entry</option><option>Mid</option><option>Senior</option></select>
     </div>
   </div>
 
   <div class="lb-wrap">
+    <details class="how" id="how" style="margin-bottom:28px">
+      <summary><span class="material-symbols-rounded" style="color:var(--brand)">calculate</span>How leaderboard scores are calculated</summary>
+      <ul id="howList"></ul>
+    </details>
     <div class="podium" id="podium"></div>
     <div class="lb-table">
       <div class="lb-head">
-        <span>Rank</span><span>Candidate</span><span>Score</span><span>Tasks</span><span>Badge</span>
+        <span>Rank</span><span>Candidate</span><span id="scoreHead">Track score</span><span>Verified tasks</span><span>Level</span>
       </div>
       <div id="lbBody"></div>
     </div>
@@ -116,91 +119,81 @@
 
 <div id="footer"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-<script src="js/components.js"></script>
 <script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
 <script>
-let filter = 'all';
-function setFilter(f, btn) {
-  filter = f;
-  document.querySelectorAll('.lb-tab').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  render();
-}
-
-const badgeStyle = {
-  Diamond: { cls:'tint-blue',   icon:'diamond' },
-  Gold:    { cls:'',            icon:'workspace_premium', style:'background:#fef6e4;color:#b7791f' },
-  Silver:  { cls:'',            icon:'military_tech',     style:'background:#f1f5f9;color:#64748b' },
-  Elite:   { cls:'tint-purple', icon:'bolt' },
-  Pro:     { cls:'tint-purple', icon:'star' },
-  Rising:  { cls:'tint-teal',   icon:'trending_up' },
-};
-const gradients = [
-  'linear-gradient(135deg,#38bdf8,#2563eb)',
-  'linear-gradient(135deg,#8b5cf6,#6d28d9)',
-  'linear-gradient(135deg,#e879f9,#a855f7)',
-  'linear-gradient(135deg,#2dd4bf,#0d9488)',
-  'linear-gradient(135deg,#fbbf24,#f97316)',
-  'linear-gradient(135deg,#818cf8,#4f46e5)',
-];
+const esc = UI.esc, s = UR.settings(), tracks = UR.candidates.tracks();
 const medal = [
   { bg:'linear-gradient(135deg,#fbbf24,#f59e0b)', ring:'#fbbf24', color:'#b7791f' },
   { bg:'linear-gradient(135deg,#cbd5e1,#94a3b8)', ring:'#cbd5e1', color:'#64748b' },
   { bg:'linear-gradient(135deg,#f0a868,#c2703d)', ring:'#f0a868', color:'#c2703d' },
 ];
+const me = UR.user();
+const myStats = me && me.role === 'candidate' ? UR.candidates.stats(me.username) : null;
+let track = UI.param('track') || (myStats && myStats.primaryTrack) || 'frontend', skill = UI.param('skill') || '', exp = '';
+const w = s.difficultyWeights;
+document.getElementById('howList').innerHTML = [
+  `<b>Verified task score (0–100)</b> — a company or Unresume reviewer scores the submission against the task's published 100-point rubric.`,
+  `<b>Difficulty weighting</b> — Beginner ×${w.Beginner}, Intermediate ×${w.Intermediate}, Advanced ×${w.Advanced}. Harder tasks count more towards an average; they don't add free points.`,
+  `<b>Best attempt only</b> — if you retake a standard assessment (allowed after ${s.retakeCooldownDays} days), only your best verified score for that task counts. Retakes can't inflate a score.`,
+  `<b>Track score (0–1000)</b> = 10 × the difficulty-weighted average of your verified scores on tasks in that track. Example: 90 (Advanced) and 80 (Beginner) → (90×1.25 + 80×0.8) ÷ 2.05 = 86.1 → 861.`,
+  `<b>Separate tracks</b> — Frontend, Backend, Mobile, Data & ML, Design and Product are ranked separately. A designer is never ranked against a data scientist.`,
+  `<b>Eligibility</b> — you appear in a track after ${Math.max(s.rankMinTasks, s.trackMinTasks)} verified tasks in it, and in a skill view after 2 verified tasks using that skill.`,
+  `<b>Not counted</b> — portfolio likes, followers, self-declared skills and external projects. Scores under dispute keep counting until a moderator decides; voided scores are removed.`,
+  `<b>Your choice</b> — hide yourself from leaderboards in Settings → Privacy. Hidden candidates show as "Anonymous candidate" or are omitted.`,
+].map(x => `<li>${x}</li>`).join('');
+if (location.hash === '#how') document.getElementById('how').open = true;
 
-const initialsOf = name => name.split(' ').map(w => w[0]).join('').slice(0,2);
-function badgeHtml(b) {
-  const s = badgeStyle[b] || { cls:'', icon:'verified', style:'background:var(--bg-elevated);color:var(--text3)' };
-  return `<span class="badge-pill ${s.cls}" style="${s.style||''}"><span class="material-symbols-rounded">${s.icon}</span>${b}</span>`;
+function renderControls() {
+  document.getElementById('trackTabs').innerHTML = tracks.map(tr => `<button class="lb-tab ${tr.key === track ? 'active' : ''}" role="tab" aria-selected="${tr.key === track}" onclick="setTrack('${tr.key}')">${esc(tr.label)}</button>`).join('');
+  const tr = tracks.find(x => x.key === track);
+  document.getElementById('skillSel').innerHTML = `<option value="">All ${esc(tr.label)} skills</option>` + tr.skills.map(k => `<option ${k === skill ? 'selected' : ''}>${esc(k)}</option>`).join('');
 }
+function setTrack(k) { track = k; skill = ''; renderControls(); render(); }
+document.getElementById('skillSel').addEventListener('change', e => { skill = e.target.value; render(); });
+document.getElementById('expSel').addEventListener('change', e => { exp = e.target.value; render(); });
 
 function render() {
-  const all = [...getCandidates()].sort((a,b) => b.score - a.score);
-  const colorOf = c => gradients[all.indexOf(c) % gradients.length];
-  const candidates = all.filter(c => filter === 'all' || c.skills.includes(filter));
-  const maxScore = candidates.length ? candidates[0].score : 1;
-
-  // Podium (top 3) — visual order 2, 1, 3
-  const top3 = candidates.slice(0,3);
-  const order = top3.length === 3 ? [1,0,2] : top3.length === 2 ? [0,1] : [0];
+  const rows = UR.candidates.leaderboard({ track, skill: skill || undefined, experience: exp || undefined });
+  const tr = tracks.find(x => x.key === track);
+  document.getElementById('scoreHead').textContent = skill ? `${skill} score` : `${tr.label} score`;
+  const maxScore = rows.length ? rows[0].score : 1;
+  const top3 = rows.slice(0, 3);
+  const order = top3.length === 3 ? [1, 0, 2] : top3.length === 2 ? [0, 1] : [0];
   const podium = document.getElementById('podium');
   podium.className = 'podium count-' + top3.length;
-  podium.innerHTML = top3.length ? order.map(r => {
-    const c = top3[r];
-    const first = r === 0;
-    const size = first ? 96 : 76;
-    return `<a href="candidate-profile.html?u=${c.username}" class="podium-card ${first?'first':''}">
+  const tag = r => r.username ? 'a' : 'div';
+  podium.innerHTML = top3.length ? order.map(i => {
+    const c = top3[i], first = i === 0, size = first ? 96 : 76, m = medal[Math.min(c.rank - 1, 2)];
+    return `<${tag(c)} ${c.username ? `href="candidate-profile.html?u=${c.username}"` : ''} class="podium-card ${first ? 'first' : ''}">
       ${first ? '<div class="podium-crown"><span class="material-symbols-rounded">emoji_events</span></div>' : ''}
-      <div class="podium-av-wrap">
-        <div class="podium-avatar" style="width:${size}px;height:${size}px;font-size:${first?28:22}px;background:${colorOf(c)};box-shadow:0 0 0 4px #fff,0 0 0 7px ${medal[r].ring},0 12px 28px rgba(79,70,229,.2)">${initialsOf(c.name)}</div>
-        <div class="podium-medal" style="background:${medal[r].bg}">${r+1}</div>
-      </div>
-      <div class="podium-name">${c.name}</div>
-      <div class="podium-uname">@${c.username}</div>
-      <div class="podium-score ${first?'grad-text':''}" style="${first?'':'color:'+medal[r].color}">${c.score}<small>pts</small></div>
-      <div class="podium-meta">${c.tasksCompleted} tasks · ${c.badge}</div>
-    </a>`;
+      <div class="podium-av-wrap"><div class="podium-avatar" style="width:${size}px;height:${size}px;font-size:${first ? 28 : 22}px;background:${UI.grad(c.username || 'anon')};box-shadow:0 0 0 4px #fff,0 0 0 7px ${m.ring},0 12px 28px rgba(79,70,229,.2)">${c.username ? UI.initials(c.name) : '?'}</div>
+        <div class="podium-medal" style="background:${m.bg}">${c.rank}</div></div>
+      <div class="podium-name">${esc(c.name)}${c.isMe ? ' (you)' : ''}</div><div class="podium-uname">${c.username ? '@' + esc(c.username) : 'Private'} · ${esc(c.experience || '')}</div>
+      <div class="podium-score ${first ? 'grad-text' : ''}" style="${first ? '' : 'color:' + m.color}">${c.score}<small>/1000</small></div>
+      <div class="podium-meta">${c.tasks} verified task${c.tasks === 1 ? '' : 's'}</div></${tag(c)}>`;
   }).join('') : '';
-
-  // Table
-  document.getElementById('lbBody').innerHTML = candidates.length ? candidates.map((c, i) => `
-    <a href="candidate-profile.html?u=${c.username}" class="lb-row">
-      <span><span class="lb-rank ${i<3?'r'+(i+1):''}">${i+1}</span></span>
-      <div style="display:flex;align-items:center;min-width:0">
-        <div class="lb-avatar" style="background:${colorOf(c)}">${initialsOf(c.name)}</div>
-        <div style="min-width:0"><div class="lb-name">${c.name}</div><div class="lb-uname">@${c.username}</div></div>
-      </div>
-      <span class="lb-score-cell"><span class="lb-score">${c.score}</span><span class="lb-bar"><span class="lb-bar-fill" style="display:block;width:${Math.round(c.score/maxScore*100)}%"></span></span></span>
-      <span class="lb-tasks">${c.tasksCompleted}</span>
-      <span class="badge-wrap">${badgeHtml(c.badge)}</span>
-    </a>`).join('') : '<div class="lb-empty">No candidates for this skill yet.</div>';
-
-  gsap.from('.lb-row', {opacity:0, y:12, duration:.35, stagger:.04, ease:'power2.out'});
-  gsap.from('.podium-card', {opacity:0, y:20, duration:.45, stagger:.08, ease:'power3.out', clearProps:'transform,opacity'});
+  document.getElementById('lbBody').innerHTML = rows.length ? rows.map(c => `
+    <${tag(c)} ${c.username ? `href="candidate-profile.html?u=${c.username}"` : ''} class="lb-row" ${c.isMe ? 'style="background:#f3f1fe"' : ''}>
+      <span><span class="lb-rank ${c.rank <= 3 ? 'r' + c.rank : ''}">${c.rank}</span></span>
+      <div style="display:flex;align-items:center;min-width:0"><div class="lb-avatar" style="background:${UI.grad(c.username || 'anon')}">${c.username ? UI.initials(c.name) : '?'}</div>
+        <div style="min-width:0"><div class="lb-name">${esc(c.name)}${c.isMe ? ' (you)' : ''}</div><div class="lb-uname">${c.username ? '@' + esc(c.username) : 'Scores visible to the candidate only'}</div></div></div>
+      <span class="lb-score-cell"><span class="lb-score">${c.score}</span><span class="lb-bar"><span class="lb-bar-fill" style="display:block;width:${Math.round(c.score / maxScore * 100)}%"></span></span></span>
+      <span class="lb-tasks">${c.tasks}</span>
+      <span class="badge-wrap"><span class="badge-pill tint-purple">${esc(c.experience || '—')}</span></span>
+    </${tag(c)}>`).join('') : `<div class="lb-empty">No one is ranked in ${esc(skill || tr.label)}${exp ? ' at ' + exp + ' level' : ''} yet. Candidates appear after ${skill ? 2 : Math.max(s.rankMinTasks, s.trackMinTasks)} verified tasks.${me && me.role === 'candidate' ? ' <a href="assessments.html?tab=library" style="color:var(--brand);font-weight:700">Take a standard assessment</a>' : ''}</div>`;
+  if (myStats) {
+    const t2 = myStats.tracks.find(x => x.track === track);
+    document.getElementById('lbBody').insertAdjacentHTML('afterbegin', !rows.some(r => r.isMe) ? `<div class="lb-empty" style="padding:14px;background:#fafaff;border-bottom:1px solid var(--border)">${t2 ? `You have ${t2.count} verified task${t2.count === 1 ? '' : 's'} in ${esc(tr.label)} (score ${t2.score}). ${t2.ranked ? 'You are hidden or filtered out — check Settings → Privacy or the filters.' : `You'll be ranked after ${Math.max(s.rankMinTasks, s.trackMinTasks)}.`}` : `You have no verified tasks in ${esc(tr.label)} yet.`}</div>` : '');
+  }
+  if (window.gsap) {
+    gsap.from('.lb-row', { opacity: 0, y: 12, duration: .35, stagger: .04, ease: 'power2.out', clearProps: 'transform,opacity' });
+    gsap.from('.podium-card', { opacity: 0, y: 20, duration: .45, stagger: .08, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }
 }
-
-render();
-</script>
+renderControls();
+render();</script>
 </body>
 </html>

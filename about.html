@@ -159,22 +159,22 @@
         <div class="stat-block">
           <div class="stat-icon tint-blue"><span class="material-symbols-rounded">task_alt</span></div>
           <div>
-            <div class="num c-blue">10K+</div>
-            <div class="lbl">Tasks completed</div>
+            <div class="num c-blue" data-stat="tasksCompleted">—</div>
+            <div class="lbl">Verified tasks completed</div>
           </div>
         </div>
         <div class="stat-block">
           <div class="stat-icon tint-purple"><span class="material-symbols-rounded">apartment</span></div>
           <div>
-            <div class="num c-purple">500+</div>
-            <div class="lbl">Companies hiring</div>
+            <div class="num c-purple" data-stat="companies">—</div>
+            <div class="lbl">Verified companies hiring</div>
           </div>
         </div>
         <div class="stat-block">
           <div class="stat-icon tint-pink"><span class="material-symbols-rounded">handshake</span></div>
           <div>
-            <div class="num c-pink">2,400+</div>
-            <div class="lbl">Candidates placed</div>
+            <div class="num c-pink" data-stat="hires">—</div>
+            <div class="lbl">Candidates hired on Unresume</div>
           </div>
         </div>
       </div>
@@ -249,7 +249,7 @@
           <p class="founder-tagline">Skills over resumes — the future of skill-based hiring.</p>
           <div class="founder-actions">
             <a href="contact.html" class="btn-primary">Contact Us <span class="material-symbols-rounded" style="font-size:18px">arrow_forward</span></a>
-            <a href="#" class="founder-social" aria-label="LinkedIn"><svg viewBox="0 0 24 24"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9.75h4v11H3v-11zm6.5 0h3.8v1.5h.05c.53-1 1.83-2.05 3.77-2.05 4.03 0 4.78 2.65 4.78 6.1v5.45h-4v-4.83c0-1.15-.02-2.64-1.6-2.64-1.61 0-1.86 1.26-1.86 2.56v4.91h-4v-11z"/></svg></a>
+            
           </div>
           <div class="hand-note founder-note" aria-hidden="true">
             <svg class="spark" viewBox="0 0 44 44"><path d="M8 30 L26 6"/><path d="M20 36 L38 14"/><path d="M30 40 L40 32"/></svg>
@@ -280,6 +280,9 @@
 </div>
 
 <div id="footer"></div>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
 <script src="js/components.js"></script>
 </body>
 </html>

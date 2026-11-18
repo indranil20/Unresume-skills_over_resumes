@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link rel="icon" type="image/png" href="images/favicon.png">
+<title>Interviews — Unresume</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link rel="stylesheet" href="css/globals.css">
+<link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/dashboard.css">
+<style>
+.iv-date{width:64px;flex-shrink:0;text-align:center;border-radius:16px;background:#eeedfd;padding:10px 4px}
+.iv-date b{display:block;font-family:var(--font-display);font-size:24px;color:var(--brand);line-height:1}
+.iv-date span{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase}
+</style>
+</head>
+<body>
+<div class="dash-root">
+  <div id="sidebar" data-roles="candidate"></div>
+  <div class="dash-content">
+    <header class="dash-topbar" data-auto data-search="Search interviews…"></header>
+    <main class="dash-main">
+      <div class="dash-greeting"><div class="g-blob"></div>
+        <div><h1 class="dash-h1">Interviews</h1><p class="dash-sub">Confirm proposed slots, ask to reschedule, and see the history of every interview stage.</p></div></div>
+      <div class="sec-head"><span class="sec-title"><span class="sec-icon tint-amber"><span class="material-symbols-rounded">event_upcoming</span></span>Upcoming</span></div>
+      <div id="upcoming"></div>
+      <div class="sec-head" style="margin-top:28px"><span class="sec-title"><span class="sec-icon tint-purple"><span class="material-symbols-rounded">history</span></span>Past &amp; cancelled</span></div>
+      <div id="past"></div>
+    </main>
+  </div>
+</div>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
+<script>
+const $ = id => document.getElementById(id), esc = UI.esc;
+function card(i) {
+  const st = UR.INTERVIEW_STATUS[i.status], d = new Date(i.scheduledAt);
+  const live = ['proposed', 'confirmed', 'reschedule'].includes(i.status) && d > Date.now() - 3600e3;
+  return `<div class="l-row">
+    <div class="iv-date"><span>${d.toLocaleDateString(undefined, { month: 'short' })}</span><b>${d.getDate()}</b><span>${d.toLocaleDateString(undefined, { weekday: 'short' })}</span></div>
+    <div class="l-main"><div class="l-title">${esc(i.stage)} · ${esc(i.companyName)}</div>
+      <div class="l-sub"><span>${UI.icon('schedule')} ${d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })} · ${i.durationMin} min</span><span>${UI.icon('videocam')} ${esc(i.mode)}</span><span>${UI.icon('work')} ${esc(i.jobTitle)}</span><span>${UI.icon('person')} ${esc(i.interviewerName)}</span></div>
+      ${i.notes ? `<div class="l-sub" style="margin-top:6px">${UI.icon('notes')} ${esc(i.notes)}</div>` : ''}
+      ${i.status === 'confirmed' && i.location ? `<div class="l-sub" style="margin-top:6px">${UI.icon('link')} ${/^https?:/.test(i.location) ? `<a href="${esc(i.location)}" target="_blank" rel="noopener" style="color:var(--brand);font-weight:700">${esc(i.location)}</a>` : esc(i.location)}</div>` : ''}
+      ${i.candidateNote ? `<div class="l-sub" style="margin-top:6px">${UI.icon('reply')} You asked: ${esc(i.candidateNote)}</div>` : ''}
+      ${i.cancelReason ? `<div class="l-sub" style="margin-top:6px;color:#be123c">${UI.icon('cancel')} ${esc(i.cancelReason)}</div>` : ''}
+    </div>
+    <div class="l-acts">${UI.pill(st.label, st.tint)}
+      ${live && i.status !== 'confirmed' ? `<button class="btn-sm primary" onclick="respond('${i.id}','confirm')">${UI.icon('check')}Confirm</button>` : ''}
+      ${live ? `<button class="btn-sm" onclick="reschedule('${i.id}')">${UI.icon('edit_calendar')}Reschedule</button><button class="btn-sm" onclick="ics('${i.id}')">${UI.icon('calendar_add_on')}.ics</button>` : ''}
+    </div></div>`;
+}
+function render() {
+  const q = ($('topbarSearch') || { value: '' }).value.toLowerCase();
+  const all = UR.interviews.list().filter(i => !q || [i.stage, i.companyName, i.jobTitle].some(v => v.toLowerCase().includes(q)));
+  const up = all.filter(i => ['proposed', 'confirmed', 'reschedule'].includes(i.status) && new Date(i.scheduledAt) > Date.now() - 3600e3);
+  const past = all.filter(i => !up.includes(i)).reverse();
+  $('upcoming').innerHTML = up.length ? up.map(card).join('') : UI.empty('event_available', 'No upcoming interviews', 'When a company shortlists you and proposes a time, it appears here for you to confirm.');
+  $('past').innerHTML = past.length ? past.map(card).join('') : `<p style="font-size:13px;color:var(--text3)">No past interviews.</p>`;
+}
+const respond = id => UI.run(() => UR.interviews.respond(id, 'confirm'), 'Interview confirmed — the company has been notified').catch(() => {});
+function reschedule(id) {
+  UI.modal({ title: 'Ask to reschedule', icon: 'edit_calendar', submitLabel: 'Send request', body: UI.field({ name: 'note', label: 'Times that work for you', type: 'textarea', required: true, placeholder: 'e.g. Thu or Fri after 2pm IST' }),
+    onSubmit: d => { UR.interviews.respond(id, 'reschedule', d.note || ''); UI.toast('Reschedule request sent'); } });
+}
+function ics(id) {
+  const i = UR.interviews.list().find(x => x.id === id); if (!i) return;
+  const f = d => new Date(d).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const end = new Date(new Date(i.scheduledAt).getTime() + i.durationMin * 6e4);
+  const body = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Unresume//Interviews//EN', 'BEGIN:VEVENT', `UID:${i.id}@unresume`, `DTSTAMP:${f(new Date())}`, `DTSTART:${f(i.scheduledAt)}`, `DTEND:${f(end)}`, `SUMMARY:${i.stage} — ${i.companyName}`, `DESCRIPTION:${(i.jobTitle + '. ' + (i.notes || '')).replace(/\n/g, ' ')}`, `LOCATION:${i.location || i.mode}`, 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([body], { type: 'text/calendar' })); a.download = 'interview.ics'; a.click();
+}
+render();
+if ($('topbarSearch')) $('topbarSearch').addEventListener('input', UI.debounce(render, 150));
+UI.onChange(render);
+</script>
+</body>
+</html>
