@@ -12,7 +12,7 @@
 (function (global) {
 'use strict';
 
-const VERSION = 4;
+const VERSION = 6;
 const KEY = 'unresume.db';
 const SESSION_KEY = 'unresume.session';
 const DAY = 864e5, HOUR = 36e5, MIN = 6e4;
@@ -51,6 +51,7 @@ async function sha256(buffer) {
 const APP_STATUS = {
   in_progress: { label: 'In progress',   tint: 'gray',        icon: 'hourglass_top' },
   submitted:   { label: 'Submitted',     tint: 'tint-blue',   icon: 'upload' },
+  under_review:{ label: 'Under review',  tint: 'tint-purple', icon: 'rate_review' },
   scored:      { label: 'Scored',        tint: 'tint-purple', icon: 'grade' },
   shortlisted: { label: 'Shortlisted',   tint: 'tint-teal',   icon: 'thumb_up' },
   interview:   { label: 'Interview',     tint: 'tint-amber',  icon: 'event' },
@@ -60,7 +61,7 @@ const APP_STATUS = {
   withdrawn:   { label: 'Withdrawn',     tint: 'gray',        icon: 'undo' },
   expired:     { label: 'Time expired',  tint: 'gray',        icon: 'timer_off' },
 };
-const APP_FLOW = ['in_progress', 'submitted', 'scored', 'shortlisted', 'interview', 'offer', 'hired'];
+const APP_FLOW = ['in_progress', 'submitted', 'under_review', 'scored', 'shortlisted', 'interview', 'offer', 'hired'];
 const PIPELINE = ['shortlisted', 'interview', 'offer', 'hired'];
 const SUB_STATUS = {
   pending:   { label: 'Awaiting review', tint: 'tint-amber' },
@@ -92,6 +93,7 @@ const ROLES = {
 const DEFAULT_SETTINGS = {
   rankMinTasks: 3,            // verified tasks needed to appear on the leaderboard
   certificateThreshold: 70,   // min task score that issues a certificate
+  certificateValidityMonths: 36, // certificates older than this verify as 'expired'
   badgeMinTasks: 2,           // verified tasks in a skill needed for a skill badge
   badgeMinAvg: 75,            // avg score in that skill needed for a skill badge
   fastCompletionPct: 5,       // integrity: submitted in < N% of the time limit
@@ -108,9 +110,21 @@ const DEFAULT_SETTINGS = {
   // ── candidate effort limits (anti unpaid-work) ──
   maxEstimatedHours: { screening: 2, advanced: 8, standard: 4 },
   maxTimeLimitMin: { screening: 240, advanced: 4320, standard: 1440 },
+  maxActiveCompanyTasks: 2,   // a candidate can have at most N company tasks (screening/advanced) in progress at once
   // ── trust ──
   reviewSlaDays: 5,           // companies should score submissions within N days
   maxFailedLogins: 5,         // lock sign-in for 15 minutes after N failures
+  // ── freshness ──
+  freshnessMonths: 24,        // verified scores older than this count less
+  staleWeight: 0.5,           // weight multiplier for older scores
+  dualReviewGap: 15,          // dual review: escalate to moderators if reviewers differ by more than this
+  maxExtensionPct: 50,        // accommodations: max extra time as % of the original window
+  // ── proposed plans (shown on pricing.html; not enforced, no payments) ──
+  plans: [
+    { key: 'free', name: 'Free', price: '₹0', period: 'forever', blurb: 'For small teams hiring occasionally.', features: ['2 open jobs', 'Assessment library & standard assessments', 'Accept existing verified scores', 'Review queue, pipeline, messaging', '2 team seats'] },
+    { key: 'pro', name: 'Professional', price: '₹9,999', period: '/ month', blurb: 'For growing teams hiring every month.', features: ['Unlimited open jobs', '10 team seats', 'Hiring analytics & CSV export', 'Shared custom task templates', 'Talent search outreach', 'Review-SLA reminders'], highlight: true },
+    { key: 'enterprise', name: 'Enterprise', price: 'Custom', period: '', blurb: 'For high-volume hiring and compliance needs.', features: ['Everything in Professional', 'SSO & advanced permissions', 'Audit-log export, data residency', 'ATS integrations (API & webhooks)', 'Reviewer calibration reports', 'Dedicated support'] },
+  ],
 };
 
 /* Skill tracks: scores are only combined within a track, never across unrelated skills. */
@@ -181,6 +195,19 @@ function genScores(n, target) {
   return out;
 }
 
+const JOB_EXTRAS = {
+  1: { workMode: 'Hybrid', experienceLevel: 'Mid', salary: { min: 18, max: 26, unit: 'LPA' }, responsibilities: ['Own frontend features from design to release', 'Maintain and extend the design system', 'Improve accessibility and web performance', 'Review pull requests and mentor juniors'] },
+  2: { workMode: 'Remote', experienceLevel: 'Mid', salary: { min: 14, max: 20, unit: 'LPA' }, responsibilities: ['Run user research and usability tests', 'Design flows, wireframes and high-fidelity UI', 'Contribute to the design system', 'Partner with engineers through delivery'] },
+  3: { inviteOnlyTask: true, workMode: 'On-site', experienceLevel: 'Mid', salary: { min: 20, max: 30, unit: 'LPA' }, responsibilities: ['Build and evaluate ML models', 'Own data pipelines with engineering', 'Present insights to stakeholders'] },
+  4: { workMode: 'Hybrid', experienceLevel: 'Senior', salary: null, responsibilities: ['Design and build microservices and APIs', 'Own PostgreSQL schemas and performance', 'Run services on AWS with Docker'] },
+  5: { workMode: 'On-site', experienceLevel: 'Senior', salary: { min: 25, max: 35, unit: 'LPA' }, responsibilities: ['Own the product roadmap', 'Define metrics and run experiments', 'Work with design and engineering daily'] },
+  6: { workMode: 'Remote', experienceLevel: 'Entry', salary: { min: 6, max: 10, unit: 'LPA' }, responsibilities: ['Build Flutter features end-to-end', 'Integrate Firebase services', 'Ship to the App Store and Play Store'] },
+};
+const PROFILE_EXTRAS = {
+  'jay-dev': { headline: 'Frontend engineer · React & accessibility', featured: true, workHistory: [{ title: 'Frontend Developer', org: 'PixelWorks', from: '2023', to: 'Present' }, { title: 'Web Intern', org: 'Brightlabs', from: '2022', to: '2023' }], education: [{ school: 'Gujarat Technological University', degree: 'B.E. Computer Engineering', year: '2022' }], certifications: [{ name: 'Web Accessibility Fundamentals', issuer: 'W3C (edX)', year: '2023', url: '' }] },
+  'priya-designs': { headline: 'Product designer · fintech onboarding', featured: true, workHistory: [{ title: 'Product Designer', org: 'Finly', from: '2022', to: 'Present' }], education: [{ school: 'NID Bengaluru', degree: 'M.Des Interaction Design', year: '2022' }], certifications: [] },
+  'arjun-ml': { headline: 'ML engineer', featured: false, workHistory: [{ title: 'Data Analyst', org: 'Insightly', from: '2021', to: '2024' }], education: [{ school: 'University of Pune', degree: 'B.Sc Statistics', year: '2021' }], certifications: [{ name: 'TensorFlow Developer', issuer: 'Google', year: '2023', url: '' }] },
+};
 function buildSeed() {
   const jobsSrc = getJobs(), tasksSrc = getTasks(), candSrc = getCandidates(), compSrc = getCompanies();
   const db = {
@@ -188,7 +215,7 @@ function buildSeed() {
     users: [], candidates: {}, companies: [], academies: [], jobs: [], tasks: [], attempts: [], submissions: [],
     applications: [], interviews: [], disputes: [], reports: [], contact: [], notifications: [], conversations: [],
     students: [], batches: [], referrals: [], placements: [], audit: [], feed: [], likes: {}, follows: {},
-    verifications: [], invites: [], feedback: [], jobInvites: [], loginFailures: {}, seq: { stu: 1042, cand: 5001 },
+    verifications: [], invites: [], feedback: [], jobInvites: [], loginFailures: {}, savedJobs: {}, extensions: [], reminders: {}, seq: { stu: 1042, cand: 5001 },
   };
   const PW = 'demo1234';
   const addUser = (u) => { db.users.push({ status: 'active', createdAt: ago(60), ...u, email: u.email.toLowerCase(), pwHash: pwHash(u.email, PW) }); return u.id; };
@@ -222,6 +249,7 @@ function buildSeed() {
       requirements: t.requirements, rubric: t.rubric, skills: t.skills, timeLimitMin: t.timeLimitMin,
       difficulty: t.difficulty, submissionTypes: t.submissionTypes, deadline: job ? ahead(job.deadlineInDays) : null,
       kind: t.kind || (job ? 'advanced' : 'standard'), estimatedHours: t.estimatedHours || 2, aiPolicy: t.aiPolicy || 'disclose', confidential: false,
+      maxAttempts: job ? 1 : 3, trackFocus: false, dualReview: t.id === 3, reviewerIds: t.id === 1 ? ['u-mark'] : [],
       status: 'published', createdBy: job ? null : 'u-admin', createdAt: ago(job ? job.postedDaysAgo : 40), updatedAt: ago(job ? job.postedDaysAgo : 40),
     });
   });
@@ -232,7 +260,7 @@ function buildSeed() {
     id: j.id, companyId: j.companyId, title: j.title, category: j.category, location: j.location, type: j.type,
     skills: j.skills, description: j.description, requirements: j.requirements, taskId: j.taskId, featured: j.featured,
     referralSlots: j.referralSlots, status: 'open', createdAt: ago(j.postedDaysAgo), deadline: ahead(j.deadlineInDays),
-    acceptVerified: j.acceptVerified || [],
+    acceptVerified: j.acceptVerified || [], ...(JOB_EXTRAS[j.id] || {}),
   }));
 
   /* candidates */
@@ -245,7 +273,7 @@ function buildSeed() {
       verification: { email: true, identity: i < 3 ? 'verified' : 'none' },
       privacy: { profileVisibility: 'public', showScores: true, allowMessages: 'companies', leaderboard: true },
       notifyPrefs: { applications: true, interviews: true, messages: true, scores: true },
-      experience: c.experience || 'Entry', academyStatus: null,
+      experience: c.experience || 'Entry', academyStatus: null, ...(PROFILE_EXTRAS[c.username] || { headline: '', workHistory: [], education: [], certifications: [], featured: false }),
       portfolio: c.portfolio.map(p => ({ id: 'pf-' + p.id, legacyId: p.id, title: p.title, type: p.type, visibility: p.isPublic ? 'public' : 'private', isPublic: p.isPublic, previewType: p.previewType, url: p.url || '', submissionId: null, createdAt: ago(30 - p.id) })),
       history: [],
     };
@@ -624,7 +652,9 @@ function verifiedResults(d, username) {
       attempts: d.submissions.filter(x => x.candidate === username && x.taskId === s.taskId && hasScore(x)).length };
   });
   const fromHist = (c.history || []).map(h => ({ id: h.id, title: h.title, skills: [h.skill], score: h.score, date: h.date, historyId: h.id, difficulty: h.difficulty || 'Intermediate', weight: w[h.difficulty || 'Intermediate'] || 1, kind: 'imported', attempts: 1 }));
-  return [...fromSubs, ...fromHist].sort((a, b) => new Date(a.date) - new Date(b.date));
+  // Freshness: results older than freshnessMonths count with staleWeight (still shown, marked "older").
+  const cutoff = Date.now() - (d.settings.freshnessMonths || 24) * 30.4 * DAY, sw = d.settings.staleWeight ?? 0.5;
+  return [...fromSubs, ...fromHist].map(r => (new Date(r.date).getTime() < cutoff ? { ...r, stale: true, weight: r.weight * sw } : r)).sort((a, b) => new Date(a.date) - new Date(b.date));
 }
 const wmean = rs => { const sw = rs.reduce((a, r) => a + r.weight, 0); return sw ? rs.reduce((a, r) => a + r.score * r.weight, 0) / sw : 0; };
 function computeStats(d, username) {
@@ -721,6 +751,24 @@ const candidates = {
       .map(c => publicCandidate(d, c, viewer));
   },
   stats(username) { const d = load(); return d.candidates[username] ? computeStats(d, username) : null; },
+  // Profile completion: each item links to where it can be completed.
+  completion(username) {
+    const d = load(), c = d.candidates[username]; if (!c) return null;
+    const st = computeStats(d, username);
+    const items = [
+      ['Headline', !!c.headline, 'edit-profile.html'], ['Short bio', (c.bio || '').length >= 20, 'edit-profile.html'], ['Location', !!c.location, 'edit-profile.html'],
+      ['At least 3 skills', c.skills.length >= 3, 'edit-profile.html'], ['Experience or education', (c.workHistory || []).length + (c.education || []).length > 0, 'edit-profile.html'],
+      ['A portfolio item', c.portfolio.length > 0, 'candidate-profile.html'], ['A verified task score', st.tasksVerified > 0, 'assessments.html?tab=library'],
+      ['Identity verified', c.verification.identity === 'verified', 'settings.html'],
+    ].map(([label, done, link]) => ({ label, done, link }));
+    return { pct: Math.round(items.filter(i => i.done).length / items.length * 100), items };
+  },
+  featured(limit = 4) {
+    const d = load();
+    return Object.values(d.candidates).filter(c => c.featured && c.privacy.profileVisibility === 'public' && c.privacy.showScores && (d.users.find(u => u.id === c.userId) || {}).status === 'active')
+      .map(c => { const st = computeStats(d, c.username); return { username: c.username, name: c.name, headline: c.headline, track: st.primaryTrackLabel, score: st.skillScore, tasks: st.tasksVerified, skills: c.skills.slice(0, 3) }; })
+      .filter(c => c.tasks > 0).sort((a, b) => b.score - a.score).slice(0, limit);
+  },
   // opts: { track, skill, experience } — always scoped; never a cross-track global ranking.
   leaderboard(opts) {
     const d = load(), viewer = me();
@@ -756,6 +804,15 @@ const candidates = {
       if (patch.location != null) c.location = patch.location.slice(0, 80);
       if (patch.skills) { if (!patch.skills.length) throw new URError('Select at least one skill.', 'validation'); c.skills = patch.skills; }
       if (patch.privacy) c.privacy = { ...c.privacy, ...patch.privacy };
+      const cleanRows = (rows, keys, max) => (Array.isArray(rows) ? rows : []).map(r => Object.fromEntries(keys.map(k => [k, String(r[k] || '').trim().slice(0, 120)]))).filter(r => r[keys[0]]).slice(0, max);
+      if (patch.headline != null) c.headline = String(patch.headline).trim().slice(0, 100);
+      if (patch.workHistory) c.workHistory = cleanRows(patch.workHistory, ['title', 'org', 'from', 'to'], 15);
+      if (patch.education) c.education = cleanRows(patch.education, ['school', 'degree', 'year'], 10);
+      if (patch.certifications) {
+        c.certifications = cleanRows(patch.certifications, ['name', 'issuer', 'year', 'url'], 20);
+        c.certifications.forEach(x => { if (x.url && !/^https?:\/\//.test(x.url)) throw new URError('Certification links must start with http:// or https://', 'validation'); });
+      }
+      if (patch.featured != null) c.featured = !!patch.featured;
       if (patch.experience) { if (!EXPERIENCE.includes(patch.experience)) throw new URError('Invalid experience level.', 'validation'); c.experience = patch.experience; }
       if (patch.notifyPrefs) c.notifyPrefs = { ...c.notifyPrefs, ...patch.notifyPrefs };
       audit(d, 'candidate.update', c.username, Object.keys(patch).join(','));
@@ -774,6 +831,38 @@ const candidates = {
       audit(d, 'verification.request', c.username, 'identity');
     });
   },
+  // Full details of one portfolio item, filtered by what this viewer may see.
+  portfolioItem(username, itemId) {
+    const d = load(), viewer = me(), c = d.candidates[username];
+    if (!c) throw new URError('Candidate not found.', 'not_found');
+    const p = c.portfolio.find(x => x.id === itemId);
+    const owner = !!viewer && (viewer.username === username || viewer.role === 'admin');
+    const recruiter = !!viewer && RECRUITER_ROLES.includes(viewer.role);
+    if (!p || (!owner && !portfolioVisibleTo(p, viewer))) throw new URError('This portfolio item is private or no longer exists.', 'not_found');
+    const showScore = owner || c.privacy.showScores;
+    const out = { item: clone(p), visibility: visOf(p), candidate: { name: c.name, username, headline: c.headline || '' }, owner, task: null, submission: null, score: null, history: null };
+    const s = p.submissionId && d.submissions.find(x => x.id === p.submissionId);
+    if (s) {
+      const t = taskOf(d, s.taskId) || {};
+      const job = t.jobId ? d.jobs.find(j => j.id === t.jobId) : null;
+      const co = t.companyId ? d.companies.find(x => x.id === t.companyId) : null;
+      out.task = { id: t.id, title: t.title, kind: t.kind, kindLabel: (ASSESSMENT_KINDS[t.kind] || {}).label || 'Assessment', skills: t.skills || [], difficulty: t.difficulty, estimatedHours: t.estimatedHours,
+        brief: t.confidential && !owner && !recruiter ? null : t.brief, requirements: t.confidential && !owner && !recruiter ? [] : (t.requirements || []), confidential: !!t.confidential,
+        company: co ? co.name : 'Unresume', jobTitle: job ? job.title : null, aiPolicy: (AI_POLICY[t.aiPolicy] || {}).label || null };
+      out.submission = { submittedAt: s.submittedAt, status: s.status, outputUrl: s.outputUrl || '', links: clone(s.links || {}),
+        files: (s.files || []).filter(f => f.slot === 'output' || owner || recruiter).map(f => ({ slot: f.slot, name: f.name, size: f.size, type: f.type, sha256: f.sha256 })),
+        note: owner || recruiter ? s.note || '' : '', aiDisclosure: owner || recruiter ? s.aiDisclosure || '' : '' };
+      if (s.score && s.status !== 'void' && showScore) {
+        const r = s.score;
+        out.score = { total: r.total, scoredAt: r.scoredAt, breakdown: (r.breakdown || []).map(b => ({ criterion: b.criterion, max: b.max, awarded: b.awarded })),
+          strengths: r.strengths || '', feedback: owner ? r.feedback : '', suggestions: owner ? r.suggestions || [] : [], dual: !!(s.reviews && s.reviews.length > 1) };
+      }
+    } else if (p.historyId) {
+      const h = (c.history || []).find(x => x.id === p.historyId);
+      if (h) out.history = { title: h.title, skill: h.skill, difficulty: h.difficulty, date: h.date, reviewer: h.reviewer, score: showScore ? h.score : null };
+    }
+    return out;
+  },
   portfolio: {
     // visibility: 'public' | 'recruiters' | 'private' (boolean accepted for older callers)
     setVisibility(itemId, visibility) {
@@ -790,12 +879,13 @@ const candidates = {
         if (s) s.isPublic = p.isPublic;
       });
     },
-    addExternal({ title, url, previewType }) {
+    addExternal({ title, url, previewType, kind = 'external', description = '' }) {
       const u = requireUser(['candidate']);
       if (!String(title || '').trim()) throw new URError('Title is required.', 'validation');
       if (!/^https?:\/\/\S+\.\S+/.test(String(url || '').trim())) throw new URError('Enter a full URL starting with http:// or https://', 'validation');
       return tx(d => {
-        const item = { id: uid('pf'), title: title.trim().slice(0, 80), type: 'external', isPublic: true, previewType: previewType || 'website', url: url.trim(), submissionId: null, createdAt: nowISO() };
+        if (!['external', 'personal'].includes(kind)) throw new URError('Invalid project type.', 'validation');
+        const item = { id: uid('pf'), title: title.trim().slice(0, 80), type: kind, description: String(description || '').trim().slice(0, 400), visibility: 'public', isPublic: true, previewType: previewType || 'website', url: url.trim(), submissionId: null, createdAt: nowISO() };
         d.candidates[u.username].portfolio.unshift(item);
         audit(d, 'portfolio.add', item.id);
         return item;
@@ -879,12 +969,13 @@ function enrichJob(d, j) {
     hasTask: !!(task && task.status === 'published'), applicants: apps.filter(a => a.status !== 'in_progress' && a.status !== 'withdrawn').length, applications: apps.length };
 }
 const jobs = {
-  list({ status = 'open', companyId, q = '', category = '' } = {}) {
+  list({ status = 'open', companyId, q = '', category = '', workMode = '', experienceLevel = '', minSalary = 0 } = {}) {
     const d = load();
     return d.jobs.filter(j => (status === 'all' || j.status === status) && (!companyId || j.companyId === companyId))
       .map(j => enrichJob(d, j))
       .filter(j => status !== 'open' || (j.hasTask && j.companyVerified))
       .filter(j => !category || j.category === category)
+      .filter(j => (!workMode || j.workMode === workMode) && (!experienceLevel || j.experienceLevel === experienceLevel) && (!minSalary || (j.salary && j.salary.max >= minSalary)))
       .filter(j => !q || [j.title, j.company, ...j.skills].some(s => String(s).toLowerCase().includes(q.toLowerCase())));
   },
   get(id) {
@@ -910,6 +1001,23 @@ const jobs = {
         av.forEach(r => { const n = Number(r.minScore); if (!Number.isInteger(n) || n < 500 || n > 1000) throw new URError('Minimum verified score must be a whole number between 500 and 1000.', 'validation'); r.minScore = n; r.skill = String(r.skill).trim(); });
         j.acceptVerified = av;
       }
+      if (input.inviteOnlyTask !== undefined) {
+        if (input.inviteOnlyTask && !(j.acceptVerified || []).length) throw new URError('Invite-only assessments need at least one accepted verified score, so candidates have a way to apply first.', 'validation');
+        j.inviteOnlyTask = !!input.inviteOnlyTask;
+      }
+      if (input.workMode != null && !['Remote', 'Hybrid', 'On-site'].includes(input.workMode)) throw new URError('Choose a work mode.', 'validation');
+      if (input.experienceLevel != null && !EXPERIENCE.includes(input.experienceLevel)) throw new URError('Choose an experience level.', 'validation');
+      if (input.salary !== undefined) {
+        const s = input.salary;
+        if (s && (s.min != null || s.max != null)) {
+          const mn = Number(s.min), mx = Number(s.max);
+          if (!(mn > 0) || !(mx > 0) || mn > mx) throw new URError('Salary range needs a minimum and maximum, with minimum ≤ maximum.', 'validation');
+          j.salary = { min: mn, max: mx, unit: 'LPA' };
+        } else j.salary = null;
+      }
+      if (input.workMode) j.workMode = input.workMode;
+      if (input.experienceLevel) j.experienceLevel = input.experienceLevel;
+      if (input.responsibilities) j.responsibilities = input.responsibilities.map(x => String(x).trim()).filter(Boolean).slice(0, 15);
       Object.assign(j, { title: input.title.trim(), category: input.category, location: (input.location || '').trim(), type: input.type || 'Full-time', description: input.description.trim(), skills, requirements: reqs, deadline: input.deadline || j.deadline || null, referralSlots: Math.max(0, parseInt(input.referralSlots ?? j.referralSlots, 10) || 0), updatedAt: nowISO() });
       if (input.taskId !== undefined) {
         const t = input.taskId ? taskOf(d, input.taskId) : null;
@@ -923,7 +1031,7 @@ const jobs = {
   },
   setStatus(id, status) {
     const u = requireUser(['hr']);
-    if (!['open', 'closed', 'draft'].includes(status)) throw new URError('Invalid status.', 'validation');
+    if (!['open', 'closed', 'draft', 'paused'].includes(status)) throw new URError('Invalid status.', 'validation');
     return tx(d => {
       const j = d.jobs.find(x => x.id == id); if (!j || j.companyId !== u.orgId) throw new URError('Job not found.', 'not_found');
       if (['flagged', 'removed'].includes(j.status)) throw new URError('This job is under moderation. Contact support to restore it.', 'moderation');
@@ -941,6 +1049,11 @@ const jobs = {
     });
   },
   categories() { return [...new Set(load().jobs.map(j => j.category))].sort(); },
+  saved() { const u = me(); if (!u || u.role !== 'candidate') return []; return clone((load().savedJobs || {})[u.username] || []); },
+  toggleSave(jobId) {
+    const u = requireUser(['candidate']);
+    return tx(d => { d.savedJobs = d.savedJobs || {}; const arr = d.savedJobs[u.username] = d.savedJobs[u.username] || []; const i = arr.indexOf(+jobId); if (i >= 0) { arr.splice(i, 1); return false; } arr.push(+jobId); return true; });
+  },
 };
 const tasks = {
   list({ companyId, status, practice, mine } = {}) {
@@ -999,7 +1112,9 @@ const tasks = {
       Object.assign(t, { title: input.title.trim(), brief: input.brief.trim(), requirements: reqs, rubric: rubric.map(r => ({ criterion: String(r.criterion).trim(), points: +r.points, description: String(r.description || '').trim() })),
         skills: input.skills || t.skills || [], timeLimitMin: +input.timeLimitMin || 0, deadline: input.deadline || null, difficulty: input.difficulty || 'Intermediate', submissionTypes: input.submissionTypes || [], updatedAt: nowISO(),
         kind, estimatedHours: est || 0, aiPolicy: input.aiPolicy || 'disclose', confidential: !!input.confidential, source: input.source || t.source || 'manual', templateId: input.templateId || t.templateId || null,
-        humanReviewedBy: input.humanReviewed ? u.id : (t.humanReviewedBy || null) });
+        humanReviewedBy: input.humanReviewed ? u.id : (t.humanReviewedBy || null),
+        maxAttempts: Math.max(1, Math.min(5, parseInt(input.maxAttempts, 10) || t.maxAttempts || (kind === 'standard' ? 3 : 1))), trackFocus: !!input.trackFocus, dualReview: !!input.dualReview,
+        reviewerIds: (input.reviewerIds || t.reviewerIds || []).filter(id => d.users.some(x => x.id === id && (u.role === 'admin' ? x.role === 'admin' : x.orgId === u.orgId))) });
       if (publish) t.status = 'published';
       if (input.jobId !== undefined) {
         d.jobs.forEach(j => { if (j.taskId === t.id && j.id != input.jobId) j.taskId = null; });
@@ -1066,10 +1181,21 @@ const attempts = {
       if (!t || t.status !== 'published') throw new URError('This task is not accepting submissions.', 'closed');
       const job = t.jobId ? d.jobs.find(j => j.id === t.jobId) : null;
       if (job && job.status !== 'open') throw new URError('This job is no longer accepting applications.', 'closed');
+      if (job) {
+        const acc = taskAccessFor(d, job, u.username);
+        if (!acc.open) throw new URError(acc.reason, 'invite_only');
+      }
       if (t.deadline && new Date(t.deadline) < new Date()) throw new URError('The deadline for this task has passed.', 'closed');
       const mine = d.attempts.filter(a => a.taskId == taskId && a.candidate === u.username).sort((a, b) => new Date(b.startedAt) - new Date(a.startedAt));
       const existing = mine.find(a => a.status === 'active') || (!opts.retake && mine.find(a => a.status === 'submitted'));
       if (existing) return clone(existing);
+      if (t.kind !== 'standard') {
+        const lim = d.settings.maxActiveCompanyTasks || 2;
+        const busy = d.attempts.filter(a => a.candidate === u.username && a.status === 'active' && a.taskId != taskId && (taskOf(d, a.taskId) || {}).kind !== 'standard');
+        if (busy.length >= lim) throw new URError(`You already have ${busy.length} company tasks in progress. Submit one before starting another — this keeps unpaid assessment work manageable.`, 'workload');
+      }
+      const used = mine.filter(a => ['submitted', 'expired'].includes(a.status)).length;
+      if (t.maxAttempts && used >= t.maxAttempts) throw new URError(`You've used all ${t.maxAttempts} attempt${t.maxAttempts > 1 ? 's' : ''} for this task.`, 'max_attempts');
       if (d.attempts.some(a => a.taskId == taskId && a.candidate === u.username && a.status === 'expired') && job)
         throw new URError('Your attempt for this job task expired. Each job task can be attempted once.', 'expired');
       const startedAt = nowISO();
@@ -1092,8 +1218,47 @@ const attempts = {
       return clone(a);
     });
   },
+  // Only recorded when the task explicitly enables (and discloses) tab tracking.
   recordFocusLoss(attemptId) {
-    try { tx(d => { const a = d.attempts.find(x => x.id === attemptId); if (a && a.status === 'active') a.focusLosses++; }); } catch (e) {}
+    try { tx(d => { const a = d.attempts.find(x => x.id === attemptId); const t = a && taskOf(d, a.taskId); if (a && a.status === 'active' && t && t.trackFocus) a.focusLosses++; }); } catch (e) {}
+  },
+  // Autosave of text fields while working (files can't be persisted in the browser).
+  saveDraft(attemptId, draft) {
+    const u = requireUser(['candidate']);
+    tx(d => { const a = d.attempts.find(x => x.id === attemptId && x.candidate === u.username); if (!a || a.status !== 'active') throw new URError('Attempt is not active.', 'state'); a.draft = { ...(a.draft || {}), ...draft, savedAt: nowISO() }; });
+  },
+  // Accommodations: candidate asks for more time; the task owner (or admin for standard tasks) decides.
+  requestExtension(attemptId, minutes, reason) {
+    const u = requireUser(['candidate']);
+    if (String(reason || '').trim().length < 10) throw new URError('Briefly explain why you need more time (10+ characters).', 'validation');
+    return tx(d => {
+      const a = d.attempts.find(x => x.id === attemptId && x.candidate === u.username); if (!a || a.status !== 'active') throw new URError('Attempt is not active.', 'state');
+      if (d.extensions.some(e => e.attemptId === attemptId && e.status === 'pending')) throw new URError('You already have a pending request.', 'duplicate');
+      const t = taskOf(d, a.taskId), maxMin = Math.round((t.timeLimitMin || 0) * d.settings.maxExtensionPct / 100);
+      const m = Math.round(Number(minutes));
+      if (!(m > 0) || m > maxMin) throw new URError(`Request between 1 and ${maxMin} minutes.`, 'validation');
+      const ex = { id: uid('ext'), attemptId, taskId: t.id, candidate: u.username, minutes: m, reason: reason.trim(), status: 'pending', createdAt: nowISO() };
+      d.extensions.push(ex);
+      notify(d, t.companyId ? orgMembers(d, t.companyId, ['hr', 'interviewer']) : admins(d), 'review', `Time extension request from ${d.candidates[u.username].name} (${t.title})`, 'interviewer-dashboard.html?tab=extensions');
+      return clone(ex);
+    });
+  },
+  extensions({ status = 'pending' } = {}) {
+    const u = requireUser(['hr', 'interviewer', 'admin', 'candidate']); const d = load();
+    return d.extensions.filter(e => { const t = taskOf(d, e.taskId) || {}; return (!status || e.status === status) && (u.role === 'candidate' ? e.candidate === u.username : u.role === 'admin' ? !t.companyId : t.companyId === u.orgId); })
+      .map(e => ({ ...clone(e), candidateName: (d.candidates[e.candidate] || {}).name, taskTitle: (taskOf(d, e.taskId) || {}).title }));
+  },
+  decideExtension(id, approve, note = '') {
+    const u = requireUser(['hr', 'interviewer', 'admin']);
+    tx(d => {
+      const e = d.extensions.find(x => x.id === id); if (!e || e.status !== 'pending') throw new URError('Request not found or already decided.', 'state');
+      const t = taskOf(d, e.taskId); if (u.role !== 'admin' && t.companyId !== u.orgId) throw new URError('Not your task.', 'forbidden');
+      const a = d.attempts.find(x => x.id === e.attemptId);
+      e.status = approve ? 'approved' : 'declined'; e.note = note; e.decidedBy = u.id; e.decidedAt = nowISO();
+      if (approve && a && a.status === 'active' && a.deadlineAt) a.deadlineAt = new Date(new Date(a.deadlineAt).getTime() + e.minutes * MIN).toISOString();
+      notify(d, candUserId(d, e.candidate), 'submission', approve ? `You got ${e.minutes} more minutes for ${t.title}` : `Your time extension for ${t.title} was declined${note ? ': ' + note : ''}`, `task-workplace.html?id=${t.id}`);
+      audit(d, approve ? 'extension.approve' : 'extension.decline', id, note);
+    });
   },
 };
 
@@ -1116,10 +1281,10 @@ function integrityCheck(d, s) {
   const sh = shingles(s.note);
   if (sh.size >= 8) others.forEach(o => { const j = jaccard(sh, shingles(o.note)); if (j >= set.similarityThreshold) flags.push({ type: 'similar_text', severity: 'medium', detail: `Submission notes are ${Math.round(j * 100)}% similar to ${o.id}.`, relatedId: o.id }); });
   if (t && t.timeLimitMin >= 60 && s.durationMin < t.timeLimitMin * set.fastCompletionPct / 100) flags.push({ type: 'fast_completion', severity: 'low', detail: `Submitted in ${s.durationMin} min of a ${fmtDuration(t.timeLimitMin)} limit (${Math.round(s.durationMin / t.timeLimitMin * 100)}%).` });
-  if (s.focusLosses >= set.focusLossThreshold) flags.push({ type: 'focus_loss', severity: 'low', detail: `Left the assessment tab ${s.focusLosses} times.` });
+  if (t && t.trackFocus && s.focusLosses >= set.focusLossThreshold) flags.push({ type: 'focus_loss', severity: 'low', detail: `Left the assessment tab ${s.focusLosses} times.` });
   return flags;
 }
-const INTEGRITY_LABEL = { reviewer_concern: 'Reviewer concern', duplicate_file: 'Duplicate file', duplicate_url: 'Duplicate URL', similar_text: 'Similar text', fast_completion: 'Unusually fast', focus_loss: 'Left tab often' };
+const INTEGRITY_LABEL = { review_gap: 'Reviewer disagreement', reviewer_concern: 'Reviewer concern', duplicate_file: 'Duplicate file', duplicate_url: 'Duplicate URL', similar_text: 'Similar text', fast_completion: 'Unusually fast', focus_loss: 'Left tab often' };
 
 function enrichSub(d, s, viewer) {
   const t = taskOf(d, s.taskId) || {};
@@ -1134,10 +1299,12 @@ function enrichSub(d, s, viewer) {
     companyName: t.companyId ? (d.companies.find(co => co.id === t.companyId) || {}).name : 'Unresume Practice' };
   // candidates never see raw integrity flags of other candidates; reviewers see all
   if (viewer && viewer.role === 'candidate') out.integrity = { flagged: s.integrity.flags.length > 0, cleared: !!s.integrity.clearedAt };
+  // Dual review stays blind: pending first-review scores are only visible to admins.
+  if (s.reviews && !(viewer && viewer.role === 'admin')) out.reviews = s.status === 'pending' ? s.reviews.map(r => ({ reviewerId: r.reviewerId })) : undefined;
   return out;
 }
 const submissions = {
-  async submit({ attemptId, files, note = '', isPublic = true, visibility, outputUrl = '', aiDisclosure = '', aiConfirm = false }) {
+  async submit({ attemptId, files, note = '', isPublic = true, visibility, outputUrl = '', aiDisclosure = '', aiConfirm = false, links = {} }) {
     const u = requireUser(['candidate']);
     const d0 = load(), a0 = d0.attempts.find(x => x.id === attemptId);
     if (!a0 || a0.candidate !== u.username) throw new URError('Assessment session not found. Reload the page and try again.', 'not_found');
@@ -1167,7 +1334,7 @@ const submissions = {
       if (a.status !== 'active') throw new URError(a.status === 'submitted' ? 'You have already submitted this task.' : 'This attempt has expired.', 'state');
       const t = taskOf(d, a.taskId);
       const s = { id: uid('sub'), taskId: a.taskId, attemptId: a.id, candidate: u.username, submittedAt: nowISO(), durationMin: Math.max(1, Math.round((Date.now() - new Date(a.startedAt)) / MIN)),
-        status: 'pending', note: String(note).slice(0, 2000), isPublic: visibility === 'public', visibility, aiPolicy: policy, aiDisclosure: String(aiDisclosure || '').trim().slice(0, 1000), outputUrl: String(outputUrl || '').trim(), files: meta, focusLosses: a.focusLosses, integrity: { flags: [], checkedAt: nowISO() } };
+        status: 'pending', note: String(note).slice(0, 2000), isPublic: visibility === 'public', visibility, aiPolicy: policy, aiDisclosure: String(aiDisclosure || '').trim().slice(0, 1000), links: Object.fromEntries(Object.entries(links || {}).filter(([k, v]) => ['repo', 'design'].includes(k) && /^https?:\/\/\S+\.\S+/.test(String(v || '').trim())).map(([k, v]) => [k, String(v).trim()])), outputUrl: String(outputUrl || '').trim(), files: meta, focusLosses: a.focusLosses, integrity: { flags: [], checkedAt: nowISO() } };
       s.integrity.flags = integrityCheck(d, s);
       // flag the matching earlier submissions too
       s.integrity.flags.filter(f => f.relatedId).forEach(f => { const o = d.submissions.find(x => x.id === f.relatedId); if (o && !o.integrity.flags.some(g => g.relatedId === s.id)) o.integrity.flags.push({ type: f.type, severity: f.severity, detail: `Matches a later submission (${s.id}).`, relatedId: s.id }); });
@@ -1214,7 +1381,7 @@ const submissions = {
       return true;
     }).sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt)).map(s => enrichSub(d, s, u));
   },
-  score(id, { breakdown, feedback, suggestions = [], authenticity = 'not_checked', authenticityNote = '' }) {
+  score(id, { breakdown, feedback, suggestions = [], authenticity = 'not_checked', authenticityNote = '', strengths = '', weaknesses = '', recommendation = '' }) {
     const u = requireUser(['hr', 'interviewer', 'admin']);
     return tx(d => {
       const s = d.submissions.find(x => x.id === id); if (!s) throw new URError('Submission not found.', 'not_found');
@@ -1234,18 +1401,53 @@ const submissions = {
       const prevTotal = s.score ? s.score.total : null;
       if (!['not_checked', 'verified', 'walkthrough', 'concern'].includes(authenticity)) throw new URError('Invalid authenticity status.', 'validation');
       if (authenticity === 'concern' && String(authenticityNote).trim().length < 10) throw new URError('Describe the authenticity concern (10+ characters). It is sent to Unresume moderators, not used to auto-penalise.', 'validation');
-      s.score = { total, breakdown: bd, feedback: feedback.trim(), suggestions: suggestions.map(x => x.trim()).filter(Boolean), reviewerId: u.id, scoredAt: nowISO(), authenticity, authenticityNote: String(authenticityNote).trim() };
-      (s.reviewLog = s.reviewLog || []).push({ at: nowISO(), by: u.id, action: 'scored', total, authenticity });
+      if (recommendation && !['strong_yes', 'yes', 'no'].includes(recommendation)) throw new URError('Invalid recommendation.', 'validation');
+      const review = { total, breakdown: bd, feedback: feedback.trim(), suggestions: suggestions.map(x => x.trim()).filter(Boolean), reviewerId: u.id, scoredAt: nowISO(), authenticity, authenticityNote: String(authenticityNote).trim(),
+        strengths: String(strengths).trim().slice(0, 1000), weaknesses: String(weaknesses).trim().slice(0, 1000), recommendation: recommendation || null };
+      // Dual review: the first review is held until an independent second reviewer scores.
+      if (t.dualReview && !s.score) {
+        s.reviews = s.reviews || [];
+        if (s.reviews.some(r => r.reviewerId === u.id)) throw new URError('This task needs an independent second reviewer — a different team member must score it.', 'dual_review');
+        s.reviews.push(clone(review)); // keep each reviewer's own record untouched
+        if (s.reviews.length < 2) {
+          (s.reviewLog = s.reviewLog || []).push({ at: nowISO(), by: u.id, action: 'first_review', total });
+          notify(d, (t.companyId ? orgMembers(d, t.companyId, ['hr', 'interviewer']) : admins(d)).filter(x => x !== u.id), 'review', `Second review needed: ${d.candidates[s.candidate].name} · ${t.title}`, `interviewer-dashboard.html?sub=${s.id}`);
+          audit(d, 'submission.first_review', s.id, String(total));
+          return clone(s);
+        }
+        const [r1, r2] = s.reviews;
+        const avg = Math.round((r1.total + r2.total) / 2);
+        review.total = avg;
+        review.breakdown = r1.breakdown.map((b, i) => ({ ...b, awarded: Math.round((b.awarded + r2.breakdown[i].awarded) / 2), comment: [b.comment, r2.breakdown[i].comment].filter(Boolean).join(' / ') }));
+        review.feedback = r2.feedback + (r1.feedback && r1.feedback !== r2.feedback ? '\n\nFirst reviewer: ' + r1.feedback : '');
+        review.suggestions = [...new Set([...r1.suggestions, ...r2.suggestions])];
+        review.dual = { totals: [r1.total, r2.total], reviewers: [r1.reviewerId, r2.reviewerId], gap: Math.abs(r1.total - r2.total) };
+        if (review.dual.gap > d.settings.dualReviewGap) { s.integrity.flags.push({ type: 'review_gap', severity: 'medium', detail: `Reviewers differed by ${review.dual.gap} points (${r1.total} vs ${r2.total}). Score is the average; please check.` }); delete s.integrity.clearedAt; notify(d, admins(d), 'integrity', `Dual review disagreement on ${t.title}`, 'admin-moderation.html?tab=integrity'); }
+      }
+      s.score = review;
+      const total2 = review.total;
+      (s.reviewLog = s.reviewLog || []).push({ at: nowISO(), by: u.id, action: 'scored', total: total2, authenticity });
       if (authenticity === 'concern') { s.integrity.flags.push({ type: 'reviewer_concern', severity: 'medium', detail: 'Reviewer concern: ' + String(authenticityNote).trim() }); delete s.integrity.clearedAt; notify(d, admins(d), 'integrity', `Reviewer raised an authenticity concern on ${t.title}`, 'admin-moderation.html?tab=integrity'); }
       s.status = 'scored';
       const cUid = candUserId(d, s.candidate);
       const app = d.applications.find(a => a.submissionId === s.id);
-      if (app && ['submitted', 'in_progress'].includes(app.status)) { app.status = 'scored'; app.updatedAt = nowISO(); app.history.push({ status: 'scored', at: nowISO(), by: u.id, note: `Verified score ${total}/100` }); }
-      notify(d, cUid, 'score', `Your "${t.title}" was scored ${total}/100`, `assessments.html?id=${s.id}`);
-      if (app && app.referredBy) notify(d, orgMembers(d, app.referredBy, ['academy']), 'referral', `${d.candidates[s.candidate].name} scored ${total}/100 on ${t.title}`, 'academy-reports.html');
-      if (prevTotal == null) feed(d, s.candidate, 'score', `earned a verified ${total}/100 on ${t.title}`, `candidate-profile.html?u=${s.candidate}`, { score: total });
-      audit(d, prevTotal == null ? 'submission.score' : 'submission.rescore', s.id, `${prevTotal ?? '—'} → ${total}`);
+      if (app && ['submitted', 'in_progress', 'under_review'].includes(app.status)) { app.status = 'scored'; app.updatedAt = nowISO(); app.history.push({ status: 'scored', at: nowISO(), by: u.id, note: `Verified score ${total2}/100` }); }
+      notify(d, cUid, 'score', `Your "${t.title}" was scored ${total2}/100`, `assessments.html?id=${s.id}`);
+      if (app && app.referredBy) notify(d, orgMembers(d, app.referredBy, ['academy']), 'referral', `${d.candidates[s.candidate].name} scored ${total2}/100 on ${t.title}`, 'academy-reports.html');
+      if (prevTotal == null) feed(d, s.candidate, 'score', `earned a verified ${total2}/100 on ${t.title}`, `candidate-profile.html?u=${s.candidate}`, { score: total2 });
+      audit(d, prevTotal == null ? 'submission.score' : 'submission.rescore', s.id, `${prevTotal ?? '—'} → ${total2}`);
       return clone(s);
+    });
+  },
+  // Reviewer opened the submission: candidate sees "Under review".
+  markInReview(id) {
+    const u = me(); if (!u || !['hr', 'interviewer', 'admin'].includes(u.role)) return;
+    const d0 = load(), s0 = d0.submissions.find(x => x.id === id); if (!s0 || s0.status !== 'pending' || s0.reviewStartedAt) return;
+    const t0 = taskOf(d0, s0.taskId); if (u.role !== 'admin' && t0.companyId !== u.orgId) return;
+    tx(d => {
+      const s = d.submissions.find(x => x.id === id); s.reviewStartedAt = nowISO(); s.reviewStartedBy = u.id;
+      const app = d.applications.find(a => a.submissionId === id);
+      if (app && app.status === 'submitted') { app.status = 'under_review'; app.updatedAt = nowISO(); app.history.push({ status: 'under_review', at: nowISO(), by: u.id, note: '' }); notify(d, candUserId(d, s.candidate), 'application', `Your ${taskOf(d, s.taskId).title} is now being reviewed`, 'my-applications.html'); }
     });
   },
   clearIntegrity(id, note) {
@@ -1270,7 +1472,7 @@ const submissions = {
 
 /* ═══ applications & interviews ═══════════════════════════════════════════ */
 const ALLOWED_MOVES = {
-  scored: ['shortlisted', 'rejected'], submitted: ['rejected'], shortlisted: ['interview', 'offer', 'rejected', 'scored'],
+  scored: ['shortlisted', 'rejected'], submitted: ['rejected'], under_review: ['rejected'], shortlisted: ['interview', 'offer', 'rejected', 'scored'],
   interview: ['offer', 'rejected', 'shortlisted'], offer: ['hired', 'rejected', 'interview'], hired: [], rejected: ['shortlisted'],
 };
 function enrichApp(d, a) {
@@ -1553,7 +1755,8 @@ function convView(d, c, u) {
   const org = other.orgId ? (d.companies.find(x => x.id === other.orgId) || d.academies.find(x => x.id === other.orgId)) : null;
   const roleLabel = other.role === 'candidate' ? 'Candidate' : `${ROLES[other.role] ? ROLES[other.role].label : ''}${org ? ' · ' + org.name : ''}`;
   const blockedByThem = !!(c.meta && c.meta[otherId] && c.meta[otherId].blocked);
-  return { id: c.id, otherId, otherName: other.name, otherRole: other.role, otherUsername: other.username || null, roleLabel, messages: clone(msgs), pinned: !!meta.pinned, muted: !!meta.muted, blocked: !!meta.blocked, blockedByThem,
+  const otherReadAt = c.readAt && c.readAt[otherId] ? c.readAt[otherId] : null;
+  return { id: c.id, otherReadAt, otherId, otherName: other.name, otherRole: other.role, otherUsername: other.username || null, roleLabel, messages: clone(msgs), pinned: !!meta.pinned, muted: !!meta.muted, blocked: !!meta.blocked, blockedByThem,
     unread: msgs.filter(m => m.from !== u.id && new Date(m.at) > readAt).length + (meta.markedUnread ? 1 : 0), lastAt: msgs.length ? msgs[msgs.length - 1].at : c.createdAt };
 }
 function canMessage(d, from, to) {
@@ -1891,11 +2094,27 @@ const feedApi = {
 
 /* ═══ certificates (public verification) ══════════════════════════════════ */
 const certificates = {
+  // Returns { status: valid | expired | revoked, ...trace } or null when the ID doesn't exist.
+  // Only the minimum personal data is exposed: name, task, score, issuer, dates.
   verify(certId) {
     const d = load(), id = String(certId || '').trim().toUpperCase();
+    const validity = (d.settings.certificateValidityMonths || 36) * 30.4 * DAY;
     for (const c of Object.values(d.candidates)) {
-      const cert = computeStats(d, c.username).certificates.find(x => x.id === id);
-      if (cert) return { ...cert, candidateName: c.name, username: c.privacy.profileVisibility === 'public' ? c.username : null, issuer: cert.companyId ? (d.companies.find(x => x.id === cert.companyId) || {}).name : 'Unresume', voided: false };
+      const st = computeStats(d, c.username);
+      const cert = st.certificates.find(x => x.id === id);
+      const trace = r => {
+        const s = r.submissionId && d.submissions.find(x => x.id === r.submissionId), t = s && taskOf(d, s.taskId);
+        const reviewer = s && s.score && d.users.find(u => u.id === s.score.reviewerId);
+        return { assessmentId: t ? `T-${t.id}` : 'imported', submissionId: s ? s.id : null, reviewer: reviewer ? reviewer.name : (s ? 'Reviewer' : 'Partner company reviewer'), rubric: t ? t.rubric.map(x => `${x.criterion} (${x.points})`) : [], difficulty: t ? t.difficulty : r.difficulty, dualReviewed: !!(s && s.score && s.score.dual) };
+      };
+      if (cert) {
+        const r = st.results.find(x => x.submissionId === cert.submissionId || ('UR-' + fnv32(c.username + '|' + x.id, 0x811c9dc5).toUpperCase()) === id) || {};
+        const expired = Date.now() - new Date(cert.date) > validity;
+        return { ...cert, status: expired ? 'expired' : 'valid', candidateName: c.name, username: c.privacy.profileVisibility === 'public' ? c.username : null, issuer: cert.companyId ? (d.companies.find(x => x.id === cert.companyId) || {}).name : 'Unresume', ...trace(r) };
+      }
+      // revoked: the certificate's submission was voided by moderation
+      const voided = d.submissions.find(s => s.candidate === c.username && s.status === 'void' && s.score && ('UR-' + fnv32(c.username + '|' + s.id, 0x811c9dc5).toUpperCase()) === id);
+      if (voided) { const t = taskOf(d, voided.taskId); return { id, status: 'revoked', title: t.title, candidateName: c.name, score: voided.score.total, date: voided.score.scoredAt, revokedAt: voided.voidedAt, issuer: t.companyId ? (d.companies.find(x => x.id === t.companyId) || {}).name : 'Unresume' }; }
     }
     return null;
   },
@@ -1918,10 +2137,41 @@ function eligibilityFor(d, job, username) {
   const st = computeStats(d, username);
   const minN = d.settings.badgeMinTasks;
   const rows = reqs.map(r => { const sk = st.skills.find(x => x.skill === r.skill); return { skill: r.skill, minScore: r.minScore, score: sk ? sk.score : null, tasks: sk ? sk.count : 0, met: !!sk && sk.count >= minN && sk.score >= r.minScore }; });
-  return { offered: true, met: rows.every(r => r.met), rows, minTasks: minN };
+  return { offered: true, met: rows.every(r => r.met), rows, minTasks: minN, qualify: qualifyPaths(d, rows.filter(r => !r.met).map(r => r.skill)) };
 }
+// Reusable standard assessments that build the verified score a job asks for.
+function qualifyPaths(d, skills) {
+  if (!skills.length) return [];
+  return d.tasks.filter(t => t.kind === 'standard' && !t.jobId && t.status === 'published' && (t.skills || []).some(s => skills.includes(s)))
+    .map(t => ({ id: t.id, title: t.title, skills: (t.skills || []).filter(s => skills.includes(s)), estimatedHours: t.estimatedHours, difficulty: t.difficulty })).slice(0, 4);
+}
+// Staged hiring: when a job's task is invite-only, candidates enter with verified scores and
+// the company unlocks the longer assessment only for applicants it is seriously considering.
+function taskAccessFor(d, job, username) {
+  if (!job.inviteOnlyTask) return { open: true, via: 'open' };
+  const app = username && d.applications.find(a => a.jobId === job.id && a.candidate === username && a.status !== 'withdrawn');
+  if (app && app.taskRequested) return { open: true, via: 'requested' };
+  if (app && (app.status === 'in_progress' || PIPELINE.includes(app.status))) return { open: true, via: 'shortlisted' };
+  if (username && (d.jobInvites || []).some(i => i.jobId === job.id && i.username === username)) return { open: true, via: 'invited' };
+  return { open: false, via: null, reason: app ? 'The company will invite you to this assessment if your application moves forward.' : 'This company assessment is by invitation. Apply with your verified scores first.' };
+}
+/* Candidate workload: how much unpaid assessment time is in flight. */
+const workload = {
+  mine() {
+    const u = me(); if (!u || u.role !== 'candidate') return null;
+    const d = load(); expireStale(d);
+    const mineA = d.attempts.filter(a => a.candidate === u.username);
+    const active = mineA.filter(a => a.status === 'active').map(a => { const t = taskOf(d, a.taskId) || {}; return { taskId: a.taskId, title: t.title, kind: t.kind, hours: t.estimatedHours || 0, deadlineAt: a.deadlineAt }; });
+    const since = Date.now() - 30 * DAY;
+    const recent = mineA.filter(a => new Date(a.startedAt) > since).map(a => taskOf(d, a.taskId) || {});
+    return { active, activeHours: active.reduce((s, a) => s + a.hours, 0), activeCompany: active.filter(a => a.kind !== 'standard').length,
+      limit: d.settings.maxActiveCompanyTasks || 2, last30Hours: recent.reduce((s, t) => s + (t.estimatedHours || 0), 0), last30Tasks: recent.length,
+      verifiedApplies: d.applications.filter(a => a.candidate === u.username && a.route === 'verified_score').length };
+  },
+};
 const verifiedApply = {
   eligibility(jobId) { const d = load(), u = me(), j = d.jobs.find(x => x.id == jobId); if (!j) return null; return eligibilityFor(d, j, u && u.role === 'candidate' ? u.username : null); },
+  taskAccess(jobId) { const d = load(), u = me(), j = d.jobs.find(x => x.id == jobId); if (!j) return null; return taskAccessFor(d, j, u && u.role === 'candidate' ? u.username : null); },
   apply(jobId, note = '') {
     const u = requireUser(['candidate']);
     return tx(d => {
@@ -2072,6 +2322,38 @@ const jobInvites = {
   forJob(jobId) { return clone((load().jobInvites || []).filter(i => i.jobId == jobId)); },
 };
 
+/* ═══ Reviewer calibration: how each reviewer scores vs others on the same tasks ═ */
+function calibration(d) {
+  const scored = d.submissions.filter(hasScore);
+  const taskMean = {}; scored.forEach(s => { (taskMean[s.taskId] = taskMean[s.taskId] || []).push(s.score.total); });
+  Object.keys(taskMean).forEach(k => { const a = taskMean[k]; taskMean[k] = { mean: a.reduce((x, y) => x + y, 0) / a.length, n: a.length }; });
+  const byRev = {};
+  scored.forEach(s => { const r = s.score.reviewerId; (byRev[r] = byRev[r] || []).push({ total: s.score.total, delta: taskMean[s.taskId].n > 1 ? s.score.total - taskMean[s.taskId].mean : null }); });
+  return Object.entries(byRev).map(([id, arr]) => {
+    const u = d.users.find(x => x.id === id) || {}, org = u.orgId ? (d.companies.find(c => c.id === u.orgId) || {}).name : 'Unresume';
+    const deltas = arr.map(a => a.delta).filter(x => x != null);
+    return { reviewerId: id, name: u.name || id, org, reviews: arr.length, avgGiven: Math.round(arr.reduce((a, b) => a + b.total, 0) / arr.length * 10) / 10, avgDelta: deltas.length ? Math.round(deltas.reduce((a, b) => a + b, 0) / deltas.length * 10) / 10 : null, comparable: deltas.length };
+  }).sort((a, b) => Math.abs(b.avgDelta || 0) - Math.abs(a.avgDelta || 0));
+}
+
+/* ═══ Reminder "scheduler" (runs on page load for candidates; a cron/queue job in production) ═ */
+function reminderTick() {
+  const u = me(); if (!u || u.role !== 'candidate') return;
+  const d = load(), c = d.candidates[u.username]; if (!c) return;
+  const seen = (d.reminders || {})[u.id] || { deadlines: {}, jobs: {} };
+  const dueSoon = d.attempts.filter(a => a.candidate === u.username && a.status === 'active' && a.deadlineAt && !seen.deadlines[a.id] && new Date(a.deadlineAt) - Date.now() < DAY && new Date(a.deadlineAt) > Date.now());
+  const applied = new Set(d.applications.filter(a => a.candidate === u.username).map(a => a.jobId));
+  const recs = d.jobs.filter(j => j.status === 'open' && !applied.has(j.id) && !seen.jobs[j.id] && j.skills.some(s => c.skills.includes(s)) && new Date(j.createdAt) > new Date(Date.now() - 14 * DAY)).slice(0, 3);
+  if (!dueSoon.length && !recs.length) return;
+  try {
+    tx(dd => {
+      dd.reminders = dd.reminders || {}; const r = dd.reminders[u.id] = dd.reminders[u.id] || { deadlines: {}, jobs: {} };
+      dueSoon.forEach(a => { r.deadlines[a.id] = true; const t = taskOf(dd, a.taskId); notify(dd, u.id, 'submission', `Less than 24 hours left on ${t.title}`, `task-workplace.html?id=${t.id}`); });
+      recs.forEach(j => { r.jobs[j.id] = true; const co = dd.companies.find(x => x.id === j.companyId) || {}; notify(dd, u.id, 'application', `Recommended for you: ${j.title} at ${co.name} (matches your skills)`, `job-detail.html?id=${j.id}`); });
+    });
+  } catch (e) {}
+}
+
 /* ═══ Product metrics (computed from stored activity — never fabricated) ═ */
 function productMetrics(d) {
   const pct = (a, b) => b ? Math.round(a / b * 100) : null;
@@ -2108,7 +2390,8 @@ function productMetrics(d) {
 global.UR = {
   VERSION, URError, APP_STATUS, APP_FLOW, PIPELINE, SUB_STATUS, INTERVIEW_STATUS, TIERS, ROLES, INTEGRITY_LABEL,
   fmtDuration, tierFor, uid, TRACKS, trackOf, ASSESSMENT_KINDS, AI_POLICY, EXPERIENCE,
-  verifiedApply, affiliation, feedback: feedbackApi, library, jobInvites, metrics: () => productMetrics(load()),
+  verifiedApply, affiliation, feedback: feedbackApi, library, jobInvites, workload, metrics: () => productMetrics(load()),
+  calibration: () => { requireUser(['admin']); return calibration(load()); }, reminderTick,
   auth, candidates, companies, academies, jobs, tasks, attempts, submissions, applications, interviews,
   disputes, reports, contact, verifications, notifications, messages, academy, team, analytics, admin,
   feed: feedApi, certificates, exportMine,

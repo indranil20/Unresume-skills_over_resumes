@@ -98,15 +98,12 @@
     <div class="lb-filter" id="trackTabs" role="tablist" aria-label="Skill track"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:6px">
       <select id="skillSel" class="tc-select" aria-label="Skill within track" style="width:auto;padding:9px 12px;font-size:13px;font-weight:600"></select>
+      <input id="lbSearch" type="search" placeholder="Search candidates" aria-label="Search candidates" style="padding:9px 12px;border:1px solid var(--border-light);border-radius:12px;font-size:13px;font-family:var(--font-body);width:200px">
       <select id="expSel" class="tc-select" aria-label="Experience level" style="width:auto;padding:9px 12px;font-size:13px;font-weight:600"><option value="">All experience levels</option><option>Entry</option><option>Mid</option><option>Senior</option></select>
     </div>
   </div>
 
   <div class="lb-wrap">
-    <details class="how" id="how" style="margin-bottom:28px">
-      <summary><span class="material-symbols-rounded" style="color:var(--brand)">calculate</span>How leaderboard scores are calculated</summary>
-      <ul id="howList"></ul>
-    </details>
     <div class="podium" id="podium"></div>
     <div class="lb-table">
       <div class="lb-head">
@@ -114,6 +111,11 @@
       </div>
       <div id="lbBody"></div>
     </div>
+    <nav id="lbPager" style="display:flex;gap:6px;justify-content:center;margin-top:18px;flex-wrap:wrap" aria-label="Pagination"></nav>
+    <details class="how" id="how" style="margin-top:28px">
+      <summary><span class="material-symbols-rounded" style="color:var(--brand)">calculate</span>How leaderboard scores are calculated</summary>
+      <ul id="howList"></ul>
+    </details>
   </div>
 </div>
 
@@ -132,7 +134,8 @@ const medal = [
 ];
 const me = UR.user();
 const myStats = me && me.role === 'candidate' ? UR.candidates.stats(me.username) : null;
-let track = UI.param('track') || (myStats && myStats.primaryTrack) || 'frontend', skill = UI.param('skill') || '', exp = '';
+let track = UI.param('track') || (myStats && myStats.primaryTrack) || 'frontend', skill = UI.param('skill') || '', exp = '', q = '', page = 1;
+const PER = 20;
 const w = s.difficultyWeights;
 document.getElementById('howList').innerHTML = [
   `<b>Verified task score (0–100)</b> — a company or Unresume reviewer scores the submission against the task's published 100-point rubric.`,
@@ -151,16 +154,22 @@ function renderControls() {
   const tr = tracks.find(x => x.key === track);
   document.getElementById('skillSel').innerHTML = `<option value="">All ${esc(tr.label)} skills</option>` + tr.skills.map(k => `<option ${k === skill ? 'selected' : ''}>${esc(k)}</option>`).join('');
 }
-function setTrack(k) { track = k; skill = ''; renderControls(); render(); }
+function setTrack(k) { track = k; skill = ''; page = 1; renderControls(); render(); }
+document.getElementById('lbSearch').addEventListener('input', UI.debounce(e => { q = e.target.value.trim().toLowerCase(); page = 1; render(); }, 150));
+function goPage(p) { page = p; render(); }
 document.getElementById('skillSel').addEventListener('change', e => { skill = e.target.value; render(); });
 document.getElementById('expSel').addEventListener('change', e => { exp = e.target.value; render(); });
 
 function render() {
-  const rows = UR.candidates.leaderboard({ track, skill: skill || undefined, experience: exp || undefined });
+  const all = UR.candidates.leaderboard({ track, skill: skill || undefined, experience: exp || undefined });
+  const filtered = q ? all.filter(r => r.username && (r.name.toLowerCase().includes(q) || r.username.includes(q))) : all;
+  const pages = Math.max(1, Math.ceil(filtered.length / PER)); if (page > pages) page = pages;
+  const rows = filtered.slice((page - 1) * PER, page * PER);
+  document.getElementById('lbPager').innerHTML = pages > 1 ? Array.from({ length: pages }, (_, i) => `<button class="lb-tab ${i + 1 === page ? 'active' : ''}" onclick="goPage(${i + 1})" aria-label="Page ${i + 1}">${i + 1}</button>`).join('') : '';
   const tr = tracks.find(x => x.key === track);
   document.getElementById('scoreHead').textContent = skill ? `${skill} score` : `${tr.label} score`;
   const maxScore = rows.length ? rows[0].score : 1;
-  const top3 = rows.slice(0, 3);
+  const top3 = page === 1 && !q ? rows.slice(0, 3) : [];
   const order = top3.length === 3 ? [1, 0, 2] : top3.length === 2 ? [0, 1] : [0];
   const podium = document.getElementById('podium');
   podium.className = 'podium count-' + top3.length;

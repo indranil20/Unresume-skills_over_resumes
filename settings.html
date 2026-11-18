@@ -61,6 +61,7 @@ function render() {
     html += `
   <section class="st-card" aria-labelledby="h-priv"><h2 class="sec-title" id="h-priv"><span class="sec-icon tint-teal">${UI.icon('shield_person', 19, true)}</span>Privacy</h2>
     <div class="opt-row" style="flex-wrap:wrap"><div class="l-main"><b>Profile visibility</b><div>Who can open your profile and portfolio.</div></div>${radio('vis', p.profileVisibility, [['public', 'Everyone'], ['companies', 'Signed-in companies & academies'], ['private', 'Only me']])}</div>
+    <div class="opt-row"><div class="l-main"><b>Feature me on the homepage</b><div>Opt in to appear in "Featured candidates" (name, headline, track score). Requires a public profile.</div></div>${toggle('tFeat', !!cand.featured, 'Feature me on the homepage')}</div>
     <div class="opt-row"><div class="l-main"><b>Appear on leaderboards</b><div>When off you are left out of every track and skill leaderboard. Your scores still exist and companies you apply to still see them.</div></div>${toggle('tLb', p.leaderboard !== false, 'Appear on leaderboards')}</div>
     <div class="opt-row" style="flex-wrap:wrap"><div class="l-main"><b>Experience level</b><div>Used for the leaderboard experience filter so you're compared with peers.</div></div>${radio('exp', cand.experience || 'Entry', [['Entry', 'Entry'], ['Mid', 'Mid'], ['Senior', 'Senior']])}</div>
     <div class="opt-row"><div class="l-main"><b>Show my scores publicly</b><div>When off, your Skill Score and task scores are hidden from others and you appear as "Anonymous" on the leaderboard. Companies you apply to still see the score for that application.</div></div>${toggle('tShow', p.showScores, 'Show scores')}</div>
@@ -119,7 +120,7 @@ async function leaveAff() {
   if (r.ok) UI.run(() => UR.affiliation.leave(r.value || ''), 'You left the academy').then(render).catch(() => {});
 }function savePrivacy() {
   const q = n => (document.querySelector(`input[name=${n}]:checked`) || {}).value;
-  UI.run(() => UR.candidates.updateProfile({ experience: q('exp'), privacy: { profileVisibility: q('vis'), allowMessages: q('msg'), showScores: $('tShow').classList.contains('on'), leaderboard: $('tLb').classList.contains('on') } }), 'Privacy settings saved').catch(() => {});
+  UI.run(() => UR.candidates.updateProfile({ featured: $('tFeat').classList.contains('on'), experience: q('exp'), privacy: { profileVisibility: q('vis'), allowMessages: q('msg'), showScores: $('tShow').classList.contains('on'), leaderboard: $('tLb').classList.contains('on') } }), 'Privacy settings saved').catch(() => {});
 }
 function saveNotif() { const p = {}; ['applications', 'interviews', 'scores', 'messages'].forEach(k => p[k] = $('n-' + k).classList.contains('on')); UI.run(() => UR.candidates.updateProfile({ notifyPrefs: p }), 'Notification settings saved').catch(() => {}); }
 function requestId() {

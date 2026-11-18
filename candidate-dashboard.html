@@ -97,6 +97,7 @@
         </div>
 
         <div class="dash-col-side">
+          <div class="panel-card" id="completionCard"></div>
           <div class="panel-card score-card" id="scoreCard"></div>
           <div class="panel-card">
             <div class="sec-head" style="margin-bottom:6px"><span class="sec-title">Recent Activity</span><a href="notifications.html" class="see-all">All</a></div>
@@ -195,6 +196,11 @@ function render() {
       <div class="rand-meta">${UI.icon('timer', 15)}${t.timeLimitLabel} · ${esc(t.difficulty)}</div>
       ${done ? (done.score ? UI.verifiedScore(done.score.total, true) : UI.pill('Awaiting review', 'tint-amber')) : a && a.status === 'active' ? UI.pill('In progress', 'tint-blue') : ''}</a>`; }).join('');
 
+  const comp = UR.candidates.completion(me.username);
+  $('completionCard').hidden = comp.pct === 100;
+  $('completionCard').innerHTML = `<div class="sec-head" style="margin-bottom:8px"><span class="sec-title" style="font-size:15px">Profile ${comp.pct}% complete</span></div>
+    <div class="rubric-bar-outer" style="height:8px;background:#eeedfd;margin-bottom:10px"><div class="rubric-bar-inner" style="width:${comp.pct}%"></div></div>
+    ${comp.items.filter(i => !i.done).slice(0, 4).map(i => `<a href="${i.link}" class="l-sub" style="display:flex;gap:6px;padding:5px 0;color:var(--text2)">${UI.icon('radio_button_unchecked', 16)}${esc(i.label)}</a>`).join('')}`;
   // score card
   $('scoreCard').innerHTML = `${UI.scoreRing(st.skillScore, 1000, 'Skill score')}
     <div style="font-size:15px;font-weight:800;color:var(--text1);font-family:var(--font-display)">${esc(st.primaryTrackLabel || 'Skill')} score</div>

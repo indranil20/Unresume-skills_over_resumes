@@ -119,3 +119,156 @@ To go to production, replace each `UR.*` method with a `fetch()` to the endpoint
 - **Hire → placement:** hiring an academy student creates a placement, marks them Placed and converts `STU-` → `CAND-`.
 - **Audit log** every state change; **notifications** to the affected parties (see `notify(...)` calls).
 - **Integrity:** compute SHA-256 server-side after upload (don't trust the client), compare against all submissions of the task, run code/image similarity asynchronously, escalate high-severity flags to admins.
+
+---
+
+# Backend build plan — Node.js + Express + PostgreSQL
+
+**Decision:** keep the existing HTML pages and replace the browser data layer (`js/store.js`) with a real API. Each `UR.*` method becomes an HTTP call, so page code barely changes. Everything below is **to be built**; none of it exists yet. (Node.js is not installed on the current dev machine — install Node 20 LTS and PostgreSQL 15+ first.)
+
+## A. Project layout
+
+```
+server/
+  package.json            express, pg, zod, argon2, express-session + connect-pg-simple,
+                          helmet, express-rate-limit, csurf (or double-submit token), multer, nodemailer, ws
+  src/
+    app.js                express app: helmet, JSON limits, sessions, CSRF, rate limits, routes, error handler
+    db.js                 pg Pool, transaction helper
+    auth/                 register, login, logout, verify-email, password reset, sessions, lockout
+    middleware/           requireUser(roles), requireOrgMember, validate(zodSchema), audit()
+    routes/               one router per module (jobs, tasks, attempts, submissions, applications,
+                          interviews, disputes, reports, academy, team, messages, notifications, admin, public)
+    services/             scoring.js (port of verifiedResults/computeStats/rankTable), integrity.js,
+                          notify.js, email.js, storage.js, certificates.js, metrics.js
+    jobs/                 scheduled workers: expire attempts, deadline reminders, job recommendations,
+                          review-SLA alerts, integrity scans
+  migrations/             numbered SQL files (001_init.sql …)
+  seeds/                  demo seed (dev only — never run in production)
+  tests/                  unit (scoring, permissions), API (supertest), end-to-end
+js/api.js                 browser adapter: same method names as UR, implemented with fetch()
+```
+
+## B. Phases
+
+| Phase | Work | Done when |
+|---|---|---|
+| B1 | Repo setup, env config (`.env`: DATABASE_URL, SESSION_SECRET, SMTP_*, STORAGE_*), health check, CI | `npm test` green in CI |
+| B2 | Migrations for all tables (section C), indexes, constraints, seed script | Fresh DB builds from migrations |
+| B3 | Auth: register, email verification, login, logout, password reset, sessions, lockout, roles | Auth tests pass; no secrets in localStorage |
+| B4 | Core hiring API: jobs, tasks, attempts, submissions, applications, interviews | Candidate→company journey works end to end via API |
+| B5 | Scoring & review: score, dual review, disputes, appeals, certificates, calibration | Score always traceable to assessment, reviewer, rubric, submission, date |
+| B6 | Academy, team, messages (WebSocket), notifications, reports | Academy and chat journeys work |
+| B7 | Admin, metrics, settings/pricing, audit export | Admin journey works; every sensitive action audit-logged |
+| B8 | Frontend switch: load `js/api.js` instead of `js/store.js`; remove demo login panel in production builds | All pages pass the smoke test against the API |
+| B9 | Files (object storage), email provider, scheduled jobs, backups, deployment | Staging environment live |
+| B10 | Payments (only after the core is stable) | Provider-confirmed payments only |
+
+## C. Database (PostgreSQL)
+
+Normalised tables. All have `id` (uuid or bigserial), `created_at`, `updated_at`; soft delete (`deleted_at`) where noted.
+
+| Table | Key columns / constraints |
+|---|---|
+| `users` | email **unique** (citext), password_hash (argon2id), email_verified_at, status, last_login_at, prev_login_at, deleted_at |
+| `user_roles` | user_id FK, role enum(candidate, hr, interviewer, academy_admin, super_admin); unique(user_id, role) |
+| `sessions` | managed by connect-pg-simple |
+| `email_tokens` | user_id, purpose(verify / reset), token_hash, expires_at, used_at |
+| `login_failures` | email, count, locked_until |
+| `candidate_profiles` | user_id PK/FK, username **unique**, headline, bio, location, experience_level, photo_key, privacy jsonb, notify_prefs jsonb, featured bool, identity_status |
+| `candidate_skills` | user_id, skill; unique pair |
+| `work_history`, `education`, `certifications_self` | user_id FK, ordered rows (self-reported, never "verified") |
+| `companies` | name, logo_key, website, industry, size, location, about, contact_email, verification enum, verified_at, plan_key |
+| `company_members` | company_id, user_id, role(hr / interviewer); unique pair |
+| `academies` | same shape as companies |
+| `academy_students` | academy_id, user_id null, pending_user_id, email, record_id unique, id_type, status, consent enum, batch_id, left_at |
+| `batches` | academy_id, name (unique per academy), course, dates, capacity |
+| `skill_tracks` | key, label; `track_skills(track_key, skill)` |
+| `jobs` | company_id FK, title, category, location, work_mode, experience_level, salary_min/max, responsibilities jsonb, requirements jsonb, skills text[], deadline, status enum(draft, open, paused, closed, flagged, removed), referral_slots, accept_verified jsonb, task_id unique |
+| `saved_jobs` | user_id, job_id; unique pair |
+| `tasks` | company_id null (=standard), job_id, kind, title, brief, requirements jsonb, skills text[], difficulty, estimated_hours, time_limit_min, deadline, ai_policy, confidential, max_attempts, track_focus, dual_review, source, template_id, human_reviewed_by, status |
+| `task_rubrics` | task_id, position, criterion, points, description; CHECK sum(points)=100 at publish (enforced in the service); **locked** once a submission exists (trigger) |
+| `task_reviewers` | task_id, user_id |
+| `assessment_attempts` | task_id, user_id, started_at, **deadline_at (server-authoritative)**, status, draft jsonb, focus_losses |
+| `extension_requests` | attempt_id, minutes, reason, status, decided_by, decided_at |
+| `submissions` | attempt_id unique, task_id, user_id, submitted_at, duration_min, status, note, visibility, ai_policy, ai_disclosure, links jsonb, integrity jsonb |
+| `submission_files` | submission_id, slot, storage_key, name, size, mime, sha256 (index on sha256 for duplicate checks) |
+| `reviews` | submission_id, reviewer_id, total, strengths, weaknesses, recommendation, feedback, suggestions jsonb, authenticity, authenticity_note, created_at — **one row per reviewer** (dual review = 2 rows) |
+| `review_scores` | review_id, criterion_id, awarded, comment |
+| `verified_scores` | submission_id unique, task_id, user_id, total (final), difficulty, weight, reviewer_ids, rubric_snapshot jsonb, evaluated_at, status(valid / disputed / void), void_reason |
+| `certificates` | public_id unique (UR-XXXXXXXX), verified_score_id FK, issued_at, expires_at, revoked_at |
+| `applications` | job_id, user_id, route(task / verified_score), evidence jsonb, submission_id, status enum (applied, assessment_pending, submitted, under_review, scored, shortlisted, interview, offer, hired, rejected, withdrawn, expired), referred_by academy_id; unique(job_id, user_id) where status ≠ withdrawn |
+| `application_events` | application_id, status, by_user, note, at |
+| `interviews` | application_id, stage, scheduled_at, duration, mode, location, interviewer_id, status, feedback, outcome |
+| `job_invites`, `referrals`, `placements` | as in section 2 |
+| `disputes` | submission_id, kind(score / integrity), reason, details, status, decision, resolution, resolved_by |
+| `reports`, `contact_messages`, `verification_requests` | as in section 2 |
+| `conversations`, `conversation_members` (last_read_at, pinned, muted, blocked, cleared_at), `messages`, `message_attachments` | |
+| `notifications` | user_id, type, title, link, read_at |
+| `feedback` | user_id, context, target_id, rating, comment |
+| `plans`, `subscriptions`, `payments` | plans editable by admin; subscriptions/payments only written from provider webhooks |
+| `settings` | key/value jsonb (scoring thresholds, effort caps, freshness, SLA) |
+| `audit_logs` | actor_id, role, action, target, details, ip, at — append-only (no UPDATE/DELETE grants) |
+
+Indexes: every FK; `jobs(status, created_at)`, `applications(job_id, status)`, `submissions(task_id, status)`, `verified_scores(user_id)`, `notifications(user_id, read_at)`, `messages(conversation_id, created_at)`, `submission_files(sha256)`.
+
+## D. Authentication & security
+
+- argon2id password hashing; minimum 8 characters plus a breached-password check.
+- Server sessions in Postgres, httpOnly + Secure + SameSite=Lax cookies; session rotation on login; sign out everywhere.
+- Email verification required before applying or publishing; password reset via single-use, 30-minute hashed tokens; same response whether or not the email exists.
+- Login lockout (5 failures → 15 min) plus IP rate limits on auth routes; optional TOTP 2FA for company and admin accounts.
+- CSRF protection on all state-changing routes; helmet security headers; strict CSP (only the CDNs in use).
+- Validate every request body with zod; parameterised SQL only.
+- **Authorization on the server for every route** (role + org membership + ownership). Port each `requireUser([...])` and org check from `store.js`. Changing a URL or request must never expose another user's data.
+- File uploads: type/size allow-list, virus scan, private bucket, short-lived signed URLs; working files readable only by the candidate and the owning company's reviewers.
+- Audit-log every state change, with admin export. Backups: daily snapshots + point-in-time recovery, restore tested quarterly.
+- Privacy: data export, account deletion (soft delete → purge after the retention period), consent records. Review obligations under India's DPDP Act 2023 with counsel; don't claim compliance without that review.
+
+## E. Business rules to port (already implemented in `store.js`, now server-side)
+
+Everything in section 4 above, plus this round:
+- **Staged hiring (anti unpaid-work):** `jobs.invite_only_task` — when true, `POST /attempts` for that job's task returns 403 unless the candidate's application has `task_requested_at`, is in `in_progress`/`shortlisted`/`interview`/`offer`/`hired`, or a `job_invites` row exists. Saving a job with `invite_only_task = true` requires at least one `accept_verified` rule.
+- **Workload cap:** reject starting a company task (kind `screening`/`advanced`) when the candidate already has `settings.max_active_company_tasks` (default 2) active attempts on company tasks. Standard assessments are exempt. `GET /me/workload` returns active tasks, hours in progress, hours started in the last 30 days and verified-score applications.
+- **Qualify paths:** `GET /jobs/:id/eligibility` also returns published standard assessments that cover each unmet skill.
+- Application status `under_review` set when a reviewer opens a submission.
+- Jobs can be **paused** (hidden; existing applicants unaffected).
+- `max_attempts` per task; standard-assessment retakes after the cooldown, best score counts.
+- **Autosave** of attempt drafts (text fields; files go to storage as they are uploaded).
+- **Extension requests**: up to `maxExtensionPct` of the window; the owning company (admin for standard tasks) decides; approval moves `deadline_at`.
+- Tab tracking only when `track_focus` is on and disclosed; never treated as proof.
+- **Dual review**: the first review is hidden from the second reviewer and the candidate; final = average; gap > `dualReviewGap` → admin integrity item.
+- **Reviewer calibration** report: each reviewer's average and delta versus other reviewers on the same tasks.
+- **Score freshness**: scores older than `freshnessMonths` weigh `staleWeight`.
+- **Certificates**: valid / expired (`certificateValidityMonths`) / revoked (submission voided); verification exposes only name, assessment, score, issuer, reviewer, dates and rubric.
+- Profile completion %, saved jobs, job filters (work mode, experience, salary), pagination (cursor-based on the server), homepage featured candidates (opt-in only).
+- Pricing plans are data in `plans`, editable by admins; no limits enforced until billing exists.
+
+## F. Additional endpoints (this round)
+
+| Endpoint | Purpose |
+|---|---|
+| `PATCH /api/me/profile` | headline, location, experience, work history, education, certifications, featured |
+| `GET /api/me/profile/completion` | completion % + missing items |
+| `GET /api/jobs?work_mode&experience&min_salary&cursor` | filtered, paginated board |
+| `PUT/DELETE /api/me/saved-jobs/:jobId` | save / unsave |
+| `POST /api/jobs/:id/status` | `open / paused / closed` |
+| `PUT /api/attempts/:id/draft` | autosave |
+| `POST /api/attempts/:id/extensions`, `POST /api/extensions/:id/decide` | accommodations |
+| `POST /api/submissions/:id/open` | marks under_review |
+| `POST /api/submissions/:id/reviews` | first/second review (dual) or final score |
+| `GET /api/admin/calibration` | reviewer calibration |
+| `GET /api/certificates/:publicId` | public verification (rate-limited) |
+| `GET/PUT /api/admin/plans` | pricing management |
+| `GET /api/public/featured` | featured jobs and opted-in candidates |
+
+## G. Real-time, email, scheduled jobs
+
+- **WebSocket** (ws or Socket.IO) for new messages, read receipts and notifications; fall back to polling.
+- **Email** through a provider (SES / Postmark): verification, reset, team invites, academy link requests, interview invites and changes, score results, deadline reminders. Respect notification preferences.
+- **Scheduler** (node-cron or BullMQ workers): expire attempts at `deadline_at`; 24-hour deadline reminders; job recommendations; review-SLA overdue alerts; nightly integrity scans (code similarity with JPlag/MOSS, perceptual image hashes).
+
+## H. Testing & deployment
+
+- Unit tests for scoring (port the browser suites: workflow, framework, features — 95 checks today), permissions matrix tests (every route × every role), API tests with supertest, Playwright end-to-end for the candidate, company, academy and admin journeys, plus negative cases (invalid forms, duplicates, unauthorised access, expired sessions, oversized uploads, timeouts, invalid certificate IDs, concurrent submissions).
+- Deploy: managed Postgres (e.g. Neon / RDS), Node host (Render / Railway / a VM behind Nginx), object storage, environment-based config, staging and production, HTTPS everywhere, monitoring and error tracking.

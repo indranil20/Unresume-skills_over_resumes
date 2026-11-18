@@ -24,6 +24,8 @@ textarea.input-area::placeholder{color:var(--text4)}
 .skill-chip:hover{border-color:var(--border-light)}
 .skill-chip.on{background:rgba(91,108,245,.15);border-color:rgba(91,108,245,.45);color:var(--brand)}
 .ep-actions{display:flex;gap:10px;margin-top:6px}
+.rows{display:flex;flex-direction:column;gap:8px}.row-line{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr)) 34px;gap:8px;align-items:center}
+.form-grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}@media(max-width:640px){.form-grid2{grid-template-columns:1fr}}
 .save-btn{padding:12px 22px;background:linear-gradient(135deg,#8b5cf6,#6d28d9);border:none;border-radius:11px;font-size:14.5px;font-weight:700;color:#fff;cursor:pointer;display:flex;align-items:center;gap:8px;transition:opacity .2s}
 .save-btn:hover{opacity:.9}
 @media(max-width:640px){
@@ -82,6 +84,15 @@ textarea.input-area::placeholder{color:var(--text4)}
             <p style="font-size:12px;color:var(--text4);margin-top:8px" id="skillCount"></p>
           </div>
 
+          <div class="form-grid2">
+            <div class="form-field"><label class="form-label" for="headlineInput">Professional headline</label><div class="input-wrap"><input type="text" id="headlineInput" maxlength="100" placeholder="e.g. Frontend engineer · React & accessibility"></div></div>
+            <div class="form-field"><label class="form-label" for="locInput">Location</label><div class="input-wrap"><input type="text" id="locInput" maxlength="80" placeholder="City, Country"></div></div>
+          </div>
+          <div class="form-field"><div style="display:flex;justify-content:space-between;align-items:center"><label class="form-label">Experience</label><button type="button" class="btn-sm" onclick="addRow('workHistory')">+ Add</button></div><div id="rows-workHistory" class="rows"></div></div>
+          <div class="form-field"><div style="display:flex;justify-content:space-between;align-items:center"><label class="form-label">Education</label><button type="button" class="btn-sm" onclick="addRow('education')">+ Add</button></div><div id="rows-education" class="rows"></div></div>
+          <div class="form-field"><div style="display:flex;justify-content:space-between;align-items:center"><label class="form-label">Certifications</label><button type="button" class="btn-sm" onclick="addRow('certifications')">+ Add</button></div><div id="rows-certifications" class="rows"></div>
+            <p style="font-size:12px;color:var(--text4)">Shown as self-reported context. Only Unresume task scores are marked verified.</p></div>
+
           <div class="ep-actions">
             <button type="submit" class="save-btn" id="saveBtn">
               <span class="material-symbols-rounded" style="font-size:18px">check</span> Save Changes
@@ -103,6 +114,16 @@ const me = UR.user();
 const c = UR.candidates.get(me.username);
 const allSkills = [...new Set([...UR.candidates.allSkills(), ...c.skills])];
 const selected = new Set(c.skills);
+const ROWS = {
+  workHistory: { keys: [['title', 'Role'], ['org', 'Company'], ['from', 'From (year)'], ['to', 'To (year or Present)']], data: (c.workHistory || []).map(x => ({ ...x })) },
+  education: { keys: [['school', 'School / university'], ['degree', 'Degree / course'], ['year', 'Year']], data: (c.education || []).map(x => ({ ...x })) },
+  certifications: { keys: [['name', 'Certification'], ['issuer', 'Issuer'], ['year', 'Year'], ['url', 'Credential URL (optional)']], data: (c.certifications || []).map(x => ({ ...x })) },
+};
+function renderRows(kind) {
+  const r = ROWS[kind];
+  document.getElementById('rows-' + kind).innerHTML = r.data.length ? r.data.map((row, i) => `<div class="row-line">${r.keys.map(([k, l]) => `<div class="input-wrap" style="padding:9px 12px"><input aria-label="${l}" placeholder="${l}" value="${UI.esc(row[k] || '')}" oninput="ROWS.${kind}.data[${i}].${k}=this.value"></div>`).join('')}<button type="button" class="req-del" aria-label="Remove" style="border:none;background:none;cursor:pointer;color:var(--text4)" onclick="ROWS.${kind}.data.splice(${i},1);renderRows('${kind}')"><span class="material-symbols-rounded" style="font-size:18px">close</span></button></div>`).join('') : '<p style="font-size:12.5px;color:var(--text4)">Nothing added yet.</p>';
+}
+function addRow(kind) { ROWS[kind].data.push({}); renderRows(kind); }
 const $ = id => document.getElementById(id);
 
 $('epAv').textContent = UI.initials(c.name);
@@ -110,6 +131,9 @@ $('epAv').style.background = UI.grad(c.username);
 $('nameInput').value = c.name;
 $('usernameInput').value = c.username;
 $('bioInput').value = c.bio || '';
+$('headlineInput').value = c.headline || '';
+$('locInput').value = c.location || '';
+Object.keys(ROWS).forEach(renderRows);
 $('nameInput').required = true;
 
 function renderSkills() {
@@ -128,7 +152,7 @@ async function handleSave(e) {
   const btn = $('saveBtn'), label = btn.innerHTML;
   btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true;
   try {
-    UR.candidates.updateProfile({ name: $('nameInput').value, username: $('usernameInput').value.trim().toLowerCase(), bio: $('bioInput').value, skills: [...selected] });
+    UR.candidates.updateProfile({ name: $('nameInput').value, username: $('usernameInput').value.trim().toLowerCase(), bio: $('bioInput').value, skills: [...selected], headline: $('headlineInput').value, location: $('locInput').value, workHistory: ROWS.workHistory.data, education: ROWS.education.data, certifications: ROWS.certifications.data });
     UI.toast('Profile saved');
     setTimeout(() => { location.href = 'candidate-profile.html'; }, 600);
   } catch (err) {

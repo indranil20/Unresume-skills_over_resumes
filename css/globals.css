@@ -70,7 +70,12 @@ img { max-width: 100%; display: block; }
 .tint-pink   { background: #fdeefc; color: #c026d3; }
 .tint-teal   { background: #e6f8f5; color: #0d9488; }
 .tint-amber  { background: #fef6e4; color: #b7791f; }
-.c-blue   { color: #2563eb; }
+.tint-red    { background: #fdecef; color: #be123c; }
+/* Status pill — shared by every page (dashboard.css repeats it for dashboards) */
+.d-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 700; line-height: 1.2; padding: 5px 11px; border-radius: 100px; white-space: nowrap; }
+.d-pill .material-symbols-rounded { font-size: 14px; font-variation-settings: 'FILL' 1; }
+.d-pill.gray { background: #f1f1f6; color: #6b6b80; }
+.c-blue  { color: #2563eb; }
 .c-purple { color: #7c3aed; }
 .c-pink   { color: #c026d3; }
 .c-teal   { color: #0d9488; }

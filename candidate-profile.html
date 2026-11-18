@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="css/globals.css">
 <link rel="stylesheet" href="css/navbar.css">
 <link rel="stylesheet" href="css/dashboard.css">
+<link rel="stylesheet" href="css/portfolio-view.css">
 <style>
 .page-wrap{overflow-x:clip}
 .prof-inner{max-width:1100px;margin:0 auto;padding:28px 24px 0}
@@ -40,7 +41,8 @@
 
 /* tabs */
 .tab-bar{display:inline-flex;gap:4px;background:#fff;border:1px solid var(--border);border-radius:14px;padding:5px;box-shadow:var(--shadow-sm);margin:28px 0 0 24px}
-.prof-tab{display:inline-flex;align-items:center;gap:6px;padding:9px 20px;font-size:13.5px;font-weight:700;color:var(--text3);border-radius:10px;cursor:pointer;transition:all .15s;text-decoration:none}
+.tab-bar{max-width:100%;overflow-x:auto;scrollbar-width:none}.tab-bar::-webkit-scrollbar{display:none}
+.prof-tab{white-space:nowrap;flex-shrink:0;display:inline-flex;align-items:center;gap:6px;padding:9px 20px;font-size:13.5px;font-weight:700;color:var(--text3);border-radius:10px;cursor:pointer;transition:all .15s;text-decoration:none}
 .prof-tab .material-symbols-rounded{font-size:18px}
 .prof-tab:hover{color:var(--brand)}
 .prof-tab.active{background:linear-gradient(90deg,#4f46e5,#7c3aed);color:#2563eb;box-shadow:0 4px 14px rgba(79,70,229,.28)}
@@ -134,6 +136,7 @@
     <div class="tab-bar" role="tablist">
       <button type="button" class="prof-tab active" style="border:none;background:none;font-family:var(--font-body)" onclick="showTab('portfolio',this)"><span class="material-symbols-rounded">photo_library</span>Portfolio</button>
       <button type="button" class="prof-tab" style="border:none;background:none;font-family:var(--font-body)" onclick="showTab('skills',this)"><span class="material-symbols-rounded">verified</span>Verified Skills</button>
+      <button type="button" class="prof-tab" style="border:none;background:none;font-family:var(--font-body)" onclick="showTab('about',this)"><span class="material-symbols-rounded">badge</span>About</button>
       <button type="button" class="prof-tab" style="border:none;background:none;font-family:var(--font-body)" onclick="showTab('activity',this)"><span class="material-symbols-rounded">history</span>Activity</button>
     </div>
   </div>
@@ -155,6 +158,7 @@
     </div>
 
     <div id="skillsTab" style="display:none"></div>
+    <div id="aboutTab" style="display:none"></div>
     <div id="activityTab" style="display:none">
       <div style="display:flex;flex-direction:column;gap:10px" id="actList"></div>
     </div>
@@ -166,6 +170,7 @@
 <script src="js/store.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/components.js"></script>
+<script src="js/portfolio-view.js"></script>
 <script>
 const $ = id => document.getElementById(id), esc = UI.esc;
 const previewCfg = {
@@ -192,7 +197,7 @@ function render() {
   $('profAv').style.background = UI.grad(c.username); $('profAv').textContent = UI.initials(c.name);
   $('profName').textContent = c.name;
   $('profVerified').hidden = c.verification.identity !== 'verified';
-  $('profUname').textContent = '@' + c.username + (c.location ? ' · ' + c.location : '') + (c.bio ? ' — ' + c.bio : '');
+  $('profUname').textContent = (c.headline ? c.headline + ' · ' : '') + '@' + c.username + (c.location ? ' · ' + c.location : '');
   $('profFollowers').textContent = c.followers; $('profFollowing').textContent = c.following;
   $('profTasks').textContent = hidden ? '—' : st.tasksVerified;
   document.querySelector('.prof-follow span:last-child').lastChild.textContent = ' verified tasks';
@@ -205,16 +210,18 @@ function render() {
   $('profSkills').innerHTML = c.skills.map(s => { const v = !hidden && st.skills.find(x => x.skill === s && x.badge); return `<span class="prof-skill" ${v ? 'title="Verified by task scores" style="background:#e6f8f5;color:#0d9488"' : ''}>${v ? '✓ ' : ''}${esc(s)}</span>`; }).join('');
 
   const following = me && !isOwner ? UR.candidates.isFollowing(username) : false;
-  $('profActions').innerHTML = isOwner
+  const shareBtn = `<button class="btn-ghost" title="Copy profile link" aria-label="Copy profile link" onclick="shareProfile('${username}')" style="padding:11px 13px"><span class="material-symbols-rounded" style="font-size:18px">share</span></button>`;
+  $('profActions').innerHTML = shareBtn + (isOwner
     ? `<a href="candidate-dashboard.html" class="btn-ghost">My Dashboard</a><a href="edit-profile.html" class="btn-primary"><span class="material-symbols-rounded" style="font-size:18px">edit</span>Edit Profile</a>`
     : me ? `<button class="btn-ghost" onclick="follow('${username}')">${following ? 'Following ✓' : 'Follow'}</button>
        <button class="btn-primary" onclick="message('${c.userId}')"><span class="material-symbols-rounded" style="font-size:18px">chat</span>Message</button>
        <button class="btn-ghost" title="Report profile" aria-label="Report profile" onclick="report('${username}')" style="padding:11px 13px"><span class="material-symbols-rounded" style="font-size:18px">flag</span></button>`
-    : `<a href="login.html?next=${encodeURIComponent('candidate-profile.html?u=' + username)}" class="btn-primary">Sign in to connect</a>`;
+    : `<a href="login.html?next=${encodeURIComponent('candidate-profile.html?u=' + username)}" class="btn-primary">Sign in to connect</a>`);
 
-  $('ownerNote').innerHTML = isOwner ? `<span class="material-symbols-rounded" style="font-size:16px;color:var(--brand)">info</span>Only public items show to others. <button class="see-all" style="margin-left:6px" onclick="addExternal()">+ Add external work</button>` : '';
+  $('ownerNote').innerHTML = isOwner ? `<span class="material-symbols-rounded" style="font-size:16px;color:var(--brand)">info</span>Only public items show to others. <button class="see-all" style="margin-left:6px" onclick="addExternal()">+ Add project</button>` : '';
 
-  const portfolio = c.portfolio; // already filtered by the store for this viewer (public / recruiters / owner)
+  const order = { task: 0, external: 1, personal: 2 };
+  const portfolio = [...c.portfolio].sort((a, b) => order[a.type] - order[b.type]); // filtered by the store for this viewer
   const subScore = id => { const r = st.results ? st.results.find(x => x.submissionId === id || x.historyId === id) : null; return r ? r.score : null; };
   $('portGrid').innerHTML = portfolio.map(p => {
     const cfg = previewCfg[p.previewType] || previewCfg.document;
@@ -223,19 +230,20 @@ function render() {
     const imgId = p.legacyId;
     const inner = p.previewType === 'image' && imgId ? `<img src="${getPortfolioPreview(imgId)}" alt="${esc(p.title)}" loading="lazy">` : `<div class="port-preview-icon"><span class="material-symbols-rounded" style="color:${cfg.color || 'var(--brand)'}">${cfg.icon}</span></div>`;
     return `<div class="port-item">
-      <div class="port-preview" style="background:${cfg.bg || 'linear-gradient(160deg,#eeedfd,#dcd7fb)'}">${inner}<span class="port-type"><span class="material-symbols-rounded">${p.type === 'task' ? 'task_alt' : cfg.icon}</span>${p.type === 'task' ? 'Task output' : 'External · ' + cfg.label}</span></div>
+      <div class="port-preview pv-open" role="button" tabindex="0" aria-label="View details of ${esc(p.title)}" onclick="PortfolioView.open('${username}','${p.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" style="background:${cfg.bg || 'linear-gradient(160deg,#eeedfd,#dcd7fb)'}">${inner}<span class="port-type"><span class="material-symbols-rounded">${p.type === 'task' ? 'task_alt' : p.type === 'personal' ? 'person' : cfg.icon}</span>${p.type === 'task' ? 'Verified task' : p.type === 'personal' ? 'Personal project' : 'External · ' + cfg.label}</span></div>
       <div class="port-body">
-        <div class="port-title">${p.url ? `<a href="${esc(p.url)}" target="_blank" rel="noopener" style="color:inherit">${esc(p.title)} ↗</a>` : esc(p.title)}</div>
+        <div class="port-title"><button type="button" onclick="PortfolioView.open('${username}','${p.id}')" style="all:unset;cursor:pointer;color:inherit" title="View details">${esc(p.title)}</button></div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          ${p.description ? `<p style="font-size:12.5px;color:var(--text3);line-height:1.5">${esc(p.description)}</p>` : ''}
           ${p.type === 'task' ? (score != null ? UI.verifiedScore(score, true) : hidden ? '' : UI.pill('Awaiting review', 'tint-amber')) : '<span class="d-pill gray" title="External work is not scored by a reviewer">Not verified</span>'}
           <button class="c-rating" style="border:none;cursor:${me ? 'pointer' : 'default'}" title="Community likes — not a verified score" ${me ? `onclick="like('${p.id}')"` : 'disabled'}><span class="material-symbols-rounded" style="font-variation-settings:'FILL' ${likes.liked ? 1 : 0}">favorite</span>${likes.count}</button>
         </div>
         <div class="port-meta">
-          <span style="font-size:12px;color:var(--text3)">${UI.fmtDate(p.createdAt)}</span>
+          <button type="button" class="see-all" style="padding:6px 12px;font-size:12.5px;font-family:inherit" onclick="PortfolioView.open('${username}','${p.id}')">View details →</button>
           <div class="port-toggle-row">${isOwner ? `
             <select class="tc-select" aria-label="Visibility of ${esc(p.title)}" onchange="setVis('${p.id}', this.value)" style="width:auto;padding:6px 8px;font-size:12px;font-weight:700">
               ${[['public', 'Public'], ['recruiters', 'Recruiters only'], ['private', 'Only me']].map(([v, l]) => `<option value="${v}" ${(p.visibility || (p.isPublic ? 'public' : 'private')) === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
-            ${p.type === 'external' ? `<button class="req-del" title="Delete" aria-label="Delete item" style="border:none;background:none;cursor:pointer;color:var(--text4);display:flex" onclick="removeItem('${p.id}')"><span class="material-symbols-rounded" style="font-size:18px">delete</span></button>` : ''}`
+            ${p.type !== 'task' ? `<button class="req-del" title="Delete" aria-label="Delete item" style="border:none;background:none;cursor:pointer;color:var(--text4);display:flex" onclick="removeItem('${p.id}')"><span class="material-symbols-rounded" style="font-size:18px">delete</span></button>` : ''}`
             : (p.visibility === 'recruiters' ? '<span class="priv-badge" style="background:#eaf1ff;color:#2563eb">Recruiters only</span>' : '<span class="pub-badge">Public</span>')}</div>
         </div>
       </div></div>`;
@@ -250,6 +258,12 @@ function render() {
     <div class="d-table-wrap"><table class="d-table stack"><thead><tr><th>Skill</th><th>Verified tasks</th><th>Avg score</th><th>Badge</th></tr></thead><tbody>
       ${st.skills.map(k => `<tr><td class="who-cell"><b>${esc(k.skill)}</b></td><td data-label="Tasks">${k.count}</td><td data-label="Avg">${UI.verifiedScore(Math.round(k.avg), true)}</td><td data-label="Badge">${k.badge ? UI.pill(k.badge, 'tint-teal', 'verified') : '<span style="color:var(--text4);font-size:12px">—</span>'}</td></tr>`).join('') || '<tr><td colspan="4">No verified skills yet.</td></tr>'}</tbody></table></div>`;
 
+  const sec = (title, rows, fmt) => `<div class="panel-card" style="margin-bottom:14px"><div class="d-sec-title">${title}</div>${rows && rows.length ? rows.map(fmt).join('') : '<p style="font-size:13px;color:var(--text4)">Not added yet.</p>'}</div>`;
+  $('aboutTab').innerHTML = (c.bio ? `<div class="panel-card" style="margin-bottom:14px"><div class="d-sec-title">About</div><p style="font-size:14px;color:var(--text2);line-height:1.7">${esc(c.bio)}</p></div>` : '')
+    + sec('Experience', c.workHistory, w => `<div class="l-row" style="box-shadow:none;padding:10px 12px"><span class="sec-icon tint-blue">${UI.icon('work', 18)}</span><div class="l-main"><div class="l-title">${esc(w.title)}</div><div class="l-sub">${esc(w.org)} · ${esc(w.from)}–${esc(w.to || 'Present')}</div></div></div>`)
+    + sec('Education', c.education, e => `<div class="l-row" style="box-shadow:none;padding:10px 12px"><span class="sec-icon tint-purple">${UI.icon('school', 18)}</span><div class="l-main"><div class="l-title">${esc(e.degree)}</div><div class="l-sub">${esc(e.school)}${e.year ? ' · ' + esc(e.year) : ''}</div></div></div>`)
+    + sec('Certifications', c.certifications, x => `<div class="l-row" style="box-shadow:none;padding:10px 12px"><span class="sec-icon tint-amber">${UI.icon('workspace_premium', 18)}</span><div class="l-main"><div class="l-title">${x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener" style="color:inherit">${esc(x.name)} ↗</a>` : esc(x.name)}</div><div class="l-sub">${esc(x.issuer)}${x.year ? ' · ' + esc(x.year) : ''}</div></div>${UI.pill('Self-reported', 'gray')}</div>`)
+    + `<p style="font-size:12px;color:var(--text4)">Experience, education and certifications are provided by the candidate. Skills are the primary signal on Unresume — see Verified Skills.</p>`;
   const acts = UR.feed.list().filter(f => f.actor === username);
   $('actList').innerHTML = acts.length ? acts.map(f => `<div class="l-row"><span class="sec-icon tint-purple">${UI.icon({ score: 'grade', submission: 'task_alt', follow: 'person_add', hired: 'handshake' }[f.type] || 'bolt', 18, true)}</span><div class="l-main"><div class="l-title" style="font-weight:600">${esc(c.name)} ${esc(f.text)}</div><div class="l-sub">${UI.timeAgo(f.createdAt)}</div></div></div>`).join('')
     : `<div class="empty-box"><div class="empty-icon"><span class="material-symbols-rounded" style="font-size:30px">history</span></div>No public activity yet.</div>`;
@@ -260,9 +274,10 @@ const like = id => UI.run(() => UR.feed.likePortfolio(id)).catch(() => {});
 const follow = u => UI.run(() => UR.candidates.follow(u), r => r ? 'Following' : 'Unfollowed').catch(() => {});
 function message(userId) { UI.run(() => UR.messages.start(userId)).then(id => location.href = `chat.html?c=${id}`).catch(() => {}); }
 async function removeItem(id) { const r = await UI.confirm({ title: 'Delete this item?', danger: true, confirmLabel: 'Delete' }); if (r.ok) UI.run(() => UR.candidates.portfolio.remove(id), 'Item deleted').catch(() => {}); }
+function shareProfile(u) { const url = location.href.split('?')[0] + '?u=' + u; if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => UI.toast('Profile link copied'), () => UI.toast(url, 'info')); else UI.toast(url, 'info'); }
 function addExternal() {
   UI.modal({ title: 'Add external work', icon: 'add_link', sub: 'External items appear as "Not verified" — only task outputs carry verified scores.', submitLabel: 'Add to portfolio',
-    body: UI.field({ name: 'title', label: 'Title', required: true }) + UI.field({ name: 'url', label: 'URL', type: 'url', required: true, placeholder: 'https://' }) + UI.field({ name: 'previewType', label: 'Type', type: 'select', options: [['website', 'Website'], ['document', 'Document'], ['image', 'Image']] }),
+    body: UI.field({ name: 'kind', label: 'Kind of work', type: 'select', options: [['external', 'External work (client / job project)'], ['personal', 'Personal project']] }) + UI.field({ name: 'title', label: 'Title', required: true }) + UI.field({ name: 'url', label: 'URL (GitHub, Figma, live site…)', type: 'url', required: true, placeholder: 'https://' }) + UI.field({ name: 'description', label: 'Short description', type: 'textarea', rows: 3 }) + UI.field({ name: 'previewType', label: 'Preview type', type: 'select', options: [['website', 'Website'], ['document', 'Document'], ['image', 'Image']] }),
     onSubmit: d => { UR.candidates.portfolio.addExternal(d); UI.toast('Added to your portfolio'); } });
 }
 async function report(u) {
@@ -271,10 +286,11 @@ async function report(u) {
 }
 function showTab(tab, el) {
   curTab = tab;
-  document.querySelectorAll('.prof-tab').forEach(t => t.classList.toggle('active', t.textContent.toLowerCase().includes(tab === 'skills' ? 'verified' : tab)));
+  document.querySelectorAll('.prof-tab').forEach(t => t.classList.toggle('active', t.getAttribute('onclick').includes(`'${tab}'`)));
   $('portfolioTab').style.display = tab === 'portfolio' ? '' : 'none';
   $('skillsTab').style.display = tab === 'skills' ? '' : 'none';
   $('activityTab').style.display = tab === 'activity' ? '' : 'none';
+  $('aboutTab').style.display = tab === 'about' ? '' : 'none';
 }
 render();
 UI.onChange(render);

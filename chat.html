@@ -464,12 +464,13 @@ function renderMessages() {
   if (!conv.messages.length) { container.innerHTML = `<div class="chat-empty"><div class="chat-empty-icon"><span class="material-symbols-rounded" style="font-size:36px">forum</span></div><p style="font-size:14px">No messages here yet. Say hello 👋</p></div>`; return; }
   if (!shown.length) { container.innerHTML = `<div class="chat-empty"><div class="chat-empty-icon"><span class="material-symbols-rounded" style="font-size:36px">search_off</span></div><p style="font-size:14px">No messages match "${esc(q)}".</p></div>`; return; }
   let html = '', lastDay = '';
+  const lastMine = [...shown].reverse().find(m => m.from === ME.id);
   shown.forEach(m => {
     const day = new Date(m.at).toDateString();
     if (day !== lastDay) { lastDay = day; html += `<div class="msg-day"><span>${day === new Date().toDateString() ? 'Today' : UI.fmtDate(m.at)}</span></div>`; }
     const mine = m.from === ME.id;
     html += `<div class="msg-row ${mine ? 'mine' : ''}"><div class="msg-av" style="background:${UI.grad(mine ? ME.id : conv.otherId)}">${UI.initials(mine ? ME.name : conv.otherName)}</div>
-      <div class="msg-col"><div class="msg-bubble ${mine ? 'mine' : 'them'}">${highlight(m.text, q)}</div><span class="msg-time">${new Date(m.at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</span></div></div>`;
+      <div class="msg-col"><div class="msg-bubble ${mine ? 'mine' : 'them'}">${highlight(m.text, q)}</div><span class="msg-time">${new Date(m.at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}${mine && m === lastMine ? (conv.otherReadAt && new Date(conv.otherReadAt) >= new Date(m.at) ? ' · Seen' : ' · Sent') : ''}</span></div></div>`;
   });
   container.innerHTML = html;
   container.scrollTop = container.scrollHeight;

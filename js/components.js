@@ -26,6 +26,7 @@ function renderNavbar() {
     <div class="nav-inner">
       <a href="index.html" class="nav-logo"><img src="images/unresume-logo-dark.png" alt="Unresume" class="logo-img"></a>
       <div class="nav-links" id="navLinks">
+        <a href="how-it-works.html" class="nav-link ${isActive('how-it-works.html')}">How it works</a>
         <a href="jobs.html" class="nav-link ${isActive('jobs.html')}">Jobs</a>
         <a href="leaderboard.html" class="nav-link ${isActive('leaderboard.html')}">Leaderboard</a>
         <a href="portfolio-gallery.html" class="nav-link ${isActive('portfolio-gallery.html')}">Portfolio</a>
@@ -38,6 +39,7 @@ function renderNavbar() {
       </button>
     </div>
     <div class="nav-mobile" id="navMobile">
+      <a href="how-it-works.html" class="nav-mobile-link">How it works</a>
       <a href="jobs.html" class="nav-mobile-link">Jobs</a>
       <a href="leaderboard.html" class="nav-mobile-link">Leaderboard</a>
       <a href="portfolio-gallery.html" class="nav-mobile-link">Portfolio Gallery</a>
@@ -74,8 +76,8 @@ function renderFooter() {
     <div class="footer-inner">
       <div class="footer-top">
         <div>
-          <a href="index.html" class="footer-logo" style="margin-bottom:14px"><img src="images/unresume-logo-dark.png" alt="Unresume" class="logo-img-sm" style="height:40px"></a>
-          <p class="footer-tagline">Skills over resumes — the future of skill-based hiring.</p>
+          <a href="index.html" class="footer-logo" style="margin-bottom:14px"><img src="images/unresume-logo-dark.png" alt="Unresume" class="logo-img-sm" style="height:60px;width:auto"></a>
+          <p class="footer-tagline">Unresume helps people get hired for what they can do. Candidates complete short, real-world tasks, reviewers score them against published rubrics, and companies hire on verified skills — not resumes.</p>
         </div>
         <div class="footer-links-grid">
           <div class="footer-col">
@@ -84,6 +86,7 @@ function renderFooter() {
             <a href="leaderboard.html" class="footer-link">Leaderboard</a>
             <a href="portfolio-gallery.html" class="footer-link">Portfolio</a>
             <a href="verify.html" class="footer-link">Verify a Certificate</a>
+            <a href="how-it-works.html" class="footer-link">How it works</a>
             <a href="pricing.html" class="footer-link">Plans (proposed)</a>
           </div>
           <div class="footer-col">
@@ -104,10 +107,6 @@ function renderFooter() {
       </div>
       <div class="footer-bottom">
         <span class="footer-copy">© ${new Date().getFullYear()} Unresume. All rights reserved.</span>
-        <div class="footer-legal">
-          <a href="privacy.html" class="footer-link">Privacy</a>
-          <a href="terms.html" class="footer-link">Terms</a>
-        </div>
       </div>
     </div>
   </footer>`;
@@ -369,6 +368,7 @@ function deniedNotice() {
 // ── Init — runs immediately (scripts are at the end of <body>) ──
 (function initShell() {
   if (!guardPage()) return;
+  if (window.UR && UR.reminderTick) UR.reminderTick();
   renderNavbar();
   renderFooter();
   const sidebar = document.getElementById('sidebar');

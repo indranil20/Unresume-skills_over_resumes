@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link rel="icon" type="image/png" href="images/favicon.png">
+<title>How It Works — Unresume</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link rel="stylesheet" href="css/globals.css">
+<link rel="stylesheet" href="css/navbar.css">
+<style>
+.hw{max-width:1180px;margin:0 auto;padding:0 24px}
+.ms{font-family:'Material Symbols Rounded';font-weight:normal;font-style:normal;line-height:1;display:inline-block;font-variation-settings:'FILL' 1}
+
+/* hero */
+.hw-hero{position:relative;margin-top:28px;border-radius:32px;overflow:hidden;padding:64px 56px;background:linear-gradient(110deg,#efedfd 0%,#e4defc 55%,#d6cefb 100%);border:1px solid #e2defb}
+.hw-hero::before{content:'';position:absolute;width:460px;height:460px;right:-120px;top:-200px;border-radius:46% 54% 42% 58%/52% 38% 62% 48%;background:linear-gradient(160deg,#c7c2fa,#b9b1f7);opacity:.6}
+.hw-hero::after{content:'';position:absolute;width:300px;height:300px;right:18%;bottom:-220px;border-radius:50%;background:radial-gradient(circle,rgba(124,58,237,.18),transparent 65%)}
+.hw-hero>*{position:relative;z-index:1}
+.hw-hero h1{font-family:var(--font-display);font-size:clamp(34px,5vw,58px);font-weight:800;color:var(--text1);letter-spacing:-.04em;line-height:1.05;max-width:720px;margin:16px 0 14px}
+.hw-hero p{font-size:clamp(15px,1.5vw,17.5px);color:var(--text2);line-height:1.7;max-width:600px}
+.hw-cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:26px}
+.hw-hero-stats{display:flex;gap:12px;flex-wrap:wrap;margin-top:34px}
+.hw-chip{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.85);border:1px solid #fff;border-radius:16px;padding:10px 14px;box-shadow:var(--shadow-sm);font-size:13px;font-weight:600;color:var(--text2)}
+.hw-chip .ms{font-size:20px;color:var(--brand)}
+.hw-chip b{color:var(--text1)}
+
+/* section headings */
+.hw-sec{padding:72px 0 0}
+.hw-head{text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:36px}
+.hw-head h2{font-family:var(--font-display);font-size:clamp(26px,3.4vw,38px);font-weight:800;color:var(--text1);letter-spacing:-.03em;line-height:1.15}
+.hw-head p{font-size:15.5px;color:var(--text3);max-width:620px;line-height:1.7}
+
+/* journey stepper */
+.journey{position:relative;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px}
+.journey::before{content:'';position:absolute;left:7%;right:7%;top:30px;height:2px;background:repeating-linear-gradient(90deg,#c9c4f6 0 8px,transparent 8px 14px);z-index:0}
+.j-step{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px}
+.j-dot{width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--border);box-shadow:0 8px 20px rgba(79,70,229,.12)}
+.j-dot .ms{font-size:26px;color:var(--brand)}
+.j-step:last-child .j-dot{background:linear-gradient(135deg,#4f46e5,#7c3aed);border-color:transparent}
+.j-step:last-child .j-dot .ms{color:#fff}
+.j-num{font-size:11px;font-weight:800;color:var(--brand);letter-spacing:.08em}
+.j-title{font-family:var(--font-display);font-size:15px;font-weight:800;color:var(--text1)}
+.j-text{font-size:12.5px;color:var(--text3);line-height:1.55;max-width:150px}
+
+/* role tabs */
+.role-tabs{display:inline-flex;gap:4px;background:#fff;border:1px solid var(--border);border-radius:16px;padding:5px;box-shadow:var(--shadow-sm);margin:0 auto 26px}
+.role-tab{display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border:none;background:none;border-radius:12px;font-family:var(--font-body);font-size:14px;font-weight:700;color:var(--text3);cursor:pointer;transition:all .15s}
+.role-tab .ms{font-size:19px}
+.role-tab:hover{color:var(--brand)}
+.role-tab[aria-selected=true]{background:linear-gradient(90deg,#4f46e5,#7c3aed);color:#fff;box-shadow:0 6px 16px rgba(79,70,229,.28)}
+.role-panel{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:22px;align-items:start}
+.role-panel[hidden]{display:none}
+.steps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.step{background:#fff;border:1px solid var(--border);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow-sm);transition:transform .2s,box-shadow .2s,border-color .2s}
+.step:hover{transform:translateY(-3px);box-shadow:var(--shadow-md);border-color:#e2defb}
+.step-top{display:flex;align-items:center;justify-content:space-between}
+.step-ic{width:44px;height:44px;border-radius:13px;display:flex;align-items:center;justify-content:center}
+.step-ic .ms{font-size:22px}
+.step-n{font-family:var(--font-display);font-size:28px;font-weight:800;color:#ecebfb;line-height:1}
+.step h3{font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--text1)}
+.step p{font-size:13.5px;color:var(--text3);line-height:1.6}
+.side{position:sticky;top:96px;border-radius:24px;padding:26px 24px;color:#fff;background:linear-gradient(150deg,#4f46e5,#7c3aed);box-shadow:0 22px 44px rgba(79,70,229,.3);overflow:hidden}
+.side::before{content:'';position:absolute;width:220px;height:220px;right:-80px;top:-90px;border-radius:50%;background:rgba(255,255,255,.12)}
+.side>*{position:relative}
+.side h3{font-family:var(--font-display);font-size:20px;font-weight:800;margin:12px 0 6px}
+.side p{font-size:13.5px;color:rgba(255,255,255,.85);line-height:1.6}
+.side ul{list-style:none;padding:0;margin:16px 0 20px;display:flex;flex-direction:column;gap:10px}
+.side li{display:flex;gap:10px;font-size:13.5px;line-height:1.5}
+.side li .ms{font-size:18px;color:#c7f9ee;flex-shrink:0;margin-top:1px}
+.side-ic{width:48px;height:48px;border-radius:14px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center}
+.side-ic .ms{font-size:24px}
+.side a{display:flex;align-items:center;justify-content:center;gap:6px;padding:13px;border-radius:12px;background:#fff;color:var(--brand);font-weight:700;font-size:14px;text-decoration:none;transition:transform .15s}
+.side a:hover{transform:translateY(-1px)}
+
+/* two ways */
+.ways{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.way{position:relative;background:#fff;border:1px solid var(--border);border-radius:24px;padding:28px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:12px}
+.way.alt{border-color:#c4ede6;background:linear-gradient(170deg,#f0fdfa,#fff 45%)}
+.way-tag{align-self:flex-start;font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:5px 12px;border-radius:100px}
+.way h3{font-family:var(--font-display);font-size:21px;font-weight:800;color:var(--text1)}
+.way p{font-size:14px;color:var(--text3);line-height:1.65}
+.way ul{list-style:none;padding:0;display:flex;flex-direction:column;gap:9px;margin-top:4px}
+.way li{display:flex;gap:10px;font-size:13.5px;color:var(--text2);line-height:1.5}
+.way li .ms{font-size:18px;color:#0d9488;flex-shrink:0}
+
+/* score explainer */
+.score{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;align-items:stretch}
+.sc{background:#fff;border:1px solid var(--border);border-radius:20px;padding:20px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:8px;position:relative}
+.sc:not(:last-child)::after{content:'arrow_forward';font-family:'Material Symbols Rounded';position:absolute;right:-17px;top:50%;transform:translateY(-50%);width:22px;height:22px;border-radius:50%;background:#fff;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--brand);z-index:2}
+.sc-big{font-family:var(--font-display);font-size:30px;font-weight:800;line-height:1;color:var(--text1)}
+.sc-big small{font-size:14px;color:var(--text4);font-weight:600}
+.sc h4{font-size:14.5px;font-weight:800;color:var(--text1)}
+.sc p{font-size:12.5px;color:var(--text3);line-height:1.55}
+.sc .pillrow{display:flex;gap:6px;flex-wrap:wrap}
+.pl{font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:100px;background:#eeedfd;color:var(--brand)}
+.score-link{text-align:center;margin-top:18px;font-size:14px}
+.score-link a{color:var(--brand);font-weight:700}
+
+/* fairness */
+.fair{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.fair-card{background:#fff;border:1px solid var(--border);border-radius:20px;padding:22px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:10px}
+.fair-card h3{font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--text1)}
+.fair-card p{font-size:13.5px;color:var(--text3);line-height:1.6}
+.fair-card a{color:var(--brand);font-weight:700}
+
+/* final cta */
+.final{margin:72px 0 96px;border-radius:28px;padding:44px 48px;background:linear-gradient(120deg,#4f46e5,#7c3aed 60%,#a21caf);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;position:relative;overflow:hidden;box-shadow:0 24px 50px rgba(79,70,229,.3)}
+.final::before{content:'';position:absolute;width:320px;height:320px;right:-80px;top:-160px;border-radius:50%;background:rgba(255,255,255,.1)}
+.final>*{position:relative}
+.final h2{font-family:var(--font-display);font-size:clamp(24px,3vw,32px);font-weight:800;letter-spacing:-.02em}
+.final p{color:rgba(255,255,255,.85);margin-top:6px;font-size:15px}
+.final-btns{display:flex;gap:10px;flex-wrap:wrap}
+.final-btns a{display:inline-flex;align-items:center;gap:6px;padding:13px 20px;border-radius:12px;font-weight:700;font-size:14px;text-decoration:none}
+.final-btns .w{background:#fff;color:var(--brand)}
+.final-btns .o{border:1px solid rgba(255,255,255,.5);color:#fff}
+
+@media(max-width:1000px){
+  .journey{grid-template-columns:repeat(4,minmax(0,1fr));row-gap:26px}
+  .journey::before{display:none}
+  .role-panel{grid-template-columns:1fr}
+  .side{position:relative;top:auto}
+  .score{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .sc:nth-child(2)::after{display:none}
+  .fair{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:640px){
+  .hw{padding:0 16px}
+  .hw-hero{padding:36px 22px;border-radius:24px}
+  .hw-sec{padding-top:52px}
+  .journey{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .steps,.ways,.score,.fair{grid-template-columns:1fr}
+  .sc::after{display:none}
+  .role-tabs{display:flex;width:100%}
+  .role-tab{flex:1;justify-content:center;padding:10px 8px;font-size:13px}
+  .role-tab .ms{display:none}
+  .final{padding:30px 22px;margin:52px 0 72px}
+}
+</style>
+</head>
+<body>
+<div id="navbar"></div>
+<main class="page-wrap">
+<div class="hw">
+
+  <!-- HERO -->
+  <section class="hw-hero" aria-labelledby="hw-title">
+    <span class="section-badge"><span class="ms" style="font-size:15px">route</span> How it works</span>
+    <h1 id="hw-title">Hiring on <span class="grad-text">proof of skill</span>, not paperwork</h1>
+    <p>Candidates show what they can do in short, fair tasks. Reviewers score the work against a published rubric. Companies hire on verified evidence — and everyone can see how it works.</p>
+    <div class="hw-cta">
+      <a href="register-candidate.html" class="btn-primary">I'm looking for a job <span class="ms" style="font-size:18px">arrow_forward</span></a>
+      <a href="register-company.html" class="btn-ghost">I'm hiring</a>
+    </div>
+    <div class="hw-hero-stats">
+      <div class="hw-chip"><span class="ms">verified</span><span>Scores from <b>published rubrics</b></span></div>
+      <div class="hw-chip"><span class="ms">hourglass_top</span><span>Tasks capped at <b>2–8 hours</b></span></div>
+      <div class="hw-chip"><span class="ms">volunteer_activism</span><span><b>Free</b> for candidates</span></div>
+    </div>
+  </section>
+
+  <!-- JOURNEY -->
+  <section class="hw-sec" aria-labelledby="h-journey">
+    <div class="hw-head">
+      <span class="section-badge"><span class="ms" style="font-size:15px">timeline</span> The journey</span>
+      <h2 id="h-journey">From discovery to <span class="grad-text">hired</span></h2>
+      <p>One clear path for candidates and companies. Every step is visible to both sides.</p>
+    </div>
+    <ol class="journey" style="list-style:none;padding:0">
+      <li class="j-step"><span class="j-dot"><span class="ms">search</span></span><span class="j-num">01</span><span class="j-title">Discover</span><span class="j-text">Find roles with the task, effort and deadline shown up front.</span></li>
+      <li class="j-step"><span class="j-dot"><span class="ms">send</span></span><span class="j-num">02</span><span class="j-title">Apply</span><span class="j-text">Use existing verified scores, or take the role's task.</span></li>
+      <li class="j-step"><span class="j-dot"><span class="ms">assignment</span></span><span class="j-num">03</span><span class="j-title">Assessment</span><span class="j-text">A short, real-world task with a clear brief and timer.</span></li>
+      <li class="j-step"><span class="j-dot"><span class="ms">verified</span></span><span class="j-num">04</span><span class="j-title">Verified score</span><span class="j-text">Scored against a published 100-point rubric.</span></li>
+      <li class="j-step"><span class="j-dot"><span class="ms">thumb_up</span></span><span class="j-num">05</span><span class="j-title">Shortlist</span><span class="j-text">Top performers move forward with feedback.</span></li>
+      <li class="j-step"><span class="j-dot"><span class="ms">event</span></span><span class="j-num">06</span><span class="j-title">Interview</span><span class="j-text">Confirm slots, talk about your work.</span></li>
+      <li class="j-step"><span class="j-dot"><span class="ms">handshake</span></span><span class="j-num">07</span><span class="j-title">Hired</span><span class="j-text">Offer, hire — and your record stays yours.</span></li>
+    </ol>
+  </section>
+
+  <!-- ROLES -->
+  <section class="hw-sec" aria-labelledby="h-roles">
+    <div class="hw-head">
+      <span class="section-badge"><span class="ms" style="font-size:15px">groups</span> Built for everyone</span>
+      <h2 id="h-roles">What it looks like <span class="grad-text">for you</span></h2>
+    </div>
+    <div style="text-align:center">
+      <div class="role-tabs" role="tablist" aria-label="Choose your role">
+        <button class="role-tab" role="tab" id="tab-candidates" aria-controls="p-candidates" aria-selected="true"><span class="ms">person</span>Candidates</button>
+        <button class="role-tab" role="tab" id="tab-companies" aria-controls="p-companies" aria-selected="false" tabindex="-1"><span class="ms">apartment</span>Companies</button>
+        <button class="role-tab" role="tab" id="tab-academies" aria-controls="p-academies" aria-selected="false" tabindex="-1"><span class="ms">school</span>Academies</button>
+      </div>
+    </div>
+
+    <div class="role-panel" id="p-candidates" role="tabpanel" aria-labelledby="tab-candidates">
+      <div class="steps">
+        <div class="step"><div class="step-top"><span class="step-ic tint-blue"><span class="ms">travel_explore</span></span><span class="step-n">01</span></div><h3>Find a role</h3><p>Every job shows its assessment type, estimated effort, time window, deadline and AI-use policy before you commit.</p></div>
+        <div class="step"><div class="step-top"><span class="step-ic tint-teal"><span class="ms">bolt</span></span><span class="step-n">02</span></div><h3>Apply the light way</h3><p>Already verified in the skill? Apply in one click with no new task. Otherwise take the job's task — screening ≤ 2h, company assessment ≤ 8h.</p></div>
+        <div class="step"><div class="step-top"><span class="step-ic tint-purple"><span class="ms">edit_note</span></span><span class="step-n">03</span></div><h3>Work at your pace</h3><p>The timer starts only when you press Start. Drafts autosave, and you can ask for more time for accessibility needs or emergencies.</p></div>
+        <div class="step"><div class="step-top"><span class="step-ic tint-amber"><span class="ms">grading</span></span><span class="step-n">04</span></div><h3>Get real feedback</h3><p>See your score per rubric criterion, written feedback and improvement tips. Disagree? Dispute within 30 days.</p></div>
+        <div class="step"><div class="step-top"><span class="step-ic tint-pink"><span class="ms">photo_library</span></span><span class="step-n">05</span></div><h3>Build a portfolio that proves it</h3><p>Verified task outputs, external work and personal projects — each with the visibility you choose.</p></div>
+        <div class="step"><div class="step-top"><span class="step-ic tint-teal"><span class="ms">celebration</span></span><span class="step-n">06</span></div><h3>Interview and get hired</h3><p>Confirm interview slots, message hiring teams and follow every status change in one place.</p></div>
+      </div>
+      <aside class="side">
+        <span class="side-ic"><span class="ms">person</span></span>
+        <h3>For candidates</h3>
+        <p>Your skills are your resume.</p>
+        <ul>
+          <li><span class="ms">check_circle</span>Always free to apply and keep your scores</li>
+          <li><span class="ms">check_circle</span>One verified score, reused across many jobs</li>
+          <li><span class="ms">check_circle</span>You own your work and its visibility</li>
+        </ul>
+        <a href="register-candidate.html">Create a free account <span class="ms" style="font-size:17px">arrow_forward</span></a>
+      </aside>
+    </div>
+
+    <div class="role-panel" id="p-companies" role="tabpanel" aria-labelledby="tab-companies" hidden>
+      <div class="steps">
+        <div class="step"><div class="step-top"><span class="step-ic tint-teal"><span class="ms">verified_user</span></span><span class="step-n">01</span></div><h3>Get verified</h3><p>An Unresume admin confirms your company before jobs go live, so candidates know the opening is genuine.</p></div>
+        <div class="step"><div class="step-top"><span class="step-ic tint-purple"><span class="ms">library_books</span></span><span class="step-n">02</span></div><h3>Post a job with a fair task</h3><p>Start from the template library or the draft assistant. Effort caps keep tasks fair — never unpaid production work.</p></div>
+        <div class="step"><div class="step-top"><span class="step-ic tint-blue"><span class="ms">bolt</span></span><span class="step-n">03</span></div><h3>Accept existing scores</h3><p>Set minimum verified skill scores so strong candidates can apply without another task.</p></div>
+        <div class="step"><div class="step-top"><span class="step-ic tint-amber"><span class="ms">rate_review</span></span><span class="step-n">04</span></div><h3>Review consistently</h3><p>Assigned reviewers score against a locked rubric within 5 days. Use dual review for high-stakes roles.</p></div>
+        <div class="step"><div class="step-top"><span class="step-ic tint-pink"><span class="ms">compare_arrows</span></span><span class="step-n">05</span></div><h3>Shortlist, compare, interview</h3><p>Compare candidates side by side on verified evidence, then schedule interviews and record feedback.</p></div>
+        <div class="step"><div class="step-top"><span class="step-ic tint-teal"><span class="ms">insights</span></span><span class="step-n">06</span></div><h3>Measure hiring</h3><p>Funnel, conversion, time to hire and review turnaround — calculated from your real activity.</p></div>
+      </div>
+      <aside class="side">
+        <span class="side-ic"><span class="ms">apartment</span></span>
+        <h3>For companies</h3>
+        <p>Hire on evidence, faster.</p>
+        <ul>
+          <li><span class="ms">check_circle</span>Ready-made task templates and rubrics</li>
+          <li><span class="ms">check_circle</span>Shortlist straight from verified scores</li>
+          <li><span class="ms">check_circle</span>Pipeline, team, interviews and analytics</li>
+        </ul>
+        <a href="register-company.html">Register your company <span class="ms" style="font-size:17px">arrow_forward</span></a>
+      </aside>
+    </div>
+
+    <div class="role-panel" id="p-academies" role="tabpanel" aria-labelledby="tab-academies" hidden>
+      <div class="steps">
+        <div class="step"><div class="step-top"><span class="step-ic tint-pink"><span class="ms">group_add</span></span><span class="step-n">01</span></div><h3>Onboard students</h3><p>Add students one by one or by CSV. Students accept the link to their own account — they stay in control.</p></div>
+        <div class="step"><div class="step-top"><span class="step-ic tint-purple"><span class="ms">monitoring</span></span><span class="step-n">02</span></div><h3>Track verified progress</h3><p>Skill scores, tasks in review and applications for each student and batch.</p></div>
+        <div class="step"><div class="step-top"><span class="step-ic tint-blue"><span class="ms">send</span></span><span class="step-n">03</span></div><h3>Refer within slots</h3><p>Refer students to open roles within each job's referral slots. Companies see the referral.</p></div>
+        <div class="step"><div class="step-top"><span class="step-ic tint-teal"><span class="ms">handshake</span></span><span class="step-n">04</span></div><h3>Record placements</h3><p>Hires on Unresume are recorded automatically. Export batch and student reports any time.</p></div>
+      </div>
+      <aside class="side">
+        <span class="side-ic"><span class="ms">school</span></span>
+        <h3>For academies</h3>
+        <p>Turn training into verified placements.</p>
+        <ul>
+          <li><span class="ms">check_circle</span>Batch management and bulk import</li>
+          <li><span class="ms">check_circle</span>Referral tracking and placement records</li>
+          <li><span class="ms">check_circle</span>Students always own their accounts</li>
+        </ul>
+        <a href="register-academy.html">Join as an academy <span class="ms" style="font-size:17px">arrow_forward</span></a>
+      </aside>
+    </div>
+  </section>
+
+  <!-- TWO WAYS TO APPLY -->
+  <section class="hw-sec" aria-labelledby="h-ways">
+    <div class="hw-head">
+      <span class="section-badge"><span class="ms" style="font-size:15px">alt_route</span> Less busywork</span>
+      <h2 id="h-ways">Two ways to <span class="grad-text">apply</span></h2>
+      <p>You never have to repeat what you've already proven.</p>
+    </div>
+    <div class="ways">
+      <div class="way alt">
+        <span class="way-tag tint-teal">Fastest</span>
+        <h3>Apply with verified scores</h3>
+        <p>When a job accepts existing scores and you meet them, apply in one click.</p>
+        <ul>
+          <li><span class="ms">check</span>No new task — reuse past verified results</li>
+          <li><span class="ms">check</span>Requirements and your scores shown side by side</li>
+          <li><span class="ms">check</span>Company may later invite you to the role task</li>
+        </ul>
+      </div>
+      <div class="way">
+        <span class="way-tag tint-purple">Show it fresh</span>
+        <h3>Complete the role task</h3>
+        <p>A focused task designed by the hiring team, with a published rubric.</p>
+        <ul>
+          <li><span class="ms">check</span>Screening ≤ 2h · company assessment ≤ 8h of effort</li>
+          <li><span class="ms">check</span>Timer starts only when you're ready</li>
+          <li><span class="ms">check</span>Score and written feedback either way</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCORE EXPLAINER -->
+  <section class="hw-sec" aria-labelledby="h-score">
+    <div class="hw-head">
+      <span class="section-badge"><span class="ms" style="font-size:15px">calculate</span> Scoring</span>
+      <h2 id="h-score">How a score is <span class="grad-text">built</span></h2>
+      <p>Transparent from the first criterion to the leaderboard.</p>
+    </div>
+    <div class="score">
+      <div class="sc"><span class="step-ic tint-blue"><span class="ms">checklist</span></span><h4>Rubric</h4><p>Each task publishes its criteria and points before you start — always 100 in total.</p><div class="pillrow"><span class="pl">Code 25</span><span class="pl">UX 25</span><span class="pl">Function 30</span><span class="pl">A11y 20</span></div></div>
+      <div class="sc"><span class="step-ic tint-purple"><span class="ms">verified</span></span><h4>Verified task score</h4><div class="sc-big">86<small>/100</small></div><p>A reviewer scores every criterion. Only your best attempt per task counts.</p></div>
+      <div class="sc"><span class="step-ic tint-amber"><span class="ms">balance</span></span><h4>Difficulty weight</h4><div class="pillrow"><span class="pl">Beginner ×0.8</span><span class="pl">Intermediate ×1.0</span><span class="pl">Advanced ×1.25</span></div><p>Harder tasks count more towards your average.</p></div>
+      <div class="sc"><span class="step-ic tint-teal"><span class="ms">leaderboard</span></span><h4>Track score</h4><div class="sc-big">861<small>/1000</small></div><p>10 × your weighted average, separately for Frontend, Backend, Mobile, Data &amp; ML, Design and Product.</p></div>
+    </div>
+    <p class="score-link">Want every detail? <a href="leaderboard.html#how">Read the full methodology →</a></p>
+  </section>
+
+  <!-- FAIRNESS -->
+  <section class="hw-sec" aria-labelledby="h-fair">
+    <div class="hw-head">
+      <span class="section-badge"><span class="ms" style="font-size:15px">shield</span> Trust</span>
+      <h2 id="h-fair">What keeps it <span class="grad-text">fair</span></h2>
+    </div>
+    <div class="fair">
+      <div class="fair-card"><span class="step-ic tint-blue"><span class="ms">visibility</span></span><h3>Transparent scoring</h3><p>Published rubrics, locked after the first submission. Separate skill tracks — no apples-to-oranges rankings.</p></div>
+      <div class="fair-card"><span class="step-ic tint-purple"><span class="ms">gavel</span></span><h3>Humans decide</h3><p>Automated integrity signals are never proof on their own. Every flag is reviewed, and decisions can be appealed.</p></div>
+      <div class="fair-card"><span class="step-ic tint-amber"><span class="ms">smart_toy</span></span><h3>Clear AI rules</h3><p>Each task states whether AI tools are allowed. Using them where allowed is never treated as cheating.</p></div>
+      <div class="fair-card"><span class="step-ic tint-teal"><span class="ms">lock</span></span><h3>Your work, your choice</h3><p>You own your submissions and choose who sees them. <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></p></div>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section class="final" aria-labelledby="h-final">
+    <div><h2 id="h-final">Ready to show what you can do?</h2><p>Join free as a candidate, or start hiring on verified skills.</p></div>
+    <div class="final-btns">
+      <a class="w" href="register-candidate.html">Join as a candidate <span class="ms" style="font-size:17px">arrow_forward</span></a>
+      <a class="o" href="jobs.html">Browse jobs</a>
+    </div>
+  </section>
+
+</div>
+</main>
+<div id="footer"></div>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/components.js"></script>
+<script>
+// Accessible role tabs (arrow keys move between tabs)
+(function () {
+  const tabs = [...document.querySelectorAll('.role-tab')];
+  function select(tab) {
+    tabs.forEach(t => {
+      const on = t === tab;
+      t.setAttribute('aria-selected', on);
+      t.tabIndex = on ? 0 : -1;
+      document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+    });
+    tab.focus();
+  }
+  tabs.forEach((t, i) => {
+    t.addEventListener('click', () => select(t));
+    t.addEventListener('keydown', e => {
+      if (e.key === 'ArrowRight') select(tabs[(i + 1) % tabs.length]);
+      if (e.key === 'ArrowLeft') select(tabs[(i - 1 + tabs.length) % tabs.length]);
+    });
+  });
+  const role = new URLSearchParams(location.search).get('for');
+  const start = tabs.find(t => t.id === 'tab-' + role);
+  if (start) { select(start); document.getElementById('h-roles').scrollIntoView(); }
+})();
+</script>
+</body>
+</html>

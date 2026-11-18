@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
@@ -54,6 +54,20 @@
 .job-apply .material-symbols-rounded { font-size:16px; transition:transform .2s; }
 .job-card:hover .job-apply { background:linear-gradient(90deg,#4f46e5,#7c3aed); color:#fff; }
 .job-card:hover .job-apply .material-symbols-rounded { transform:translateX(3px); }
+.jb-filters{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:-8px 0 16px}
+.jb-filters select{padding:9px 12px;border:1px solid var(--border);border-radius:12px;background:#fff;font-size:13px;font-weight:600;font-family:var(--font-body);color:var(--text2);cursor:pointer}
+.jb-chk{display:inline-flex;align-items:center;gap:7px;padding:9px 13px;border:1px solid var(--border);border-radius:12px;background:#fff;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer}
+.jb-chk input{accent-color:var(--brand)}
+.jb-pager{display:flex;gap:6px;justify-content:center;margin-top:26px;flex-wrap:wrap}
+.jb-pager button{min-width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:#fff;font-weight:700;color:var(--text2);cursor:pointer;font-family:var(--font-body)}
+.jb-pager button.on{background:linear-gradient(90deg,#4f46e5,#7c3aed);color:#fff;border-color:transparent}
+.jb-pager button:disabled{opacity:.4;cursor:default}
+.save-btn-j{position:absolute;right:16px;bottom:16px;width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text3);z-index:2}
+.save-btn-j.on{color:var(--brand);border-color:#e2defb;background:#f5f3ff}
+.job-card-wrap{position:relative;display:flex}.job-card-wrap .job-card{flex:1}
+.job-card-wrap.has-save .job-footer{padding-right:46px}
+.job-card-wrap .save-btn-j{bottom:26px}
+@media(max-width:640px){.job-card-wrap .save-btn-j{bottom:22px}}
 .jobs-empty { grid-column:1/-1; text-align:center; padding:72px 24px; color:var(--text3); display:flex; flex-direction:column; align-items:center; gap:14px; font-size:14px; background:#fff; border:1px dashed var(--border-light); border-radius:20px; }
 .jobs-empty-icon { width:64px; height:64px; border-radius:50%; background:#eeedfd; color:var(--brand); display:flex; align-items:center; justify-content:center; }
 
@@ -96,9 +110,17 @@
         </label>
       </div>
 
+      <div class="jb-filters" role="group" aria-label="Filters">
+        <select id="modeSel" aria-label="Work mode"><option value="">Any work mode</option><option>Remote</option><option>Hybrid</option><option>On-site</option></select>
+        <select id="expSel" aria-label="Experience level"><option value="">Any experience</option><option>Entry</option><option>Mid</option><option>Senior</option></select>
+        <select id="salSel" aria-label="Minimum salary"><option value="0">Any salary</option><option value="10">10+ LPA</option><option value="20">20+ LPA</option><option value="30">30+ LPA</option></select>
+        <label class="jb-chk"><input type="checkbox" id="verifiedOnly"> Accepts verified scores</label>
+        <label class="jb-chk" id="savedWrap" hidden><input type="checkbox" id="savedOnly"> Saved jobs</label>
+      </div>
       <div class="pills" id="catPills"></div>
       <div class="jobs-meta"><div class="jobs-count" id="jobsCount"></div></div>
       <div class="jobs-grid" id="jobsGrid"></div>
+      <nav class="jb-pager" id="pager" aria-label="Pagination"></nav>
     </div>
   </div>
 </div>
@@ -110,7 +132,10 @@
 <script src="js/components.js"></script>
 <script>
 let jobs = UR.jobs.list();
-let search = UI.param('q') || '', category = 'All', sort = 'new';
+let search = UI.param('q') || '', category = 'All', sort = 'new', page = 1;
+const PAGE = 9;
+const isCand = (UR.user() || {}).role === 'candidate';
+document.getElementById('savedWrap').hidden = !isCand;
 document.getElementById('searchInput').value = search;
 const catTint = {
   Engineering: { cls:'tint-blue',   dot:'#2563eb' },
@@ -126,15 +151,19 @@ function renderPills() {
   ).join('');
 }
 
-function setCategory(c) { category = c; render(); }
+function setCategory(c) { category = c; page = 1; render(); }
 
 function render() {
   const me = UR.user();
+  const saved = isCand ? UR.jobs.saved() : [];
   let filtered = jobs.filter(j => {
     const q = search.toLowerCase();
     const ms = !q || j.title.toLowerCase().includes(q) || j.company.toLowerCase().includes(q) || j.skills.some(s=>s.toLowerCase().includes(q));
     const mc = category==='All' || j.category===category;
-    return ms && mc;
+    const mode = document.getElementById('modeSel').value, exp = document.getElementById('expSel').value, sal = +document.getElementById('salSel').value;
+    const mf = (!mode || j.workMode === mode) && (!exp || j.experienceLevel === exp) && (!sal || (j.salary && j.salary.max >= sal))
+      && (!document.getElementById('verifiedOnly').checked || (j.acceptVerified || []).length) && (!document.getElementById('savedOnly').checked || saved.includes(j.id));
+    return ms && mc && mf;
   });
   filtered = sort === 'deadline' ? UI.sortBy(filtered, j => j.deadline ? new Date(j.deadline).getTime() : Infinity, 'asc')
     : sort === 'applicants' ? UI.sortBy(filtered, 'applicants', 'asc') : UI.sortBy(filtered, j => new Date(j.createdAt).getTime());
@@ -142,12 +171,17 @@ function render() {
   document.getElementById('jobsCount').innerHTML = `<b>${filtered.length}</b> listing${filtered.length!==1?'s':''}`;
   renderPills();
   if (!filtered.length) {
+    document.getElementById('pager').innerHTML = '';
     document.getElementById('jobsGrid').innerHTML = `<div class="jobs-empty"><div class="jobs-empty-icon"><span class="material-symbols-rounded" style="font-size:30px">search_off</span></div><p>No listings match your search.</p></div>`;
     return;
   }
-  document.getElementById('jobsGrid').innerHTML = filtered.map(j => {
+  const pages = Math.max(1, Math.ceil(filtered.length / PAGE)); if (page > pages) page = pages;
+  const pager = document.getElementById('pager');
+  pager.innerHTML = pages > 1 ? `<button onclick="goPage(${page - 1})" ${page === 1 ? 'disabled' : ''} aria-label="Previous page">‹</button>` + Array.from({ length: pages }, (_, i) => `<button class="${i + 1 === page ? 'on' : ''}" onclick="goPage(${i + 1})" aria-label="Page ${i + 1}" ${i + 1 === page ? 'aria-current="page"' : ''}>${i + 1}</button>`).join('') + `<button onclick="goPage(${page + 1})" ${page === pages ? 'disabled' : ''} aria-label="Next page">›</button>` : '';
+  document.getElementById('jobsGrid').innerHTML = filtered.slice((page - 1) * PAGE, page * PAGE).map(j => {
     const t = catTint[j.category] || catTint._;
     return `
+    <div class="job-card-wrap${isCand ? ' has-save' : ''}">${isCand ? `<button class="save-btn-j ${saved.includes(j.id) ? 'on' : ''}" aria-pressed="${saved.includes(j.id)}" aria-label="${saved.includes(j.id) ? 'Remove from saved' : 'Save job'}" onclick="toggleSave(event, ${j.id})"><span class="material-symbols-rounded" style="font-size:19px;font-variation-settings:'FILL' ${saved.includes(j.id) ? 1 : 0}">bookmark</span></button>` : ''}
     <a href="job-detail.html?id=${j.id}" class="job-card ${j.featured?'featured':''}">
       ${j.featured?'<div class="feat-badge"><span class="material-symbols-rounded">bolt</span> Featured</div>':''}
       <div class="job-top">
@@ -156,15 +190,18 @@ function render() {
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap"><div class="task-pill"><span class="material-symbols-rounded">task_alt</span> ${UI.esc(j.task.title)} · ${UR.fmtDuration(j.task.timeLimitMin)}</div>${applied[j.id] ? UI.appPill(applied[j.id]) : ''}</div>
       <p class="job-desc">${UI.esc(j.description)}</p>
-      <div style="font-size:12px;color:var(--text3);display:flex;gap:12px;flex-wrap:wrap"><span>📍 ${UI.esc(j.location || '—')}</span>${j.deadline ? `<span>⏳ Apply by ${UI.fmtDate(j.deadline, { day: 'numeric', month: 'short' })}</span>` : ''}<span>👥 ${j.applicants} applicant${j.applicants === 1 ? '' : 's'}</span></div>
+      <div style="font-size:12px;color:var(--text3);display:flex;gap:12px;flex-wrap:wrap"><span>📍 ${UI.esc(j.location || '—')}</span>${j.workMode ? `<span>🏢 ${j.workMode}</span>` : ''}${j.experienceLevel ? `<span>🎯 ${j.experienceLevel}</span>` : ''}${j.salary ? `<span>💰 ₹${j.salary.min}–${j.salary.max} LPA</span>` : ''}${j.deadline ? `<span>⏳ Apply by ${UI.fmtDate(j.deadline, { day: 'numeric', month: 'short' })}</span>` : ''}<span>👥 ${j.applicants} applicant${j.applicants === 1 ? '' : 's'}</span></div>
       <div class="job-skills">${j.skills.slice(0,4).map(s=>`<span class="skill-tag">${UI.esc(s)}</span>`).join('')}${j.skills.length>4?`<span class="skill-tag">+${j.skills.length-4}</span>`:''}</div>
       <div class="job-footer"><span class="job-cat"><span class="dot" style="background:${t.dot}"></span>${j.category}</span><span class="job-apply">View & Apply <span class="material-symbols-rounded">arrow_forward</span></span></div>
-    </a>`;
+    </a></div>`;
   }).join('');
 }
+function goPage(p) { page = p; render(); document.getElementById('jobsGrid').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+function toggleSave(e, id) { e.preventDefault(); e.stopPropagation(); UI.run(() => UR.jobs.toggleSave(id), r => r ? 'Job saved' : 'Removed from saved').catch(() => {}); }
 
-document.getElementById('searchInput').addEventListener('input', e => { search = e.target.value; render(); });
-document.getElementById('sortSel').addEventListener('change', e => { sort = e.target.value; render(); });
+document.getElementById('searchInput').addEventListener('input', e => { search = e.target.value; page = 1; render(); });
+document.getElementById('sortSel').addEventListener('change', e => { sort = e.target.value; page = 1; render(); });
+['modeSel', 'expSel', 'salSel', 'verifiedOnly', 'savedOnly'].forEach(id => document.getElementById(id).addEventListener('change', () => { page = 1; render(); }));
 
 render();
 UI.onChange(() => { jobs = UR.jobs.list(); render(); });

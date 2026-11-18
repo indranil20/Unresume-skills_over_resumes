@@ -27,7 +27,7 @@
       <button class="btn-primary" type="submit">Verify</button>
     </form>
     <div id="result" aria-live="polite"></div>
-    <p style="font-size:12px;color:var(--text4);text-align:center">Prototype note: verification checks the records stored in this browser. In production this is a public API lookup (<code>GET /api/certificates/:id</code>).</p>
+    <p style="font-size:12px;color:var(--text4);text-align:center">Prototype note: verification checks the records stored in this browser only, so it is not authoritative yet. In production it queries the server (<code>GET /api/certificates/:id</code>, see BACKEND.md).</p>
   </div>
 </div>
 <div id="footer"></div>
@@ -41,12 +41,14 @@ function check(id) {
   id = id.trim().toUpperCase();
   if (!/^UR-[0-9A-F]{8}$/.test(id)) { $('result').innerHTML = UI.errorBox('That doesn\'t look like a certificate ID. IDs look like UR- followed by 8 letters/numbers.'); return; }
   const c = UR.certificates.verify(id);
-  $('result').innerHTML = c ? `<div class="panel-card" style="display:flex;flex-direction:column;gap:12px">
-      <div class="d-note good">${UI.icon('verified')}<div><b>Valid certificate.</b> Issued by Unresume for a verified task score.</div></div>
-      <div class="kv"><div><span>Awarded to</span><b style="font-size:16px">${c.username ? `<a href="candidate-profile.html?u=${esc(c.username)}" style="color:var(--brand)">${esc(c.candidateName)}</a>` : esc(c.candidateName)}</b></div>
-        <div><span>Task</span><b style="font-size:16px">${esc(c.title)}</b></div><div><span>Verified score</span><b>${c.score}/100</b></div>
-        <div><span>Reviewed by</span><b style="font-size:16px">${esc(c.issuer || 'Unresume')}</b></div><div><span>Issued</span><b style="font-size:16px">${UI.fmtDate(c.date)}</b></div></div></div>`
-    : `<div class="d-note bad">${UI.icon('gpp_bad')}<div><b>No certificate found with ID ${esc(id)}.</b> It may be mistyped, or the underlying score was voided by moderation.</div></div>`;
+  if (!c) { $('result').innerHTML = `<div class="d-note bad">${UI.icon('gpp_bad')}<div><b>No certificate found with ID ${esc(id)}.</b> Check for typos. Unresume never re-issues a certificate under a different ID.</div></div>`; return; }
+  const st = { valid: ['good', 'verified', 'Valid certificate.', 'Issued by Unresume for a verified task score.'], expired: ['warn', 'history', 'Expired certificate.', `It was valid when issued, but is older than the ${UR.settings().certificateValidityMonths}-month validity window. The skill may need a fresh assessment.`], revoked: ['bad', 'block', 'Revoked certificate.', `The underlying submission was voided by Unresume moderation${c.revokedAt ? ' on ' + UI.fmtDate(c.revokedAt) : ''}.`] }[c.status];
+  const kv = (l, v) => v ? `<div><span>${l}</span><b style="font-size:15px">${v}</b></div>` : '';
+  $('result').innerHTML = `<div class="panel-card" style="display:flex;flex-direction:column;gap:12px">
+      <div class="d-note ${st[0]}">${UI.icon(st[1])}<div><b>${st[2]}</b> ${st[3]}</div></div>
+      <div class="kv">${kv('Awarded to', c.username ? `<a href="candidate-profile.html?u=${esc(c.username)}" style="color:var(--brand)">${esc(c.candidateName)}</a>` : esc(c.candidateName))}${kv('Assessment', esc(c.title))}${kv('Verified score', c.score + '/100')}${kv('Issued by', esc(c.issuer || 'Unresume'))}${kv('Evaluation date', UI.fmtDate(c.date))}${kv('Assessment ID', c.assessmentId ? esc(c.assessmentId) : '')}${kv('Reviewer', c.reviewer ? esc(c.reviewer) + (c.dualReviewed ? ' (dual review)' : '') : '')}${kv('Difficulty', esc(c.difficulty || ''))}</div>
+      ${c.rubric && c.rubric.length ? `<div><div class="d-sec-title">Published rubric</div><div style="display:flex;gap:6px;flex-wrap:wrap">${c.rubric.map(r => `<span class="skill-tag">${esc(r)}</span>`).join('')}</div></div>` : ''}
+    </div>`;
 }
 $('form').addEventListener('submit', e => { e.preventDefault(); check($('cid').value); history.replaceState(null, '', `?id=${encodeURIComponent($('cid').value.trim().toUpperCase())}`); });
 if (UI.param('id')) { $('cid').value = UI.param('id'); check(UI.param('id')); }

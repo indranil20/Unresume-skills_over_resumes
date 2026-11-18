@@ -39,6 +39,7 @@ function render() {
       ${UI.field({ name: 'maxUploadMB', label: 'Max upload size per file (MB)', type: 'number', min: 1, max: 500, value: s.maxUploadMB })}`)
     + card('shield', 'Access & trust', `<label style="display:flex;gap:10px;align-items:center;font-size:14px;font-weight:600;color:var(--text1)"><input type="checkbox" name="requireCompanyVerification" ${s.requireCompanyVerification ? 'checked' : ''}> Companies must be verified before jobs go live</label>
       <label style="display:flex;gap:10px;align-items:center;font-size:14px;font-weight:600;color:var(--text1)"><input type="checkbox" name="allowCandidateChat" ${s.allowCandidateChat ? 'checked' : ''}> Allow candidate-to-candidate messaging (when the recipient allows it)</label>`)
+    + card('sell', 'Pricing plans (proposed — shown on pricing.html, not enforced)', `<p style="font-size:12.5px;color:var(--text3)">Edit the plan cards. No payments are taken and no limits are enforced until billing is integrated (see BACKEND.md).</p>${s.plans.map((p, i) => `<div class="panel-card" style="box-shadow:none;background:#fafaff;display:flex;flex-direction:column;gap:10px"><div class="form-grid3">${UI.field({ name: 'plan' + i + '_name', label: 'Plan name', value: p.name })}${UI.field({ name: 'plan' + i + '_price', label: 'Price', value: p.price })}${UI.field({ name: 'plan' + i + '_period', label: 'Period', value: p.period })}</div>${UI.field({ name: 'plan' + i + '_blurb', label: 'Short description', value: p.blurb })}${UI.field({ name: 'plan' + i + '_features', label: 'Features (one per line)', type: 'textarea', rows: 4, value: p.features.join('\n') })}</div>`).join('')}`)
     + card('campaign', 'Platform announcement', UI.field({ name: 'announcement', label: 'Banner shown at the top of every dashboard (leave empty to hide)', value: s.announcement, placeholder: 'e.g. Scheduled maintenance Sunday 02:00–03:00 IST' }))
     + `<div><button class="cta-btn" type="submit">${UI.icon('save')}Save settings</button></div>`;
 }
@@ -47,6 +48,9 @@ $('form').addEventListener('submit', e => {
   const d = Object.fromEntries(new FormData(e.target));
   d.requireCompanyVerification = !!e.target.requireCompanyVerification.checked;
   d.allowCandidateChat = !!e.target.allowCandidateChat.checked;
+  const cur = UR.admin.settings().plans;
+  d.plans = cur.map((p, i) => ({ ...p, name: (d['plan' + i + '_name'] || p.name).trim(), price: (d['plan' + i + '_price'] || '').trim(), period: (d['plan' + i + '_period'] || '').trim(), blurb: (d['plan' + i + '_blurb'] || '').trim(), features: String(d['plan' + i + '_features'] || '').split('\n').map(x => x.trim()).filter(Boolean) }));
+  Object.keys(d).filter(k => /^plan\d_/.test(k)).forEach(k => delete d[k]);
   UI.run(() => UR.admin.updateSettings(d), 'Settings saved').then(() => location.reload()).catch(() => {});
 });
 render();

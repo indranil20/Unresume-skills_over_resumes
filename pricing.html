@@ -40,27 +40,7 @@
     <div class="d-note warn" style="max-width:720px;text-align:left"><span class="material-symbols-rounded">info</span><div><b>Proposed pricing — not active.</b> Unresume is in beta: every feature on this page is free today, no payment is taken, and no plan limits are enforced. Prices and limits below are a draft for feedback and may change before launch.</div></div>
   </div>
 
-  <div class="plans">
-    <div class="plan">
-      <h2>Free</h2><div class="price">₹0 <small>forever</small></div>
-      <p style="font-size:13.5px;color:var(--text3)">For small teams hiring occasionally.</p>
-      <ul><li><span class="material-symbols-rounded">check</span>2 open jobs</li><li><span class="material-symbols-rounded">check</span>Assessment library & standard assessments</li><li><span class="material-symbols-rounded">check</span>Accept existing verified scores</li><li><span class="material-symbols-rounded">check</span>Review queue, pipeline, messaging</li><li><span class="material-symbols-rounded">check</span>2 team seats</li><li class="no"><span class="material-symbols-rounded">remove</span>Advanced analytics & exports</li></ul>
-      <div style="margin-top:auto"><a href="register-company.html" class="btn-ghost" style="width:100%;justify-content:center">Start free</a></div>
-    </div>
-    <div class="plan hl">
-      <span class="tag d-pill tint-purple">Proposed</span>
-      <h2>Professional</h2><div class="price">₹9,999 <small>/ month</small></div>
-      <p style="font-size:13.5px;color:var(--text3)">For growing teams hiring every month.</p>
-      <ul><li><span class="material-symbols-rounded">check</span>Unlimited open jobs</li><li><span class="material-symbols-rounded">check</span>10 team seats with HR/interviewer roles</li><li><span class="material-symbols-rounded">check</span>Hiring analytics: funnel, time-to-hire, conversion, CSV export</li><li><span class="material-symbols-rounded">check</span>Custom task templates shared across the team</li><li><span class="material-symbols-rounded">check</span>Candidate comparison & talent search outreach</li><li><span class="material-symbols-rounded">check</span>Priority review-SLA reminders</li></ul>
-      <div style="margin-top:auto"><a href="contact.html" class="btn-primary" style="width:100%;justify-content:center">Tell us you're interested</a></div>
-    </div>
-    <div class="plan">
-      <h2>Enterprise</h2><div class="price">Custom</div>
-      <p style="font-size:13.5px;color:var(--text3)">For high-volume hiring and compliance needs.</p>
-      <ul><li><span class="material-symbols-rounded">check</span>Everything in Professional</li><li><span class="material-symbols-rounded">check</span>SSO, audit-log export, data residency</li><li><span class="material-symbols-rounded">check</span>ATS integrations (API & webhooks)</li><li><span class="material-symbols-rounded">check</span>Calibration reports across reviewers</li><li><span class="material-symbols-rounded">check</span>Dedicated support & onboarding</li></ul>
-      <div style="margin-top:auto"><a href="contact.html" class="btn-ghost" style="width:100%;justify-content:center">Contact sales</a></div>
-    </div>
-  </div>
+  <div class="plans" id="plans"></div>
 
   <div class="panel-card cmp">
     <div class="sec-title" style="margin-bottom:10px"><span class="sec-icon tint-pink"><span class="material-symbols-rounded">school</span></span>Academy partnership (proposed)</div>
@@ -76,5 +56,15 @@
 <script src="js/store.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/components.js"></script>
+<script>
+// Plans are managed in Admin → Platform Settings (proposed; not enforced).
+document.getElementById('plans').innerHTML = UR.settings().plans.map(p => `<div class="plan ${p.highlight ? 'hl' : ''}">
+  ${p.highlight ? '<span class="tag d-pill tint-purple">Proposed</span>' : ''}
+  <h2>${UI.esc(p.name)}</h2><div class="price">${UI.esc(p.price)} <small>${UI.esc(p.period || '')}</small></div>
+  <p style="font-size:13.5px;color:var(--text3)">${UI.esc(p.blurb || '')}</p>
+  <ul>${p.features.map(f => `<li><span class="material-symbols-rounded">check</span>${UI.esc(f)}</li>`).join('')}</ul>
+  <div style="margin-top:auto"><a href="${p.key === 'free' ? 'register-company.html' : 'contact.html'}" class="${p.highlight ? 'btn-primary' : 'btn-ghost'}" style="width:100%;justify-content:center">${p.key === 'free' ? 'Start free' : p.key === 'enterprise' ? 'Contact sales' : 'Tell us you\'re interested'}</a></div>
+</div>`).join('');
+</script>
 </body>
 </html>

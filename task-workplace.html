@@ -767,7 +767,8 @@
             <h2 style="font-family:var(--font-display);font-size:24px;font-weight:800;color:var(--text1);letter-spacing:-.02em">Before you start</h2>
             <div class="gate-facts" id="gateFacts"></div>
             <div class="d-note"><span class="material-symbols-rounded">timer</span><div>The countdown starts when you press <b>Start assessment</b> and keeps running if you close this page — it is saved to your account. When time runs out you can no longer submit.</div></div>
-            <div class="d-note warn"><span class="material-symbols-rounded">policy</span><div><b>Integrity checks:</b> uploaded files are fingerprinted (SHA-256) and compared with other submissions, completion time is recorded, and we count how often you leave this tab. Flags are reviewed by a person before any action is taken. <a href="terms.html#integrity" style="color:var(--brand);font-weight:700">Read the rules</a></div></div>
+            <div class="d-note warn"><span class="material-symbols-rounded">policy</span><div id="integrityNote"></div></div>
+            <div class="d-note"><span class="material-symbols-rounded">accessible</span><div>Need more time because of a disability, connectivity problem or emergency? After you start, use <b>Request more time</b> — the reviewing team decides, and asking never affects your score.</div></div>
             <div id="gateError"></div>
             <div style="display:flex;gap:10px;flex-wrap:wrap">
               <button class="btn-primary" id="startBtn"><span class="material-symbols-rounded" style="font-size:18px">play_arrow</span> Start assessment</button>
@@ -853,6 +854,13 @@
             </div>
             <span id="portToggle" class="on" hidden></span><span id="portLabel" hidden></span>
 
+            <!-- Project links -->
+            <div class="form-grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="form-field"><label class="form-label" for="repoUrl" style="color:var(--text1)">GitHub / repository link (optional)</label><div class="input-wrap"><span class="material-symbols-rounded">code</span><input type="url" id="repoUrl" placeholder="https://github.com/…" data-draft></div></div>
+              <div class="form-field"><label class="form-label" for="designUrl" style="color:var(--text1)">Figma / design link (optional)</label><div class="input-wrap"><span class="material-symbols-rounded">palette</span><input type="url" id="designUrl" placeholder="https://figma.com/…" data-draft></div></div>
+            </div>
+            <div class="l-sub" id="autosaveNote" style="margin-top:-6px"></div>
+
             <!-- AI-use policy -->
             <div class="form-field" id="aiBlock"></div>
             <!-- Note -->
@@ -897,6 +905,7 @@
             <div class="progress-steps"><i id="prog0"></i><i id="prog1"></i></div>
             <span id="filesStatus">0/2 files uploaded</span>
           </div>
+          <button class="btn-ghost" id="extBtn" type="button" onclick="requestMore()" style="font-size:13.5px;padding:11px 16px"><span class="material-symbols-rounded" style="font-size:18px">more_time</span> Request more time</button>
           <button class="btn-primary" id="submitBtn" onclick="handleSubmit()" disabled>
             <span class="material-symbols-rounded" style="font-size:18px">send</span> Submit Task
           </button>
@@ -972,7 +981,39 @@
         + (pol === 'disclose' ? `<textarea class="note-area" id="aiDisclosure" style="min-height:70px" maxlength="1000" placeholder="How did you use AI tools? Write &quot;None&quot; if you didn't." aria-label="AI use disclosure"></textarea>`
         : pol === 'not_allowed' ? `<label style="display:flex;gap:8px;align-items:center;font-size:13.5px;font-weight:600;color:var(--text1)"><input type="checkbox" id="aiConfirm"> I completed this task without AI code or content generators.</label>` : '');
       if (task.confidential) { [...$('visSel').options].find(o => o.value === 'public').disabled = true; $('visSel').value = 'recruiters'; $('visHint').textContent = 'Confidential company task: the output can be shown to recruiters, never publicly.'; }
+      $('integrityNote').innerHTML = `<b>Integrity checks:</b> uploaded files are fingerprinted (SHA-256) and compared with other submissions, and completion time is recorded.${task.trackFocus ? ' <b>This task also counts how often you leave the tab</b> (enabled by the company).' : ' Tab switching is not tracked on this task.'} Automated signals are never proof on their own — a person reviews every flag. <a href="terms.html#integrity" style="color:var(--brand);font-weight:700">Read the rules</a>`;
       init();
+    }
+
+    // ── autosave text fields (files can't be stored in the browser — re-select them after a reload) ──
+    const DRAFT_FIELDS = ['noteInput', 'outUrl', 'repoUrl', 'designUrl', 'aiDisclosure'];
+    let draftTimer;
+    function restoreDraft() {
+      const dr = attempt && attempt.draft; if (!dr) return;
+      DRAFT_FIELDS.forEach(id => { if ($(id) && dr[id] != null && !$(id).value) $(id).value = dr[id]; });
+      if (dr.visibility && $('visSel')) $('visSel').value = dr.visibility;
+      $('autosaveNote').innerHTML = ` Draft restored from ${UI.fmtDateTime(dr.savedAt)}. Uploaded files need to be selected again.`;
+      updateSubmitBtn();
+    }
+    function scheduleDraft() {
+      clearTimeout(draftTimer);
+      draftTimer = setTimeout(() => {
+        if (!attempt || attempt.status !== 'active') return;
+        const dr = {}; DRAFT_FIELDS.forEach(id => { if ($(id)) dr[id] = $(id).value; }); dr.visibility = $('visSel').value;
+        try { UR.attempts.saveDraft(attempt.id, dr); $('autosaveNote').innerHTML = ` Saved ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`; }
+        catch (e) { $('autosaveNote').innerHTML = ` Couldn't save draft: ${UI.esc(e.message)}`; }
+      }, 800);
+    }
+    document.addEventListener('input', e => { if (e.target && DRAFT_FIELDS.includes(e.target.id)) { scheduleDraft(); updateSubmitBtn(); } });
+    $('visSel').addEventListener('change', scheduleDraft);
+
+    function requestMore() {
+      const maxMin = Math.round((task.timeLimitMin || 0) * UR.settings().maxExtensionPct / 100);
+      const pending = UR.attempts.extensions({ status: 'pending' }).find(e => e.attemptId === attempt.id);
+      if (pending) return UI.toast(`Your request for ${pending.minutes} more minutes is waiting for a decision.`, 'info');
+      UI.modal({ title: 'Request more time', icon: 'more_time', submitLabel: 'Send request', sub: `The reviewing team decides. You can ask for up to ${maxMin} minutes. Your timer keeps running until a decision is made.`,
+        body: UI.field({ name: 'minutes', label: 'Extra minutes', type: 'number', min: 1, max: maxMin, value: Math.min(60, maxMin), required: true }) + UI.field({ name: 'reason', label: 'Reason', type: 'textarea', rows: 3, required: true, placeholder: 'e.g. power cut, accessibility need, illness' }),
+        onSubmit: d => { UR.attempts.requestExtension(attempt.id, d.minutes, d.reason); UI.toast('Request sent — you\'ll be notified'); } });
     }
 
     function init() {
@@ -990,6 +1031,7 @@
       }
       if (attempt.status === 'expired') { stopTimer(); $('timerVal').textContent = '00:00'; return showState('timer_off', 'Time is up', 'Your attempt for this job task expired before a submission was made. Each job task can be attempted once.', '<a href="my-applications.html" class="btn-primary">My applications</a><a href="jobs.html" class="btn-ghost">Browse jobs</a>'); }
       setView('work');
+      restoreDraft();
       startTicker();
       updateSubmitBtn();
     }
@@ -1046,7 +1088,7 @@
     }
     function updateSubmitBtn() {
       const url = $('outUrl').value.trim();
-      const n = (selected.working ? 1 : 0) + (selected.output || url ? 1 : 0);
+      const n = (selected.working ? 1 : 0) + (selected.output || url || $('repoUrl').value.trim() || $('designUrl').value.trim() ? 1 : 0);
       $('filesStatus').textContent = `${n}/2 parts ready`;
       $('prog0').classList.toggle('on', n >= 1);
       $('prog1').classList.toggle('on', n >= 2);
@@ -1061,14 +1103,22 @@
 
     async function handleSubmit() {
       if (submitting) return;
-      const ok = await UI.confirm({ title: 'Submit your work?', text: 'You can\'t change a submission after sending it. Make sure both parts are the final versions.', confirmLabel: 'Submit now', icon: 'send' });
+      const bad = ['outUrl', 'repoUrl', 'designUrl'].find(id => $(id).value.trim() && !/^https?:\/\/\S+\.\S+/.test($(id).value.trim()));
+      if (bad) { $('submitError').innerHTML = UI.errorBox('Links must start with http:// or https://'); $(bad).focus(); return; }
+      const row = (l, v) => v ? `<div class="kv-row" style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px"><b style="min-width:130px;color:var(--text1)">${l}</b><span style="color:var(--text2);word-break:break-all">${v}</span></div>` : '';
+      const vis = { public: 'Public portfolio', recruiters: 'Recruiters only', private: 'Only me' }[$('visSel').value];
+      const preview = row('Working file', selected.working ? ` · ${UI.fmtBytes(selected.working.size)}` : '')
+        + row('Final output', selected.output ? ` · ${UI.fmtBytes(selected.output.size)}` : '') + row('Output URL', UI.esc($('outUrl').value.trim()))
+        + row('Repository', UI.esc($('repoUrl').value.trim())) + row('Design', UI.esc($('designUrl').value.trim())) + row('Visibility', vis)
+        + row('AI use', UI.esc((($('aiDisclosure') || {}).value || '').trim() || (($('aiConfirm') || {}).checked ? 'Confirmed: no AI tools' : ''))) + row('Note', UI.esc($('noteInput').value.trim()));
+      const ok = await UI.confirm({ title: 'Review and submit', text: `<div style="margin-bottom:8px">You can't change a submission after sending it.</div>${preview}`, confirmLabel: 'Submit now', icon: 'send' });
       if (!ok.ok) return;
       submitting = true;
       const btn = $('submitBtn'); const label = btn.innerHTML;
       btn.innerHTML = '<span class="spinner"></span> Uploading…'; btn.disabled = true; $('submitError').innerHTML = '';
       try {
         // Only switch to the success view after the store confirms the write.
-        const sub = await UR.submissions.submit({ attemptId: attempt.id, files: selected, note: $('noteInput').value, visibility: $('visSel').value, outputUrl: $('outUrl').value.trim(), aiDisclosure: ($('aiDisclosure') || {}).value || '', aiConfirm: !!($('aiConfirm') || {}).checked });
+        const sub = await UR.submissions.submit({ attemptId: attempt.id, files: selected, note: $('noteInput').value, visibility: $('visSel').value, outputUrl: $('outUrl').value.trim(), aiDisclosure: ($('aiDisclosure') || {}).value || '', aiConfirm: !!($('aiConfirm') || {}).checked, links: { repo: $('repoUrl').value.trim(), design: $('designUrl').value.trim() } });
         stopTimer();
         $('timerVal').textContent = 'Done'; $('timerHint').textContent = '';
         $('viewSubLink').href = `assessments.html?id=${sub.id}`;

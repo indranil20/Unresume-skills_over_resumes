@@ -177,6 +177,17 @@ select.tc-select:focus{border-color:rgba(91,108,245,.45)}
             </div>
           </div>
 
+          <!-- Review & fairness settings -->
+          <div class="tc-section">
+            <div class="tc-section-title"><div class="sect-icon tint-blue"><span class="material-symbols-rounded" style="font-size:17px">tune</span></div>Review &amp; fairness</div>
+            <div class="form-grid2">
+              <div class="form-field"><label class="form-label" for="maxAtt">Maximum attempts per candidate</label><select class="tc-select" id="maxAtt"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select><div class="f-hint">Standard assessments allow retakes after the cooldown; job tasks usually allow one.</div></div>
+              <div class="form-field"><label class="form-label" for="revSel">Assigned reviewers</label><select class="tc-select" id="revSel" multiple size="3" aria-describedby="revHint"></select><div class="f-hint" id="revHint">They see these submissions under "Assigned to me". Hold Ctrl/Cmd to pick several.</div></div>
+            </div>
+            <label style="display:flex;gap:8px;align-items:flex-start;font-size:13.5px;color:var(--text1);font-weight:600;margin-top:12px"><input type="checkbox" id="dualRev" style="margin-top:3px"> <span>Dual review — two independent reviewers; the score is their average and big disagreements go to Unresume moderators.<br><small style="color:var(--text3);font-weight:500">Use for senior or high-stakes roles.</small></span></label>
+            <label style="display:flex;gap:8px;align-items:flex-start;font-size:13.5px;color:var(--text1);font-weight:600;margin-top:10px"><input type="checkbox" id="trackFocus" style="margin-top:3px"> <span>Count tab switches during the attempt<br><small style="color:var(--text3);font-weight:500">Off by default. Candidates are told before starting, and tab switches are never treated as proof of cheating.</small></span></label>
+          </div>
+
           <!-- Submission types -->
           <div class="tc-section">
             <div class="tc-section-title">
@@ -281,6 +292,7 @@ if (existing) {
   reqs = existing.requirements.length ? [...existing.requirements] : [''];
   rubric = existing.rubric.map(r => ({ ...r }));
   activeSubTypes.clear(); (existing.submissionTypes || []).forEach(s => activeSubTypes.add(s));
+  $('maxAtt').value = String(existing.maxAttempts || 1); $('dualRev').checked = !!existing.dualReview; $('trackFocus').checked = !!existing.trackFocus;
   $('taskKind').value = existing.kind || 'advanced'; $('taskEst').value = existing.estimatedHours || 4; $('taskAi').value = existing.aiPolicy || 'disclose'; $('taskConf').checked = !!existing.confidential;
   source = existing.source || 'manual'; templateId = existing.templateId || null;
   if (existing.submissions) $('rubricList').insertAdjacentHTML('beforebegin', `<div class="d-note warn" style="margin-bottom:14px">${UI.icon('lock')}<div>This task already has ${UI.plural(existing.submissions, 'submission')}, so the rubric can't change — every candidate must be scored the same way.</div></div>`);
@@ -338,6 +350,12 @@ else {
 }
 
 
+// ── reviewers ──
+try {
+  const team = me.role === 'admin' ? [{ id: me.id, name: me.name, role: 'admin' }] : UR.team.list().members.filter(m => m.status === 'active');
+  $('revSel').innerHTML = team.map(m => `<option value="${m.id}" ${existing && (existing.reviewerIds || []).includes(m.id) ? 'selected' : ''}>${esc(m.name)} (${UR.ROLES[m.role].label})</option>`).join('');
+} catch (e) { $('revSel').closest('.form-field').hidden = true; }
+if (isPractice) $('maxAtt').value = '3';
 // ── assessment type limits (mirrors UR settings) ──
 const caps = UR.settings();
 if (isPractice) { $('taskKind').innerHTML = '<option value="standard">Standard assessment (≤4h)</option>'; $('taskKind').value = 'standard'; }
@@ -399,7 +417,8 @@ function collect() {
   return { id: existing ? existing.id : undefined, title: $('taskTitle').value, brief: $('taskBrief').value, requirements: reqs, rubric, skills: $('taskSkills').value.split(',').map(s => s.trim()).filter(Boolean),
     difficulty: $('taskDiff').value, timeLimitMin: +$('taskTime').value, deadline: $('taskDeadline').value ? new Date($('taskDeadline').value).toISOString() : null,
     submissionTypes: [...activeSubTypes], jobId: isPractice ? undefined : (taskType === 'job' ? (+$('jobSelect').value || null) : null),
-    kind: $('taskKind').value, estimatedHours: +$('taskEst').value, aiPolicy: $('taskAi').value, confidential: $('taskConf').checked, fairUse: $('fairUse').checked, humanReviewed: $('humanReviewed').checked, source, templateId };
+    kind: $('taskKind').value, estimatedHours: +$('taskEst').value, aiPolicy: $('taskAi').value, confidential: $('taskConf').checked, fairUse: $('fairUse').checked, humanReviewed: $('humanReviewed').checked, source, templateId,
+    maxAttempts: +$('maxAtt').value, dualReview: $('dualRev').checked, trackFocus: $('trackFocus').checked, reviewerIds: [...$('revSel').selectedOptions].map(o => o.value) };
 }
 function handlePublish() {
   const btn = $('publishBtn'), label = btn.innerHTML;

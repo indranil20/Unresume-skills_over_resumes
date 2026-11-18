@@ -11,6 +11,98 @@
 <link rel="stylesheet" href="css/globals.css">
 <link rel="stylesheet" href="css/navbar.css">
 <link rel="stylesheet" href="css/home.css">
+<style>
+.u-av{border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:800;color:#fff;flex-shrink:0}
+.hm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.hm-card{background:#fff;border:1px solid var(--border);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow-sm);text-decoration:none;transition:transform .2s,box-shadow .2s}.hm-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-md)}
+.ms{font-family:'Material Symbols Rounded';font-weight:normal;font-style:normal;line-height:1;display:inline-block;font-variation-settings:'FILL' 1}
+/* featured jobs */
+.fj-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.fj{position:relative;background:#fff;border:1px solid var(--border);border-radius:22px;padding:22px;display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow-sm);text-decoration:none;color:inherit;transition:transform .2s,box-shadow .2s,border-color .2s}
+.fj:hover{transform:translateY(-4px);box-shadow:0 20px 40px rgba(79,70,229,.13);border-color:#d9d4fb}
+.fj-top{display:flex;align-items:center;gap:12px}
+.fj-logo{width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#eeedfd,#e4defc);display:flex;align-items:center;justify-content:center;font-size:23px;flex-shrink:0}
+.fj-co{font-size:13px;color:var(--text3);font-weight:600;display:flex;align-items:center;gap:4px}
+.fj-co .ms{font-size:15px;color:#4f46e5}
+.fj-title{font-family:var(--font-display);font-size:18px;font-weight:800;color:var(--text1);line-height:1.25}
+.fj-feat{margin-left:auto;align-self:flex-start;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:4px 10px;border-radius:100px;background:#fff4e0;color:#b45309;display:inline-flex;align-items:center;gap:4px}
+.fj-feat .ms{font-size:13px}
+.fj-task{border-radius:14px;padding:12px 14px;background:linear-gradient(120deg,#f5f3ff,#faf9ff);border:1px dashed #d4cdfa;display:flex;flex-direction:column;gap:6px}
+.fj-task-l{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--brand);display:flex;align-items:center;gap:5px}
+.fj-task-l .ms{font-size:15px}
+.fj-task-t{font-size:14px;font-weight:700;color:var(--text1)}
+.fj-task-m{display:flex;gap:6px;flex-wrap:wrap}
+.fj-chip{font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:100px;background:#fff;border:1px solid #e6e3fb;color:var(--text2);display:inline-flex;align-items:center;gap:4px}
+.fj-chip .ms{font-size:13px;color:var(--brand)}
+.fj-skills{display:flex;gap:6px;flex-wrap:wrap}
+.fj-skill{font-size:12px;font-weight:600;padding:4px 10px;border-radius:8px;background:#f4f4f8;color:var(--text2)}
+.fj-meta{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--text3)}
+.fj-meta span{display:flex;align-items:center;gap:7px}
+.fj-meta .ms{font-size:17px;color:var(--text4)}
+.fj-foot{margin-top:auto;padding-top:14px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.fj-dl{font-size:12.5px;font-weight:700;color:var(--text2);display:flex;align-items:center;gap:5px}
+.fj-dl .ms{font-size:16px;color:#d97706}
+.fj-fast{font-size:11.5px;font-weight:700;color:#0d9488;background:#e8faf6;padding:4px 9px;border-radius:100px;display:inline-flex;align-items:center;gap:4px}
+.fj-fast .ms{font-size:14px}
+.fj-go{width:34px;height:34px;border-radius:50%;background:#eeedfd;color:var(--brand);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .2s,color .2s}
+.fj:hover .fj-go{background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff}
+/* featured candidates */
+.fc-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
+.fc{position:relative;background:#fff;border:1px solid var(--border);border-radius:22px;overflow:hidden;display:flex;flex-direction:column;align-items:center;text-align:center;box-shadow:var(--shadow-sm);text-decoration:none;color:inherit;transition:transform .2s,box-shadow .2s,border-color .2s}
+.fc:hover{transform:translateY(-4px);box-shadow:0 20px 40px rgba(79,70,229,.13);border-color:#d9d4fb}
+.fc-band{width:100%;padding:40px 0 16px;display:flex;justify-content:center;background:linear-gradient(120deg,#e4defc,#d6cefb 60%,#f3d6f5);border-bottom:1px solid #ece9fb}
+.fc-rank{position:absolute;top:12px;left:12px;font-size:11px;font-weight:800;padding:4px 9px;border-radius:100px;background:rgba(255,255,255,.9);color:var(--brand)}
+.fc-av{padding:4px;background:#fff;border-radius:50%;box-shadow:0 8px 20px rgba(79,70,229,.18);line-height:0}
+.fc-av .u-av{display:flex;align-items:center;justify-content:center;border-radius:50%;color:#fff;font-family:var(--font-display);font-weight:800;line-height:1;letter-spacing:.02em}
+.fc-body{padding:12px 18px 20px;display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;flex:1}
+.fc-name{font-family:var(--font-display);font-size:16.5px;font-weight:800;color:var(--text1);display:flex;align-items:center;gap:4px}
+.fc-name .ms{font-size:17px;color:#4f46e5}
+.fc-head{font-size:12.5px;color:var(--text3);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:37px}
+.fc-score{margin:6px 0 2px;width:100%;border-radius:14px;background:#f7f6ff;padding:10px}
+.fc-score b{font-family:var(--font-display);font-size:28px;font-weight:800;line-height:1}
+.fc-score small{font-size:12px;color:var(--text4);font-weight:600}
+.fc-score div{font-size:11.5px;color:var(--text3);font-weight:700;margin-top:3px}
+.fc-skills{display:flex;gap:5px;flex-wrap:wrap;justify-content:center}
+.fc-foot{margin-top:auto;padding-top:10px;font-size:12.5px;font-weight:700;color:var(--brand);display:flex;align-items:center;gap:4px}
+.fc-foot .ms{font-size:16px;transition:transform .2s}
+.fc:hover .fc-foot .ms{transform:translateX(3px)}
+.fc-join{justify-content:center;gap:10px;padding:28px 22px;background:linear-gradient(170deg,#faf9ff,#fff);border:2px dashed #d4cdfa;box-shadow:none}
+.fc-join p{font-size:13px;color:var(--text3);line-height:1.6}
+.fc-join p b{color:var(--text2)}
+.fc-join .fc-foot{margin-top:4px}
+.fc-join-ic{width:56px;height:56px;border-radius:50%;background:#eeedfd;color:var(--brand);display:flex;align-items:center;justify-content:center}
+.fc-join-ic .ms{font-size:28px}
+@media(max-width:1100px){.fc-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:960px){.fj-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.fj-grid,.fc-grid{grid-template-columns:1fr}}
+.hm-academy{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;background:linear-gradient(100deg,#fdeefc,#f1ecfe);border:1px solid #f3d6f5;border-radius:24px;padding:32px}
+.faq-wrap{display:grid;grid-template-columns:340px minmax(0,1fr);gap:48px;align-items:start}
+.faq-intro{position:sticky;top:110px;display:flex;flex-direction:column;gap:14px}
+.faq-intro .section-badge{align-self:flex-start}
+.faq-intro h2{font-family:var(--font-display);font-size:clamp(28px,3.4vw,40px);font-weight:800;color:var(--text1);letter-spacing:-.03em;line-height:1.1}
+.faq-intro>p{font-size:15px;color:var(--text3);line-height:1.7}
+.faq-help{margin-top:10px;border-radius:20px;padding:22px;background:linear-gradient(150deg,#4f46e5,#7c3aed);color:#fff;box-shadow:0 18px 36px rgba(79,70,229,.25)}
+.faq-help h3{font-family:var(--font-display);font-size:17px;font-weight:800;margin-bottom:4px}
+.faq-help p{font-size:13.5px;color:rgba(255,255,255,.85);line-height:1.6;margin-bottom:14px}
+.faq-help a{display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:11px;background:#fff;color:var(--brand);font-weight:700;font-size:13.5px;text-decoration:none}
+.hm-faq{display:flex;flex-direction:column;gap:12px}
+.hm-faq details{background:#fff;border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow-sm);transition:border-color .2s,box-shadow .2s}
+.hm-faq details:hover{border-color:#d9d4fb}
+.hm-faq details[open]{border-color:#c9c2f8;box-shadow:0 14px 32px rgba(79,70,229,.12)}
+.hm-faq summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:14px;padding:18px 20px;font-family:var(--font-display);font-weight:700;color:var(--text1);font-size:16px;line-height:1.4}
+.hm-faq summary::-webkit-details-marker{display:none}
+.hm-faq summary:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:18px}
+.faq-n{flex-shrink:0;width:34px;height:34px;border-radius:10px;background:#eeedfd;color:var(--brand);font-size:12.5px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.faq-q{flex:1}
+.faq-ic{flex-shrink:0;width:30px;height:30px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--brand);font-size:20px!important;transition:transform .25s,background .2s,color .2s}
+.hm-faq details[open] .faq-ic{transform:rotate(45deg);background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border-color:transparent}
+.hm-faq details[open] .faq-n{background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff}
+.hm-faq p{font-size:14.5px;color:var(--text2);line-height:1.75;padding:0 20px 20px 68px;margin:0}
+.hm-faq a{color:var(--brand);font-weight:700}
+@media(max-width:900px){.faq-wrap{grid-template-columns:1fr;gap:28px}.faq-intro{position:static}}
+@media(max-width:560px){.hm-faq summary{padding:16px;font-size:15px;gap:12px}.faq-n{display:none}.hm-faq p{padding:0 16px 18px}}
+.hm-empty{grid-column:1/-1;text-align:center;padding:30px;color:var(--text3);font-size:14px;background:#fff;border:1px dashed var(--border-light);border-radius:18px}
+</style>
 </head>
 <body>
 <div id="navbar"></div>
@@ -243,6 +335,58 @@
     </div>
   </div>
 
+  <!-- FEATURED JOBS (live) -->
+  <div class="section" style="padding-top:40px;padding-bottom:20px">
+    <div class="section-header-row"><div class="section-header"><div class="section-badge"><span class="material-symbols-rounded">work</span> Open roles</div><h2 class="section-title">Featured <span class="grad-text">job tasks</span></h2></div><a href="jobs.html" class="btn-ghost">All jobs <span class="material-symbols-rounded" style="font-size:18px">arrow_forward</span></a></div>
+    <div class="fj-grid" id="featJobs"></div>
+  </div>
+
+  <!-- FEATURED CANDIDATES (opt-in only) -->
+  <div class="section" style="padding-top:20px;padding-bottom:20px" id="featCandSection">
+    <div class="section-header-row"><div class="section-header"><div class="section-badge"><span class="material-symbols-rounded">verified</span> Verified talent</div><h2 class="section-title">Featured <span class="grad-text">candidates</span></h2></div><a href="leaderboard.html" class="btn-ghost">Leaderboards <span class="material-symbols-rounded" style="font-size:18px">arrow_forward</span></a></div>
+    <p style="font-size:13px;color:var(--text3);margin:-24px 0 18px">Candidates who chose to be featured. Scores are verified track scores.</p>
+    <div class="fc-grid" id="featCands"></div>
+  </div>
+
+  <!-- ACADEMIES -->
+  <div class="section" style="padding-top:20px;padding-bottom:20px">
+    <div class="hm-academy">
+      <div><div class="section-badge"><span class="material-symbols-rounded">school</span> For academies</div>
+        <h2 class="section-title" style="margin-top:12px">Turn training into <span class="grad-text">verified placements</span></h2>
+        <p style="font-size:15px;color:var(--text3);line-height:1.7;margin-top:10px;max-width:560px">Onboard batches, follow each student's verified scores, refer them to open roles within each job's referral slots and track placements. Students always own their accounts and can link or leave with their consent.</p></div>
+      <a href="register-academy.html" class="btn-primary">Join as an academy <span class="material-symbols-rounded" style="font-size:18px">arrow_forward</span></a>
+    </div>
+  </div>
+
+  <!-- FAQ -->
+  <div class="section" style="padding-top:20px;padding-bottom:40px">
+    <div class="faq-wrap">
+    <div class="faq-intro">
+      <div class="section-badge"><span class="material-symbols-rounded">help</span> FAQ</div>
+      <h2>Common <span class="grad-text">questions</span></h2>
+      <p>Everything you need to know about tasks, scores and fairness on Unresume.</p>
+      <div class="faq-help">
+        <h3>Still have a question?</h3>
+        <p>Read the full walkthrough, or send us a message.</p>
+        <a href="how-it-works.html">How it works <span class="material-symbols-rounded" style="font-size:17px">arrow_forward</span></a>
+        <a href="contact.html" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);margin-left:6px">Contact</a>
+      </div>
+    </div>
+    <div class="hm-faq">
+      <details open><summary>Do I have to do a long task for every job?</summary><p>No. Many jobs accept your existing verified skill scores, so you can apply in one click. Standard assessments are short and reusable across jobs, and every task shows its estimated effort before you start (screening tasks ≤ 2h, company assessments ≤ 8h).</p></details>
+      <details><summary>How is my score calculated?</summary><p>A reviewer scores your work against a published 100-point rubric. Your track score is 10 × the difficulty-weighted average of your best score per task, calculated separately for each skill track. <a href="leaderboard.html#how">Full methodology</a>.</p></details>
+      <details><summary>Can I use AI tools?</summary><p>Each task states its policy: allowed, allowed with disclosure, or not allowed. Using AI where it's allowed is never treated as cheating.</p></details>
+      <details><summary>What if I think my score is wrong?</summary><p>Dispute it within 30 days. Unresume moderators — not the company — review it and can uphold, adjust or void the score.</p></details>
+      <details><summary>Is it free for candidates?</summary><p>Yes. Applying, taking assessments and keeping your verified scores and certificates are always free. Companies will pay for scale; see <a href="pricing.html">proposed plans</a>.</p></details>
+      <details><summary>Who owns my work?</summary><p>You do. Companies may use a submission only to evaluate you for that role, and you choose who sees each portfolio item.</p></details>
+    </div>
+    </div>
+  </div>
+<script>
+document.querySelectorAll('.hm-faq summary').forEach((s, i) => {
+  s.innerHTML = '<span class="faq-n">' + String(i + 1).padStart(2, '0') + '</span><span class="faq-q">' + s.innerHTML + '</span><span class="material-symbols-rounded faq-ic" aria-hidden="true">add</span>';
+});
+</script>
   <!-- CTA -->
   <div class="cta-wrap">
     <section class="cta-section">
@@ -298,6 +442,54 @@ document.addEventListener('DOMContentLoaded', () => {
     start: 'top 85%'
   });
 });
+</script>
+<script>
+(function () {
+  const esc = UI.esc;
+  const jobs = UR.jobs.list().sort((a, b) => (b.featured - a.featured) || (new Date(b.createdAt) - new Date(a.createdAt))).slice(0, 3);
+  const daysLeft = d => d ? Math.ceil((new Date(d) - Date.now()) / 864e5) : null;
+  document.getElementById('featJobs').innerHTML = jobs.length ? jobs.map(j => {
+    const t = j.task || {}, dl = daysLeft(j.deadline), fast = (j.acceptVerified || []).length;
+    const where = [j.location, j.workMode && !String(j.location || '').includes(j.workMode) ? j.workMode : ''].filter(Boolean).join(' · ');
+    return `<a class="fj" href="job-detail.html?id=${j.id}">
+      <div class="fj-top">
+        <span class="fj-logo">${j.logo || '🏢'}</span>
+        <div style="min-width:0"><div class="fj-co">${esc(j.company)}${j.companyVerified ? '<span class="ms" title="Verified company">verified</span>' : ''}</div><div class="fj-title">${esc(j.title)}</div></div>
+        ${j.featured ? '<span class="fj-feat"><span class="ms">star</span>Featured</span>' : ''}
+      </div>
+      ${t.title ? `<div class="fj-task">
+        <div class="fj-task-l"><span class="ms">assignment</span>Hiring task</div>
+        <div class="fj-task-t">${esc(t.title)}</div>
+        <div class="fj-task-m">${t.difficulty ? `<span class="fj-chip"><span class="ms">signal_cellular_alt</span>${esc(t.difficulty)}</span>` : ''}${t.estimatedHours ? `<span class="fj-chip"><span class="ms">schedule</span>~${t.estimatedHours}h effort</span>` : ''}</div>
+      </div>` : ''}
+      <div class="fj-skills">${(j.skills || []).slice(0, 4).map(s => `<span class="fj-skill">${esc(s)}</span>`).join('')}</div>
+      <div class="fj-meta">
+        ${where ? `<span><span class="ms">location_on</span>${esc(where)}</span>` : ''}
+        ${j.salary ? `<span><span class="ms">payments</span>₹${j.salary.min}–${j.salary.max} LPA</span>` : ''}
+      </div>
+      <div class="fj-foot">
+        ${fast ? '<span class="fj-fast"><span class="ms">bolt</span>Accepts verified scores</span>' : dl != null ? `<span class="fj-dl"><span class="ms">event</span>${dl > 0 ? dl + ' days left' : 'Closing today'}</span>` : '<span></span>'}
+        <span class="fj-go"><span class="ms" style="font-size:18px">arrow_forward</span></span>
+      </div></a>`;
+  }).join('') : '<div class="hm-empty">No open jobs right now — check back soon.</div>';
+  const cands = UR.candidates.featured(4);
+  if (!cands.length) document.getElementById('featCandSection').hidden = true;
+  document.getElementById('featCands').innerHTML = cands.map((c, i) => `<a class="fc" href="candidate-profile.html?u=${encodeURIComponent(c.username)}">
+    <div class="fc-band"><div class="fc-av">${UI.avatar(c.name, 72, c.username)}</div></div>
+    <span class="fc-rank">#${i + 1} featured</span>
+    <div class="fc-body" style="padding-top:16px">
+      <div class="fc-name">${esc(c.name)}<span class="ms" title="Verified scores">verified</span></div>
+      <div class="fc-head">${esc(c.headline || 'Verified on Unresume')}</div>
+      <div class="fc-score"><b class="grad-text">${c.score}</b><small>/1000</small><div>${esc(c.track)} track score</div></div>
+      <div class="fc-skills">${(c.skills || []).map(s => `<span class="fj-skill">${esc(s)}</span>`).join('')}</div>
+      <div class="fc-foot">${c.tasks} verified task${c.tasks === 1 ? '' : 's'} · View profile <span class="ms">arrow_forward</span></div>
+    </div></a>`).join('') + (cands.length && cands.length < 4 ? `<a class="fc fc-join" href="${UR.auth.current() ? 'settings.html' : 'register-candidate.html'}">
+      <span class="fc-join-ic"><span class="ms">add</span></span>
+      <div class="fc-name">Get featured here</div>
+      <p>Complete verified tasks, keep a public profile and turn on <b>"Feature me on the homepage"</b> in Settings.</p>
+      <span class="fc-foot">${UR.auth.current() ? 'Open settings' : 'Create a free profile'} <span class="ms">arrow_forward</span></span>
+    </a>` : '');
+})();
 </script>
 </body>
 </html>

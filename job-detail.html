@@ -167,6 +167,9 @@ function render() {
   }
   const task = job.task;
   const el = UR.verifiedApply.eligibility(job.id) || { offered: false };
+  const acc = UR.verifiedApply.taskAccess(job.id) || { open: true };
+  const wl = UR.workload.mine();
+  const busy = wl && wl.activeCompany >= wl.limit;
   const kindInfo = task ? UR.ASSESSMENT_KINDS[task.kind || 'advanced'] : null, aiInfo = task ? UR.AI_POLICY[task.aiPolicy || 'disclose'] : null;
   const tint = catTint[job.category] || 'tint-teal';
   const app = u && u.role === 'candidate' ? UR.applications.forJob(job.id) : null;
@@ -179,9 +182,10 @@ function render() {
   // Primary call to action depends on who is viewing and where they are in the process
   let cta;
   if (!task || closed || deadlinePassed) cta = { label: closed ? 'Applications closed' : deadlinePassed ? 'Deadline passed' : 'Task not published', href: null };
-  else if (!u) cta = { label: 'Sign in to start task', href: loginHref };
+  else if (!u) cta = job.inviteOnlyTask ? { label: 'Sign in to apply', href: `login.html?next=${encodeURIComponent('job-detail.html?id=' + job.id)}` } : { label: 'Sign in to start task', href: loginHref };
   else if (!isCandidate) cta = { label: 'Only candidates can apply', href: null };
   else if ((!app || app.status === 'withdrawn') && el.met) cta = { label: 'Apply with verified scores', href: '#apply-verified' };
+  else if ((!app || app.status === 'withdrawn') && !acc.open) cta = { label: 'See how to qualify', href: '#apply-verified' };
   else if (!app || app.status === 'withdrawn') cta = { label: 'Start Task & Apply', href: taskHref };
   else if (app.taskRequested && !app.submission && app.status !== 'in_progress') cta = { label: 'Start requested task', href: taskHref };
   else if (app.status === 'in_progress') cta = { label: 'Continue task', href: taskHref };
@@ -202,17 +206,21 @@ function render() {
         <div class="jd-meta">
           <span class="meta-badge ${tint}"><span class="material-symbols-rounded">category</span>${esc(job.category)}</span>
           ${job.location ? `<span class="meta-badge tint-blue"><span class="material-symbols-rounded">location_on</span>${esc(job.location)}</span>` : ''}
+          ${job.workMode ? `<span class="meta-badge tint-purple"><span class="material-symbols-rounded">apartment</span>${esc(job.workMode)}</span>` : ''}
+          ${job.experienceLevel ? `<span class="meta-badge tint-pink"><span class="material-symbols-rounded">trending_up</span>${esc(job.experienceLevel)} level</span>` : ''}
+          ${job.salary ? `<span class="meta-badge tint-teal"><span class="material-symbols-rounded">payments</span>₹${job.salary.min}–${job.salary.max} LPA</span>` : ''}
           ${job.deadline ? `<span class="meta-badge ${deadlinePassed ? 'tint-red' : 'tint-amber'}"><span class="material-symbols-rounded">event</span>Apply by ${UI.fmtDate(job.deadline)}</span>` : ''}
           ${job.featured ? `<span class="meta-badge" style="background:linear-gradient(90deg,#4f46e5,#7c3aed);color:#fff"><span class="material-symbols-rounded">bolt</span>Featured</span>` : ''}
           ${app ? UI.appPill(app.status) : ''}
         </div>
       </div>
-      <div class="jd-head-cta">${ctaBtn('btn-primary')}</div>
+      <div class="jd-head-cta" style="display:flex;gap:8px;align-items:center">${u && u.role === 'candidate' ? `<button class="btn-ghost" onclick="toggleSave(${job.id})" aria-pressed="${UR.jobs.saved().includes(job.id)}" style="padding:14px 16px"><span class="material-symbols-rounded" style="font-size:19px;font-variation-settings:'FILL' ${UR.jobs.saved().includes(job.id) ? 1 : 0}">bookmark</span>${UR.jobs.saved().includes(job.id) ? 'Saved' : 'Save'}</button>` : ''}${ctaBtn('btn-primary')}</div>
     </div>
   </div>`;
 
   document.getElementById('jdMain').innerHTML = `
   <div class="section-card"><div class="card-title"><span class="card-icon tint-blue"><span class="material-symbols-rounded">info</span></span>About this role</div><p class="body-text">${esc(job.description)}</p></div>
+  ${(job.responsibilities || []).length ? `<div class="section-card"><div class="card-title"><span class="card-icon tint-purple"><span class="material-symbols-rounded">assignment_ind</span></span>Responsibilities</div><ul class="req-list">${job.responsibilities.map(r => `<li class="req-item"><span class="req-check"><span class="material-symbols-rounded">arrow_right</span></span>${esc(r)}</li>`).join('')}</ul></div>` : ''}
   <div class="section-card"><div class="card-title"><span class="card-icon tint-teal"><span class="material-symbols-rounded">checklist</span></span>Role requirements</div>
     <ul class="req-list">${job.requirements.map(r => `<li class="req-item"><span class="req-check"><span class="material-symbols-rounded">check</span></span>${esc(r)}</li>`).join('')}</ul></div>
   <div class="section-card"><div class="card-title"><span class="card-icon tint-pink"><span class="material-symbols-rounded">psychology</span></span>Skills assessed</div>
@@ -223,7 +231,7 @@ function render() {
   <div class="task-section">
     <div class="task-head">
       <div style="display:flex;align-items:center;gap:14px"><div class="task-icon-wrap"><span class="material-symbols-rounded">assignment</span></div>
-        <div><div class="task-eyebrow">Skill task · how you apply</div><div class="task-title">${esc(task.title)}</div></div></div>
+        <div><div class="task-eyebrow">${job.inviteOnlyTask ? 'Step 2 · company assessment · by invitation' : 'Skill task · how you apply'}</div><div class="task-title">${esc(task.title)}</div></div></div>
       <div class="task-stats">
         <span class="task-stat"><span class="material-symbols-rounded">category</span>${esc(kindInfo.label)}</span>
         <span class="task-stat"><span class="material-symbols-rounded">hourglass_top</span>~${task.estimatedHours}h of work</span>
@@ -248,14 +256,16 @@ function render() {
       <div class="file-type-card"><div class="file-icon tint-purple"><span class="material-symbols-rounded">lock</span></div><div><div style="font-size:14px;font-weight:700;color:var(--text1)">Working File</div><div style="font-size:12.5px;color:var(--text3)">Private — only you and the reviewer</div></div></div>
       <div class="file-type-card"><div class="file-icon tint-teal"><span class="material-symbols-rounded">public</span></div><div><div style="font-size:14px;font-weight:700;color:var(--text1)">Final Output</div><div style="font-size:12.5px;color:var(--text3)">${esc((task.submissionTypes || []).join(' · ') || 'Any format')}</div></div></div>
     </div>
-    ${ctaBtn('apply-btn')}
+    ${!acc.open ? `<div class="d-note">${UI.icon('lock')}<div><b>Unlocked by invitation.</b> ${esc(job.company)} only asks applicants it is seriously considering to do this ~${task.estimatedHours}h assessment, so you don't spend hours on every application. ${esc(acc.reason)}</div></div>`
+      : busy && cta.href === taskHref && (!app || app.status !== 'in_progress') ? `<div class="d-note warn">${UI.icon('pending_actions')}<div><b>You have ${wl.activeCompany} company tasks in progress</b> (the limit is ${wl.limit}). Submit one before starting this one. <a href="assessments.html" style="color:inherit;font-weight:800">Your assessments</a></div></div>`
+      : ctaBtn('apply-btn')}
   </div>` : `<div class="section-card no-task"><div class="jd-empty-icon"><span class="material-symbols-rounded" style="font-size:30px">assignment_late</span></div><p style="color:var(--text3);font-size:14px">The company hasn't published the task for this role yet, so applications are not open.</p></div>`}`;
 
   const stepGrads = ['linear-gradient(135deg,#8b5cf6,#6d28d9)', 'linear-gradient(135deg,#38bdf8,#2563eb)', 'linear-gradient(135deg,#e879f9,#a855f7)', 'linear-gradient(135deg,#2dd4bf,#0d9488)'];
   document.getElementById('jdAside').innerHTML = `
   <div class="aside-card aside-apply">
-    <div class="aside-title">${app && app.status !== 'withdrawn' ? 'Your application' : el.met ? 'Two ways to apply' : 'Apply via task'}</div>
-    <p style="font-size:13.5px;line-height:1.7">${app && app.status !== 'withdrawn' ? `Status: <b>${UR.APP_STATUS[app.status].label}</b>${app.taskScore != null ? ` · verified score ${app.taskScore}/100` : ''}` : el.met ? 'Your verified scores qualify — apply now without a new task, or take the role task below.' : `Complete the task (~${task ? task.estimatedHours : '?'}h of work) and submit. No resume, no cover letter — just your work.`}</p>
+    <div class="aside-title">${app && app.status !== 'withdrawn' ? 'Your application' : job.inviteOnlyTask ? 'Staged application' : el.met ? 'Two ways to apply' : 'Apply via task'}</div>
+    <p style="font-size:13.5px;line-height:1.7">${app && app.status !== 'withdrawn' ? `Status: <b>${UR.APP_STATUS[app.status].label}</b>${app.taskScore != null ? ` · verified score ${app.taskScore}/100` : ''}${job.inviteOnlyTask && !acc.open ? '<br>The company assessment unlocks if they invite you.' : ''}` : job.inviteOnlyTask ? `Apply with your verified scores (no new task). If the company wants to go further, it invites you to the ~${task ? task.estimatedHours : '?'}h assessment.` : el.met ? 'Your verified scores qualify — apply now without a new task, or take the role task below.' : `Complete the task (~${task ? task.estimatedHours : '?'}h of work) and submit. No resume, no cover letter — just your work.`}</p>
     ${cta.href ? `<a href="${cta.href}" class="aside-apply-btn">${esc(cta.label)} <span class="material-symbols-rounded">arrow_forward</span></a>` : `<div class="aside-apply-btn" style="opacity:.7;cursor:default">${esc(cta.label)}</div>`}
   </div>
   <div class="aside-card">
@@ -271,7 +281,7 @@ function render() {
   </div>
   <div class="aside-card">
     <div class="aside-title">How it works</div>
-    <div class="steps">${['Start the task — the timer begins', 'Submit working file + final output', 'A company reviewer scores it against the rubric', 'Top scorers are shortlisted and invited to interview'].map((s, i) => `<div class="step-row"><div class="step-num" style="background:${stepGrads[i]}">${i + 1}</div><span style="font-size:13.5px;color:var(--text1);font-weight:600;line-height:1.5">${s}</span></div>`).join('')}</div>
+    <div class="steps">${(job.inviteOnlyTask ? ['Apply with your verified scores — 0 hours', 'Not there yet? Take a short reusable assessment', 'The company invites serious applicants to its assessment', 'Top scorers are shortlisted and invited to interview'] : ['Start the task — the timer begins', 'Submit working file + final output', 'A company reviewer scores it against the rubric', 'Top scorers are shortlisted and invited to interview']).map((s, i) => `<div class="step-row"><div class="step-num" style="background:${stepGrads[i]}">${i + 1}</div><span style="font-size:13.5px;color:var(--text1);font-weight:600;line-height:1.5">${s}</span></div>`).join('')}</div>
   </div>
   ${u ? `<button class="btn-ghost" style="justify-content:center;font-size:13px" onclick="reportJob(${job.id}, '${esc(job.title).replace(/'/g, '&#39;')}')"><span class="material-symbols-rounded" style="font-size:17px">flag</span>Report this listing</button>` : ''}`;
 }
@@ -286,20 +296,32 @@ function journeyHTML(app) {
 function verifiedCardHTML(job, el, app) {
   const u = UR.user(), applied = app && app.status !== 'withdrawn';
   return `<div class="section-card" id="apply-verified" style="border-color:#c4ede6">
-    <div class="card-title"><span class="card-icon tint-teal"><span class="material-symbols-rounded">verified</span></span>Skip the task with existing verified scores</div>
-    <p class="body-text" style="font-size:14px">${esc(job.company)} accepts verified skill scores from previous Unresume assessments. If you meet every requirement you can apply now — no new task. The company may still invite you to the role assessment later.</p>
+    <div class="card-title"><span class="card-icon tint-teal"><span class="material-symbols-rounded">verified</span></span>${job.inviteOnlyTask ? 'Step 1 · Apply with your verified scores' : 'Skip the task with existing verified scores'}</div>
+    <p class="body-text" style="font-size:14px">${esc(job.company)} accepts verified skill scores from previous Unresume assessments. If you meet every requirement you can apply now — no new task. ${job.inviteOnlyTask ? 'This is the only way in: the longer company assessment is by invitation.' : 'The company may still invite you to the role assessment later.'}</p>
     <div class="d-table-wrap" style="box-shadow:none;margin:12px 0"><table class="d-table"><thead><tr><th>Skill</th><th>Required</th><th>Your verified score</th><th></th></tr></thead><tbody>
       ${el.rows.length ? el.rows.map(r => `<tr><td><b>${esc(r.skill)}</b></td><td>${r.minScore}/1000 · ${el.minTasks}+ tasks</td><td>${r.score != null ? `${r.score}/1000 <small style="color:var(--text3)">(${r.tasks} task${r.tasks === 1 ? '' : 's'})</small>` : '<span style="color:var(--text4)">No verified tasks</span>'}</td><td>${r.met ? UI.pill('Met', 'tint-teal', 'check') : UI.pill('Not yet', 'gray')}</td></tr>`).join('')
         : (job.acceptVerified || []).map(r => `<tr><td><b>${esc(r.skill)}</b></td><td>${r.minScore}/1000</td><td colspan="2" style="color:var(--text3)">${u ? 'Only candidates can apply' : 'Sign in to check'}</td></tr>`).join('')}</tbody></table></div>
     ${applied ? `<div class="d-note good">${UI.icon('check')}<div>You've applied${app.route === 'verified_score' ? ' with your verified scores' : ''}. Track it in <a href="my-applications.html" style="color:inherit;font-weight:800">My Applications</a>.</div></div>`
       : el.met ? `<button class="apply-btn" onclick="applyVerified(${job.id})">Apply with my verified scores ${UI.icon('arrow_forward', 20)}</button>`
-      : u && u.role === 'candidate' ? `<p style="font-size:13px;color:var(--text3)">Not there yet? Take a <a href="assessments.html?tab=library" style="color:var(--brand);font-weight:700">standard assessment</a> — one verified score can be reused for many jobs — or complete this job's task below.</p>` : ''}
+      : u && u.role === 'candidate' ? qualifyHTML(job, el) : ''}
   </div>`;
+}
+// Reusable standard assessments that would earn the missing verified scores — done once, used for many jobs.
+function qualifyHTML(job, el) {
+  const q = el.qualify || [];
+  const alt = job.inviteOnlyTask ? '' : ' — or complete this job\'s task below';
+  if (!q.length) return `<p style="font-size:13px;color:var(--text3)">Not there yet? Take a <a href="assessments.html?tab=library" style="color:var(--brand);font-weight:700">standard assessment</a> — one verified score can be reused for many jobs${alt}.</p>`;
+  return `<div style="margin-top:4px"><div style="font-size:13px;font-weight:700;color:var(--text1);margin-bottom:8px">Not there yet? These short assessments build the scores you need — and count for every job that asks for them${alt}:</div>
+    <div style="display:flex;flex-direction:column;gap:8px">${q.map(t => `<a href="task-workplace.html?id=${t.id}" class="list-row" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:14px;text-decoration:none;background:#fff">
+      <span class="card-icon tint-purple" style="width:36px;height:36px;flex-shrink:0">${UI.icon('school', 18)}</span>
+      <span style="flex:1;min-width:0"><b style="display:block;font-size:13.5px;color:var(--text1)">${esc(t.title)}</b><span style="font-size:12px;color:var(--text3)">Builds ${t.skills.map(esc).join(', ')} · ~${t.estimatedHours}h · ${esc(t.difficulty || '')} · reusable</span></span>
+      ${UI.icon('arrow_forward', 18)}</a>`).join('')}</div></div>`;
 }
 async function applyVerified(jobId) {
   const r = await UI.confirm({ title: 'Apply with your verified scores?', icon: 'verified', confirmLabel: 'Apply', text: 'The company sees your verified scores, rubric breakdowns and profile. No new task is needed now.', input: { label: 'Short note to the hiring team (optional)', placeholder: 'Why this role interests you' } });
   if (r.ok) UI.run(() => UR.verifiedApply.apply(jobId, r.value || ''), 'Application sent with your verified scores').catch(() => {});
 }
+function toggleSave(id) { UI.run(() => UR.jobs.toggleSave(id), r => r ? 'Job saved' : 'Removed from saved').catch(() => {}); }
 async function reportJob(id, title) {
   const r = await UI.confirm({ title: 'Report this listing', icon: 'flag', confirmLabel: 'Send report', text: 'Unresume moderators review every report. The company is not told who reported it.',
     input: { label: 'What is wrong?', type: 'select', options: ['Misleading requirements', 'Scam or fraud', 'Discriminatory content', 'Task asks for unpaid production work', 'Other'], required: true } });

@@ -64,12 +64,14 @@ function scope() { return UR.submissions.list().filter(s => me.role !== 'admin' 
 function render() {
   const q = ($('topbarSearch') || { value: '' }).value.toLowerCase();
   const all = scope();
-  const groups = { pending: all.filter(s => s.status === 'pending'), flagged: all.filter(s => s.integrity.flags.length && !s.integrity.clearedAt && s.status !== 'void'), scored: all.filter(s => s.score), all };
+  const exts = UR.attempts.extensions({ status: 'pending' });
+  const groups = { mine: all.filter(s => s.status === 'pending' && (UR.tasks.get(s.task.id) || {}).reviewerIds && UR.tasks.get(s.task.id).reviewerIds.includes(me.id)), pending: all.filter(s => s.status === 'pending'), flagged: all.filter(s => s.integrity.flags.length && !s.integrity.clearedAt && s.status !== 'void'), scored: all.filter(s => s.score), all };
   const mine = all.filter(s => s.score && s.score.reviewerId === me.id).length;
   $('stats').innerHTML = [['inbox', 'tint-purple', groups.pending.length, 'Awaiting review'], ['policy', 'tint-red', groups.flagged.length, 'Integrity flags'], ['rate_review', 'tint-blue', mine, 'Scored by you'], ['grade', 'tint-teal', groups.scored.length ? Math.round(groups.scored.reduce((a, s) => a + s.score.total, 0) / groups.scored.length) : '—', 'Avg verified score']]
     .map(([i, t, v, l]) => `<div class="stat-card"><div class="stat-icon ${t}">${UI.icon(i)}</div><div><div class="stat-val">${v}</div><div class="stat-lbl">${l}</div></div></div>`).join('');
-  $('tabs').innerHTML = [['pending', 'To review'], ['flagged', 'Flagged'], ['scored', 'Scored'], ['all', 'All']].map(([k, l]) => `<button class="d-tab ${tab === k ? 'active' : ''}" data-tab="${k}">${l}<span class="cnt">${groups[k].length}</span></button>`).join('');
+  $('tabs').innerHTML = [['mine', 'Assigned to me'], ['pending', 'To review'], ['flagged', 'Flagged'], ['scored', 'Scored'], ['all', 'All'], ['extensions', 'Time requests']].map(([k, l]) => `<button class="d-tab ${tab === k ? 'active' : ''}" data-tab="${k}">${l}<span class="cnt">${k === 'extensions' ? exts.length : groups[k].length}</span></button>`).join('');
   UI.tabs($('tabs'), k => { tab = k; sel = null; render(); });
+  if (tab === 'extensions') { $('detail').innerHTML = ''; $('list').innerHTML = exts.length ? exts.map(e => `<div class="l-row"><span class="sec-icon tint-amber">${UI.icon('more_time', 18)}</span><div class="l-main"><div class="l-title">${esc(e.candidateName)} · +${e.minutes} min</div><div class="l-sub">${esc(e.taskTitle)} · ${UI.timeAgo(e.createdAt)}</div><div class="l-sub" style="margin-top:4px">${esc(e.reason)}</div></div><div class="l-acts"><button class="btn-sm good" onclick="decideExt('${e.id}', true)">Approve</button><button class="btn-sm" onclick="decideExt('${e.id}', false)">Decline</button></div></div>`).join('') : UI.empty('more_time', 'No pending time requests', 'Candidates can ask for more time for accessibility needs, outages or emergencies.'); return; }
   const tasks = [...new Map(all.map(s => [s.task.id, s.task.title])).entries()];
   $('taskFilter').innerHTML = `<option value="">All tasks</option>` + tasks.map(([id, t]) => `<option value="${id}" ${String(id) === String(taskF) ? 'selected' : ''}>${esc(t)}</option>`).join('');
   let list = groups[tab].filter(s => (!taskF || String(s.task.id) === String(taskF)) && (!q || s.candidateName.toLowerCase().includes(q) || s.task.title.toLowerCase().includes(q)));
@@ -82,6 +84,7 @@ function render() {
         <div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">${s.score ? UI.verifiedScore(s.score.total, true) : UI.subPill(s)}${s.overdue ? UI.pill('Overdue', 'tint-red', 'schedule') : ''}${s.integrity.flags.length && !s.integrity.clearedAt ? UI.pill(`${s.integrity.flags.length} flag${s.integrity.flags.length > 1 ? 's' : ''}`, 'tint-red', 'policy') : ''}${s.application && s.application.referredBy ? UI.pill('Academy', 'tint-pink') : ''}</div></div></button>`).join('')
     : UI.empty('inbox', tab === 'pending' ? 'Queue is clear' : 'Nothing here', tab === 'pending' ? 'New submissions appear here as candidates submit.' : '');
   const s = all.find(x => x.id === sel);
+  if (s && s.status === 'pending' && !s.reviewStartedAt) UR.submissions.markInReview(s.id);
   $('detail').innerHTML = s ? detail(s) : '';
   if (s && !s.score) wireScoring(s);
 }
@@ -111,6 +114,9 @@ function detail(s) {
 function scoredView(s) {
   return `<div><div class="d-sec-title">Verified score ${s.status === 'disputed' ? UI.pill('Under dispute — handled by Unresume', 'tint-pink') : ''}</div>
     <div class="total-bar"><span style="font-weight:700;color:var(--text2)">Total</span><b>${s.score.total}<small style="font-size:15px;color:var(--text4)">/100</small></b></div>
+    ${s.score.dual ? `<div class="l-sub" style="margin:8px 0">${UI.icon('group')} Dual review: ${s.score.dual.totals.join(' and ')} → average ${s.score.total}</div>` : ''}
+    ${s.score.strengths || s.score.weaknesses ? `<div class="grid-2" style="margin:8px 0"><div class="d-note good">${UI.icon('thumb_up')}<div>${esc(s.score.strengths || '—')}</div></div><div class="d-note warn">${UI.icon('construction')}<div>${esc(s.score.weaknesses || '—')}</div></div></div>` : ''}
+    ${s.score.recommendation ? `<div class="l-sub">Recommendation: <b>${{ strong_yes: 'Strong yes', yes: 'Yes', no: 'No' }[s.score.recommendation]}</b></div>` : ''}
     ${s.score.authenticity && s.score.authenticity !== 'not_checked' ? `<div class="l-sub" style="margin:8px 0">${UI.icon('fingerprint')} Authenticity: <b>${{ verified: 'own work', walkthrough: 'walkthrough requested', concern: 'concern raised' }[s.score.authenticity]}</b>${s.score.authenticityNote ? ' — ' + esc(s.score.authenticityNote) : ''}</div>` : ''}
     ${s.score.breakdown.map(b => `<div class="bd-row"><div><div class="bd-name">${esc(b.criterion)}</div>${b.comment ? `<div class="bd-comment">${esc(b.comment)}</div>` : ''}</div><div class="rubric-bar-outer" style="height:8px;background:#eeedfd"><div class="rubric-bar-inner" style="width:${b.awarded / b.max * 100}%"></div></div><div class="bd-pts">${b.awarded}<small>/${b.max}</small></div></div>`).join('')}
     <div class="d-note" style="margin-top:10px;background:#fff">${UI.icon('format_quote')}<div>${esc(s.score.feedback)}<div style="font-size:12px;color:var(--text4);margin-top:4px">— ${esc(s.reviewerName)}, ${UI.fmtDate(s.score.scoredAt)}</div></div></div>
@@ -125,6 +131,9 @@ function scoringForm(s) {
       <textarea name="c${i}" placeholder="Comment for the candidate (optional)">${esc(d['c' + i] || '')}</textarea></div>`).join('')}</div>
     <div class="total-bar"><span style="font-weight:700;color:var(--text2)">Total</span><b id="liveTotal">0<small style="font-size:15px;color:var(--text4)">/100</small></b></div>
     ${UI.field({ name: 'feedback', label: 'Overall feedback', type: 'textarea', required: true, value: d.feedback || '', placeholder: 'What was strong, what held the score back…', hint: 'Shown to the candidate. 20+ characters.' })}
+    ${(s.reviews || []).length ? `<div class="d-note">${UI.icon('group')}<div><b>Dual review — second review needed.</b> A first reviewer has scored this independently; their score stays hidden until you submit yours.</div></div>` : (UR.tasks.get(s.task.id) || {}).dualReview ? `<div class="d-note">${UI.icon('group')}<div><b>Dual review task.</b> You're the first of two independent reviewers.</div></div>` : ''}
+    <div class="form-grid2">${UI.field({ name: 'strengths', label: 'Strengths', type: 'textarea', rows: 2, value: d.strengths || '' })}${UI.field({ name: 'weaknesses', label: 'Weaknesses', type: 'textarea', rows: 2, value: d.weaknesses || '' })}</div>
+    ${UI.field({ name: 'recommendation', label: 'Recommendation', type: 'select', value: d.recommendation || '', options: [['', 'No recommendation'], ['strong_yes', 'Strong yes — move forward'], ['yes', 'Yes'], ['no', 'No']] })}
     <div class="form-grid2">${UI.field({ name: 'authenticity', label: 'Authenticity check', type: 'select', value: d.authenticity || 'not_checked', options: [['not_checked', 'Not checked'], ['verified', 'Looks like the candidate\'s own work'], ['walkthrough', 'Ask for a walkthrough in interview'], ['concern', 'Concern — send to Unresume moderators']], hint: 'A concern never changes the score by itself; a moderator reviews it.' })}${UI.field({ name: 'authenticityNote', label: 'Authenticity note', value: d.authenticityNote || '', placeholder: 'Required for a concern' })}</div>
     ${UI.field({ name: 'suggestions', label: 'Improvement suggestions', type: 'textarea', value: d.suggestions || '', placeholder: 'One per line', hint: 'Concrete next steps — one per line.' })}
     <div id="scoreErr"></div>
@@ -141,10 +150,11 @@ function wireScoring(s) {
     const total = breakdown.reduce((a, b) => a + (+b.awarded || 0), 0);
     const ok = await UI.confirm({ title: `Save score of ${total}/100?`, text: `${esc(s.candidateName)} is notified immediately and the score becomes verified on their profile. It can't be edited afterwards.`, confirmLabel: 'Save score', icon: 'verified' });
     if (!ok.ok) return;
-    try { UR.submissions.score(s.id, { breakdown, feedback: data.feedback, suggestions: (data.suggestions || '').split('\n'), authenticity: data.authenticity, authenticityNote: data.authenticityNote }); delete draft[s.id]; UI.toast(`Scored ${total}/100 — candidate notified`); render(); }
+    try { UR.submissions.score(s.id, { breakdown, feedback: data.feedback, suggestions: (data.suggestions || '').split('\n'), authenticity: data.authenticity, authenticityNote: data.authenticityNote, strengths: data.strengths, weaknesses: data.weaknesses, recommendation: data.recommendation }); delete draft[s.id]; const after = UR.submissions.get(s.id); UI.toast(after.status === 'pending' ? 'First review saved — waiting for a second reviewer' : `Scored ${after.score.total}/100 — candidate notified`); render(); }
     catch (err) { $('scoreErr').innerHTML = UI.errorBox(err.message); }
   });
 }
+async function decideExt(id, ok) { const r = ok ? { ok: true, value: '' } : await UI.confirm({ title: 'Decline the time request?', confirmLabel: 'Decline', input: { label: 'Reason (sent to the candidate)', required: true } }); if (r.ok) UI.run(() => UR.attempts.decideExtension(id, ok, r.value || ''), ok ? 'Extra time granted — candidate notified' : 'Request declined').catch(() => {}); }
 async function clearFlags(id) { const r = await UI.confirm({ title: 'Mark flags as reviewed?', text: 'Record why these automated flags are not a problem. This is logged.', confirmLabel: 'Mark reviewed', input: { label: 'Note', required: true, placeholder: 'e.g. Shared starter template provided in the brief' } }); if (r.ok) UI.run(() => UR.submissions.clearIntegrity(id, r.value), 'Flags marked as reviewed').catch(() => {}); }
 async function move(appId, st) {
   const r = await UI.confirm({ title: st === 'shortlisted' ? 'Shortlist this candidate?' : 'Mark as not selected?', text: st === 'shortlisted' ? 'HR sees them in the pipeline and the candidate is notified.' : 'The candidate is notified. Their verified score stays on their profile.', confirmLabel: st === 'shortlisted' ? 'Shortlist' : 'Confirm', danger: st === 'rejected', input: { label: 'Note (internal, optional)' } });

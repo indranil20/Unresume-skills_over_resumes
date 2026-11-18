@@ -32,14 +32,14 @@
 <script src="js/components.js"></script>
 <script>
 const $ = id => document.getElementById(id), esc = UI.esc;
-const STATUS_TINT = { open: 'tint-teal', draft: 'gray', closed: 'tint-amber', flagged: 'tint-red', removed: 'tint-red' };
+const STATUS_TINT = { paused: 'tint-amber', open: 'tint-teal', draft: 'gray', closed: 'tint-amber', flagged: 'tint-red', removed: 'tint-red' };
 let tab = UI.param('tab') || 'all';
 function render() {
   const me = UR.user(), co = UR.companies.mine();
   const q = ($('topbarSearch') || { value: '' }).value.toLowerCase();
   const all = UR.jobs.list({ status: 'all', companyId: me.orgId });
   $('banner').innerHTML = co.verification !== 'verified' ? `<div class="d-note warn" style="margin-bottom:16px">${UI.icon('gpp_maybe')}<div>Jobs stay in draft until ${esc(co.name)} is verified. <a href="company-profile.html" style="color:inherit;font-weight:800">Request verification</a></div></div>` : '';
-  const tabs = ['all', 'open', 'draft', 'closed', 'flagged'];
+  const tabs = ['all', 'open', 'paused', 'draft', 'closed', 'flagged'];
   $('tabs').innerHTML = tabs.map(k => `<button class="d-tab ${tab === k ? 'active' : ''}" data-tab="${k}">${k[0].toUpperCase() + k.slice(1)}<span class="cnt">${k === 'all' ? all.length : all.filter(j => j.status === k || (k === 'flagged' && j.status === 'removed')).length}</span></button>`).join('');
   UI.tabs($('tabs'), k => { tab = k; render(); });
   const list = all.filter(j => (tab === 'all' || j.status === tab || (tab === 'flagged' && j.status === 'removed')) && (!q || j.title.toLowerCase().includes(q)));
@@ -48,15 +48,16 @@ function render() {
       ${j.moderation && ['flagged', 'removed'].includes(j.status) ? `<div class="d-note bad" style="margin-top:8px;padding:8px 10px">${UI.icon('gavel')}<div>Moderation: ${esc(j.moderation.reason)}</div></div>` : ''}</td>
     <td data-label="Status">${UI.pill(j.status[0].toUpperCase() + j.status.slice(1), STATUS_TINT[j.status])}</td>
     <td data-label="Task">${j.task ? `<a href="task-create.html?id=${j.task.id}" style="color:var(--brand);font-weight:700">${esc(j.task.title)}</a><br><small style="color:var(--text3)">${UR.ASSESSMENT_KINDS[j.task.kind || 'advanced'].label} · ~${j.task.estimatedHours}h · ${j.task.status}</small>` : '<span style="color:#be123c;font-weight:700">Not linked</span>'}</td>
-    <td data-label="Applicants">${(j.acceptVerified || []).length ? `<div style="font-size:11.5px;color:#0d9488;font-weight:700;margin-bottom:2px" title="Accepts existing verified scores">✓ ${j.acceptVerified.map(r => esc(r.skill) + ' ' + r.minScore).join(', ')}</div>` : ''}<a href="hr-applications.html?job=${j.id}" class="num" style="color:var(--brand)">${j.applicants}</a></td>
+    <td data-label="Applicants">${(j.acceptVerified || []).length ? `<div style="font-size:11.5px;color:#0d9488;font-weight:700;margin-bottom:2px" title="Accepts existing verified scores">✓ ${j.acceptVerified.map(r => esc(r.skill) + ' ' + r.minScore).join(', ')}</div>` : ''}${j.inviteOnlyTask ? '<div style="font-size:11.5px;color:var(--brand);font-weight:700;margin-bottom:2px">🔒 Task by invitation</div>' : ''}<a href="hr-applications.html?job=${j.id}" class="num" style="color:var(--brand)">${j.applicants}</a></td>
     <td data-label="Deadline">${j.deadline ? UI.fmtDate(j.deadline) : '—'}</td>
     <td><div class="acts">
       ${['draft', 'closed'].includes(j.status) ? `<button class="btn-sm primary" onclick="setStatus(${j.id},'open')">${UI.icon('publish')}Publish</button>` : ''}
-      ${j.status === 'open' ? `<button class="btn-sm" onclick="setStatus(${j.id},'closed')">${UI.icon('pause_circle')}Close</button><a class="btn-sm" href="job-detail.html?id=${j.id}" target="_blank">${UI.icon('open_in_new')}View</a>` : ''}
+      ${j.status === 'paused' ? `<button class="btn-sm good" onclick="setStatus(${j.id},'open')">${UI.icon('play_arrow')}Resume</button>` : ''}
+      ${j.status === 'open' ? `<button class="btn-sm" onclick="setStatus(${j.id},'paused')">${UI.icon('pause')}Pause</button><button class="btn-sm" onclick="setStatus(${j.id},'closed')">${UI.icon('block')}Close</button><a class="btn-sm" href="job-detail.html?id=${j.id}" target="_blank">${UI.icon('open_in_new')}View</a>` : ''}
       ${!['flagged', 'removed'].includes(j.status) ? `<button class="btn-sm" onclick="edit(${j.id})">${UI.icon('edit')}Edit</button>` : ''}
     </div></td></tr>`).join('') : `<tr><td colspan="6">${UI.empty('work', 'No jobs here', tab === 'all' ? 'Create a job and link a skill task to start receiving applications.' : `No ${tab} jobs.`)}</td></tr>`;
 }
-function setStatus(id, st) { UI.run(() => UR.jobs.setStatus(id, st), st === 'open' ? 'Job published — it\'s live on the job board' : 'Job closed to new applications').catch(() => {}); }
+function setStatus(id, st) { UI.run(() => UR.jobs.setStatus(id, st), { open: 'Job is live on the job board', paused: 'Job paused — hidden from the board; existing applicants are unaffected', closed: 'Job closed to new applications' }[st]).catch(() => {}); }
 function edit(id) {
   const me = UR.user();
   const j = id ? UR.jobs.list({ status: 'all', companyId: me.orgId }).find(x => x.id === id) : { skills: [], requirements: [], referralSlots: 3, type: 'Full-time', category: 'Engineering' };
@@ -64,14 +65,19 @@ function edit(id) {
   UI.modal({ title: id ? 'Edit job' : 'New job', icon: 'work', wide: true, submitLabel: id ? 'Save changes' : 'Save as draft',
     sub: 'Jobs are saved as drafts. Publish from the list once a published task is linked.',
     body: `<div class="form-grid2">${UI.field({ name: 'title', label: 'Job title', value: j.title || '', required: true })}${UI.field({ name: 'category', label: 'Category', type: 'select', value: j.category, options: ['Engineering', 'Design', 'Data', 'Product', 'Marketing', 'Operations'] })}</div>
-      <div class="form-grid3">${UI.field({ name: 'location', label: 'Location', value: j.location || '', placeholder: 'City · Remote/Hybrid' })}${UI.field({ name: 'type', label: 'Employment type', type: 'select', value: j.type, options: ['Full-time', 'Part-time', 'Contract', 'Internship'] })}${UI.field({ name: 'deadline', label: 'Application deadline', type: 'date', value: j.deadline ? j.deadline.slice(0, 10) : '' })}</div>
+      <div class="form-grid3">${UI.field({ name: 'workMode', label: 'Work mode', type: 'select', value: j.workMode || 'Hybrid', options: ['Remote', 'Hybrid', 'On-site'] })}${UI.field({ name: 'experienceLevel', label: 'Experience level', type: 'select', value: j.experienceLevel || 'Mid', options: ['Entry', 'Mid', 'Senior'] })}${UI.field({ name: 'salaryRange', label: 'Salary (LPA, optional)', value: j.salary ? `${j.salary.min}-${j.salary.max}` : '', placeholder: 'e.g. 12-18' })}</div>
+      ${UI.field({ name: 'responsibilities', label: 'Responsibilities', type: 'textarea', value: (j.responsibilities || []).join('\n'), hint: 'One per line' })}
+      <div class="form-grid3">${UI.field({ name: 'location', label: 'Location', value: j.location || '', placeholder: 'City' })}${UI.field({ name: 'type', label: 'Employment type', type: 'select', value: j.type, options: ['Full-time', 'Part-time', 'Contract', 'Internship'] })}${UI.field({ name: 'deadline', label: 'Application deadline', type: 'date', value: j.deadline ? j.deadline.slice(0, 10) : '' })}</div>
       ${UI.field({ name: 'description', label: 'Description', type: 'textarea', value: j.description || '', required: true })}
       <div class="form-grid2">${UI.field({ name: 'skills', label: 'Skills assessed', value: j.skills.join(', '), required: true, hint: 'Comma-separated' })}${UI.field({ name: 'referralSlots', label: 'Academy referral slots', type: 'number', min: 0, value: j.referralSlots })}</div>
       ${UI.field({ name: 'requirements', label: 'Role requirements', type: 'textarea', value: j.requirements.join('\n'), required: true, hint: 'One per line' })}
-      ${UI.field({ name: 'acceptVerified', label: 'Accept existing verified scores (optional)', value: (j.acceptVerified || []).map(r => `:${r.minScore}`).join(', '), placeholder: 'React:800, TypeScript:750', hint: 'Candidates whose verified skill score meets every entry can apply without doing a new task. Format Skill:minimum (500–1000). Leave empty to require the task.' })}
+      ${UI.field({ name: 'acceptVerified', label: 'Accept existing verified scores (optional)', value: (j.acceptVerified || []).map(r => `${r.skill}:${r.minScore}`).join(', '), placeholder: 'React:800, TypeScript:750', hint: 'Candidates whose verified skill score meets every entry can apply without doing a new task. Format Skill:minimum (500–1000). Leave empty to require the task.' })}
+      ${UI.field({ name: 'inviteOnlyTask', label: 'Who can start the company task?', type: 'select', value: j.inviteOnlyTask ? '1' : '0', options: [['0', 'Any applicant can start it'], ['1', 'By invitation only — candidates apply with verified scores first (recommended for tasks over 2h)']], hint: 'Staged hiring keeps unpaid work low: candidates enter with reusable verified scores, and you invite only serious applicants to the longer task. Needs at least one accepted verified score above.' })}
       ${UI.field({ name: 'taskId', label: 'Skill task candidates complete to apply', type: 'select', value: j.taskId || '', options: [['', tasks.length ? '— Choose a task —' : 'No available tasks — create one first'], ...tasks.map(t => [t.id, `${t.title} (${t.status})`])], hint: '<a href="task-create.html" style="color:var(--brand);font-weight:700">Create a new task →</a>' })}`,
     onSubmit: d => {
       UR.jobs.save({ id, ...d, deadline: d.deadline ? new Date(d.deadline + 'T23:59:00').toISOString() : null, skills: d.skills.split(','), requirements: d.requirements.split('\n'), taskId: d.taskId ? +d.taskId : null,
+        inviteOnlyTask: d.inviteOnlyTask === '1', workMode: d.workMode, experienceLevel: d.experienceLevel, responsibilities: String(d.responsibilities || '').split('\n'),
+        salary: d.salaryRange.trim() ? (() => { const m = d.salaryRange.match(/^\s*(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)\s*$/); if (!m) throw new Error('Salary should look like 12-18 (in LPA).'); return { min: +m[1], max: +m[2] }; })() : null,
         acceptVerified: String(d.acceptVerified || '').split(',').map(x => x.trim()).filter(Boolean).map(x => { const [skill, min] = x.split(':'); if (!skill || !min) throw new Error(`"${x}" should look like Skill:800`); return { skill: skill.trim(), minScore: Number(min) }; }) });
       UI.toast(id ? 'Job saved' : 'Draft created — publish it when ready');
     } });

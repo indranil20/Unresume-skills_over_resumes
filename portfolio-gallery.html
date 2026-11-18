@@ -15,6 +15,7 @@
     rel="stylesheet">
   <link rel="stylesheet" href="css/globals.css">
   <link rel="stylesheet" href="css/navbar.css">
+  <link rel="stylesheet" href="css/portfolio-view.css">
   <style>
     .page-wrap { overflow-x: clip; }
 
@@ -391,6 +392,7 @@
   <script src="js/store.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/components.js"></script>
+  <script src="js/portfolio-view.js"></script>
   <script>
     const typeStyle = {
       design:   { cls: 'tint-pink',   icon: 'palette' },
@@ -504,21 +506,22 @@
       document.getElementById('pgGrid').innerHTML = items.map(item => {
         const c = item.candidate;
         const initials = c.name.split(' ').map(w => w[0]).join('').slice(0, 2);
+        const openJs = `PortfolioView.open('${c.username}','${item.pfId}')`;
         return `<div class="pg-card">
-      ${previewHTML(item)}
+      <div class="pv-open" role="button" tabindex="0" aria-label="View details of ${UI.esc(item.title)}" onclick="${openJs}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">${previewHTML(item)}</div>
       <div class="pg-body">
-        <div class="pg-task-title">${UI.esc(item.title)}</div>
+        <div class="pg-task-title"><button type="button" onclick="${openJs}" style="all:unset;cursor:pointer" title="View details">${UI.esc(item.title)}</button></div>
         <div class="pg-author">
           <div class="pg-av" style="background:${UI.grad(c.username)}">${initials}</div>
           <div>
-            <div class="pg-author-name">${UI.esc(c.name)}</div>
+            <a class="pg-author-name" href="candidate-profile.html?u=${c.username}" style="text-decoration:none;color:inherit">${UI.esc(c.name)}</a>
             <div class="pg-author-uname">@${c.username}${c.score ? ` · Skill Score ${c.score}` : ''}</div>
           </div>
         </div>
         <div class="pg-footer">
           <span class="material-symbols-rounded" style="font-size:16px;color:#e11d48" title="Community likes — not a score">favorite</span>
           <span style="font-size:12px;color:var(--text3);font-weight:500">${UR.feed.portfolioLikes(item.pfId).count} likes</span>
-          <a href="candidate-profile.html?u=${c.username}" style="margin-left:auto">View Profile <span class="material-symbols-rounded">arrow_forward</span></a>
+          <a href="#" onclick="event.preventDefault();${openJs}" style="margin-left:auto">View details <span class="material-symbols-rounded">arrow_forward</span></a>
         </div>
       </div>
     </div>`;

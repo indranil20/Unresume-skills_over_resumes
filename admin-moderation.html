@@ -38,7 +38,7 @@ function render() {
   const flagged = UR.submissions.list({ flagged: true }).filter(s => s.status !== 'void');
   const subs = UR.submissions.list();
   const jobs = UR.admin.allJobs(), tasks = UR.admin.allTasks();
-  $('tabs').innerHTML = [['integrity', 'Integrity flags', flagged.length], ['submissions', 'Submissions & scores', subs.length], ['jobs', 'Jobs', jobs.length], ['tasks', 'Tasks', tasks.length]].map(([k, l, n]) => `<button class="d-tab ${tab === k ? 'active' : ''}" data-tab="${k}">${l}<span class="cnt">${n}</span></button>`).join('');
+  $('tabs').innerHTML = [['integrity', 'Integrity flags', flagged.length], ['submissions', 'Submissions & scores', subs.length], ['jobs', 'Jobs', jobs.length], ['tasks', 'Tasks', tasks.length], ['calibration', 'Reviewer calibration', UR.calibration().length]].map(([k, l, n]) => `<button class="d-tab ${tab === k ? 'active' : ''}" data-tab="${k}">${l}<span class="cnt">${n}</span></button>`).join('');
   UI.tabs($('tabs'), k => { tab = k; render(); });
   const match = (...v) => !q || v.some(x => String(x || '').toLowerCase().includes(q));
   if (tab === 'integrity' || tab === 'submissions') {
@@ -50,6 +50,13 @@ function render() {
       <div class="l-acts" style="flex-direction:column;align-items:flex-end">${s.score && s.status !== 'void' ? UI.verifiedScore(s.score.total, true) : UI.subPill(s)}
         <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${s.integrity.flags.length && !s.integrity.clearedAt ? `<button class="btn-sm good" onclick="clearF('${s.id}')">${UI.icon('verified_user')}Clear</button>` : ''}${s.status !== 'void' ? `<button class="btn-sm danger" onclick="voidS('${s.id}')">${UI.icon('block')}Void score</button>` : ''}${!s.task.companyId && s.status === 'pending' ? `<a class="btn-sm" href="interviewer-dashboard.html?sub=${s.id}">Review</a>` : ''}</div></div></div>`).join('')
       : UI.empty(tab === 'integrity' ? 'verified_user' : 'inbox', tab === 'integrity' ? 'No open integrity flags' : 'No submissions');
+    return;
+  }
+  if (tab === 'calibration') {
+    const cal = UR.calibration();
+    $('out').innerHTML = `<div class="d-note" style="margin-bottom:12px">${UI.icon('balance')}<div>Average score each reviewer gives, and how far it sits from other reviewers' scores <b>on the same tasks</b>. A consistent gap of ±10 or more suggests a reviewer scores much harder or softer than peers — talk to their company before it affects candidates. "—" means no overlapping tasks yet.</div></div>
+      <div class="d-table-wrap"><table class="d-table stack"><thead><tr><th>Reviewer</th><th>Organisation</th><th>Reviews</th><th>Avg score given</th><th>Vs. peers on same tasks</th></tr></thead><tbody>${cal.map(c => `<tr><td class="who-cell"><b>${esc(c.name)}</b></td><td data-label="Org">${esc(c.org)}</td><td data-label="Reviews">${c.reviews}</td><td data-label="Avg">${c.avgGiven}</td>
+      <td data-label="Vs peers">${c.avgDelta == null ? '—' : `<span style="font-weight:800;color:${Math.abs(c.avgDelta) >= 10 ? '#be123c' : 'var(--text1)'}">${c.avgDelta > 0 ? '+' : ''}${c.avgDelta}</span> <small style="color:var(--text4)">(${c.comparable} comparable)</small>`}</td></tr>`).join('') || '<tr><td colspan="5">No scored reviews yet.</td></tr>'}</tbody></table></div>`;
     return;
   }
   if (tab === 'jobs') {
