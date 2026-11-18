@@ -1,107 +1,77 @@
-# Unresume — Skill-Based Hiring Platform
+# Unresume — Skills-First Hiring Platform
 
-Unresume is a frontend prototype for a skill-based hiring platform: candidates prove themselves through real tasks instead of resumes, companies hire based on task scores, and academies manage and refer their students to employers.
+## Project purpose
 
-This is a **static frontend with a client-side data layer**. `js/store.js` (`window.UR`) behaves like the backend API — it enforces every business rule (roles, timers, scoring, state machines, privacy, integrity checks) and persists to the browser's `localStorage`. Every workflow really completes and is visible to the other roles **in the same browser**, but nothing is shared between devices and nothing is secure. `BACKEND.md` lists the exact API, tables and services needed to replace it; `AUDIT.md` lists what was found and changed.
+Unresume is a skill-based hiring platform prototype designed to help employers evaluate what candidates can actually do, rather than relying only on resumes, degrees, or self-reported skills. Candidates demonstrate their abilities through practical tasks, receive reviewer-assessed scores, and build a portfolio of evidence. Companies use those submissions to find and hire suitable candidates, while academies can support students through referrals and placement tracking.
 
-**Try it:** open `login.html`, expand *Demo accounts* (password `demo1234`), and sign in as the candidate, a TechCorp HR/interviewer, the NextGen academy or the admin. Open two browser tabs as different roles to watch changes propagate. *Settings → Reset demo data* restores the sample data.
-## Tech Stack
+The project is a static frontend prototype. Its client-side data layer (`js/store.js`, exposed as `window.UR`) simulates platform operations and saves demo data in the current browser's `localStorage`. It has no production backend, and client-side authentication and checks are not secure.
 
-- **HTML** — one standalone file per page (no build step, no bundler)
-- **CSS** — custom CSS with CSS variables for the design system (no Tailwind/Bootstrap)
-- **JavaScript** — vanilla JS only, no framework
-- **GSAP 3.12.5** (CDN) — animations on marketing pages (`index.html`, `leaderboard.html`, `portfolio-gallery.html`, `browse-candidates.html`)
-- **Sortable.js 1.15.2** (CDN) — drag & drop for the HR hiring pipeline
-- **Google Fonts** — Plus Jakarta Sans (display/headings), Inter (body text), JetBrains Mono (scores/code), Caveat (handwritten notes)
-- **Material Symbols Rounded** (CDN) — icon set used throughout
+## How the platform works
 
-No `npm install` or build step is required. Open any `.html` file directly in a browser, or serve the project folder with any static file server.
+1. A company creates a job and links it to a practical task with requirements and a scoring rubric.
+2. A candidate finds a job or practice assessment, works on the task, and submits their work.
+3. An interviewer reviews the submission against the rubric, records a score and feedback, and can recommend the candidate.
+4. HR manages applications through the hiring pipeline, contacts candidates, and arranges interviews.
+5. Academies can manage student cohorts, refer students to opportunities, and track placements.
 
-## Folder Structure
+## Features and functionality
 
-```
-Unresume - skills over resumes/
-├── css/
-│   ├── globals.css      # design tokens, reset, dashboard shell layout, shared components (buttons, cards, forms, toggles, rubric bars)
-│   ├── navbar.css       # public navbar/footer, dashboard sidebar (+ mobile drawer), topbar notification/avatar popovers
-│   ├── dashboard.css    # shared skins for all dashboard pages (banners, stats, panels, modals, toasts, empty states)
-│   ├── auth.css         # login / register / forgot-password layout
-│   └── home.css         # landing-page-only styles (hero, features, role cards, CTA)
-├── js/
-│   ├── data.js          # seed catalogue (jobs, tasks, candidates, companies) the store is built from
-│   ├── store.js         # data layer / API stand-in (window.UR) — persistence, rules, notifications, audit log
-│   ├── ui.js            # shared UI helpers (window.UI) — toasts, modals, states, CSV, charts
-│   └── components.js    # navbar/footer/sidebar/topbar, role guard (data-roles), live notifications & stats
-├── images/
-│   ├── unresume-logo-dark.png  # main wordmark, used in navbar/sidebar/footer/auth pages
-│   ├── unresume-logo.png
-│   ├── logo.png
-│   ├── founder-indranil.png    # About page founder photo
-│   └── favicon.png             # browser tab icon, linked on every page
-└── *.html                      # one file per page (see Pages below)
-```
+### Candidates
 
-## Roles & Modules
+- Browse and filter job openings, view job details, and apply through task-based assessments.
+- Start timed task attempts and submit supported work or output.
+- Track applications, task results, interviews, and notifications.
+- Build a profile and portfolio from assessed tasks and external projects, with privacy controls.
+- View verified scores, skill rankings, certificates, and public portfolio information.
+- Communicate with hiring teams, follow other users, and raise a score dispute.
 
-Pages declare who may open them: `<div id="sidebar" data-roles="hr,interviewer">` (or `<body data-roles="any">`). `components.js` redirects anonymous visitors to sign-in and other roles to their own dashboard, and renders the sidebar for the signed-in user's role. Script order on every page: `data.js → store.js → ui.js → components.js`.
+### Companies and HR
 
-| Role | Pages |
-|---|---|
-| **Candidate** | `candidate-dashboard`, `jobs`, `job-detail`, `task-workplace`, `my-applications`, `assessments`, `candidate-interviews`, `certificates`, `candidate-profile`, `edit-profile`, `feed`, `leaderboard`, `chat`, `settings`, `notifications` |
-| **HR** | `hr-dashboard` (pipeline), `hr-jobs`, `company-tasks`, `task-create`, `hr-applications`, `interviewer-dashboard` (review queue), `compare`, `hr-interviews`, `browse-candidates`, `hr-analytics`, `team`, `company-profile` |
-| **Interviewer** | review queue, tasks, task builder, compare, interviews |
-| **Academy** | `academy-dashboard`, `manage-students` (bulk CSV), `batches`, `academy-jobs` (referrals), `placements`, `academy-reports` |
-| **Admin** | `admin-dashboard`, `admin-users`, `admin-moderation`, `admin-disputes`, `admin-audit`, `admin-settings` |
-| **Public** | `index`, `about`, `contact`, `jobs`, `job-detail`, `leaderboard`, `portfolio-gallery`, `candidate-profile?u=`, `verify`, `privacy`, `terms`, auth pages |
+- Create and manage job postings, practical tasks, and task rubrics.
+- Review applications and candidate submissions, compare candidates, and manage the hiring pipeline.
+- Search candidate profiles and portfolios, and invite candidates to apply.
+- Coordinate interviewer reviews, interviews, team access, and candidate communications.
+- View company hiring and application analytics.
 
-## How scores work
-- **Verified task score (0–100):** a company reviewer scores the submission against the task's published rubric (always 100 points).
-- **Skill Score (0–1000):** 10 × the mean of a candidate's verified task scores. Ranked after 3 verified tasks (configurable).
-- **Certificates** for task scores ≥ 70; **skill badges** for 2+ tasks in a skill averaging ≥ 75. Portfolio likes and external projects never affect scores.
-- Candidates can dispute a score within 30 days; Unresume admins decide.
-## Responsive Design
+### Interviewers
 
-Every page works on desktop, tablet and phone. Breakpoints are written as `@media (max-width: …)` rules, either in the shared CSS files or in each page's own `<style>` block.
+- Access assigned review queues and candidate work.
+- Score submissions against the task rubric, add feedback, and recommend candidates.
+- Support task creation and participate in candidate comparisons and interviews.
 
-| Width | Dashboard pages | Public pages |
-|---|---|---|
-| > 980px | Full sidebar (256px) + content | Full navbar with links |
-| ≤ 980px | — | Navbar collapses to a hamburger menu |
-| ≤ 900px | Sidebar becomes a 76px icon rail | — |
-| ≤ 720px | Sidebar becomes an off-canvas **drawer**, opened from a ☰ button in the topbar | — |
-| ≤ 640px | Single-column content, compact topbar, popovers pinned to the viewport | Single-column grids, tighter padding |
+### Academies
 
-How the shared pieces adapt:
+- Manage students and batches, including bulk student import.
+- Refer students to job opportunities and track referral progress.
+- Record placements and review academy reports.
 
-- **Sidebar drawer** — `renderSidebar()` in `components.js` automatically inserts the ☰ button (`.dash-menu-btn`) into the page's `.dash-topbar` and adds a backdrop. The drawer closes when you tap the backdrop, press Esc or pick a link. Dashboard pages don't need any extra HTML for this.
-- **Chat** (`chat.html`) — at ≤ 700px it shows one pane at a time: the conversation list first, then the open chat with a ← back button.
-- **Tables** — `manage-students.html` turns rows into cards on small screens, so the status dropdown stays usable. `academy-dashboard.html` and `leaderboard.html` hide secondary columns.
-- **Filter pills / job lists** — on phones these scroll sideways instead of wrapping (for example the job list on `academy-jobs.html`).
-- **Forms** — inputs use 16px text on phones, so iOS doesn't zoom in when you tap a field.
-- **Viewport height** — full-height layouts use `100dvh` (falling back to `100vh`), so they aren't cut off by the mobile browser's address bar.
+### Platform administration and public pages
 
-To test, open Chrome DevTools (F12) → device toolbar (Ctrl+Shift+M) and try different phone and tablet sizes.
+- Admin tools cover user management, content moderation, disputes, verification requests, audit records, and platform settings.
+- Public pages include job listings, candidate profiles, portfolios, leaderboards, and certificate verification.
 
-## Design System
+## Scores and verification
 
-A light theme, defined as CSS variables in `css/globals.css`:
+- A reviewer awards a **verified task score out of 100** using the task's published rubric.
+- Scores from verified tasks contribute to skill and track scores and rankings; practice or portfolio likes do not act as reviewer scores.
+- Certificates, badges, and ranking eligibility depend on platform criteria and settings.
+- Candidates can dispute a score within the configured dispute window; an administrator reviews the dispute.
 
-| Token | Value | Use |
-|---|---|---|
-| `--bg-base` | `#f7f7fd` | page background |
-| `--bg-card` | `#ffffff` | cards |
-| `--bg-elevated` | `#f1f0fb` | raised/inset surfaces, inputs |
-| `--brand` | `#4f46e5` | primary accent |
-| `--purple` | `#7c3aed` | gradient partner for `--brand` |
-| `--cyan` / `--pink` / `--teal` | `#0ea5e9` / `#d946ef` / `#14b8a6` | secondary accents |
-| `--text1` → `--text4` | `#0e1230` → `#9296b0` | text hierarchy, dark → dim |
-| `--border` / `--border-light` | `#e9e8f4` / `#d9d7ee` | card/divider borders |
+## Run the demo
 
-- Primary buttons and active states use a `#4f46e5 → #7c3aed` gradient.
-- Icon chips use the `.tint-blue / .tint-purple / .tint-pink / .tint-teal / .tint-amber` classes (a soft background with a matching icon color).
-- Cards are solid white with a 1px `--border` and a soft shadow (`--shadow-sm` / `--shadow-md`).
-- GSAP: the landing page hero uses `gsap.set()` + `gsap.to()`, so the text stays visible if the CDN is slow. Some lists and cards (`browse-candidates`, `leaderboard`, `portfolio-gallery`, the hero visual and stats) use `gsap.from()` with `clearProps`.
+No package installation or build step is required. From the project root, start a local static server:
 
-## Known Limitations
+Open [https://indranil20.github.io/Unresume-skills_over_resumes], then sign in using the **Demo accounts** list on the login page. All demo accounts use the password `demo1234`. To explore role-based workflows, use different demo accounts in separate tabs on the same origin. Changes are saved in that browser's `localStorage`; **Settings → Reset demo data** restores the sample dataset.
 
-See `BACKEND.md`. In short: data lives in one browser's localStorage; passwords are hashed client-side (not secure); no emails are sent; uploaded file contents are not stored (only name, size, SHA-256); identity verification is a manual admin review; plagiarism detection is heuristic.
+## Technology
+
+- Standalone HTML pages, custom CSS, and vanilla JavaScript; no framework or bundler.
+- Shared scripts provide the sample data, client-side store, reusable UI helpers, and common page components.
+- Some third-party assets and libraries load from CDNs and require an internet connection.
+
+## Prototype limitations
+
+- Data is stored locally in one browser and is not shared across devices or users.
+- Authentication and permissions are simulated in client-side code; do not use real or sensitive data.
+- Email delivery, persistent file storage, identity verification, and other production services are not fully integrated.
+- Some integrity checks and workflows are simulated. See [BACKEND.md](BACKEND.md) for backend requirements and [AUDIT.md](AUDIT.md) for audit notes.
